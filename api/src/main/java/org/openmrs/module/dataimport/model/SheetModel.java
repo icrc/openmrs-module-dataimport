@@ -1,0 +1,38 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public License,
+ * v. 2.0. If a copy of the MPL was not distributed with this file, You can
+ * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+ * the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+ *
+ * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
+ * graphic logo is a trademark of OpenMRS Inc.
+ */
+package org.openmrs.module.dataimport.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Sheet representation in the form model.
+ */
+public class SheetModel {
+	
+	public String sheetName;
+	
+	public boolean isRepeat;
+	
+	public String repeatGroupId;
+	
+	public final List<FieldModel> fields = new ArrayList<>();
+	
+	SheetModel shallowCopy() {
+		SheetModel c = new SheetModel();
+		c.sheetName = sheetName;
+		c.isRepeat = isRepeat;
+		c.repeatGroupId = repeatGroupId;
+		for (FieldModel f : fields) {
+			c.fields.add(f.copyHeaderOnly());
+		}
+		return c;
+	}
+}

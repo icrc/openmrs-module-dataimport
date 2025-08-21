@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json.openmrs.org/form.schema.json",
+  "name": "Sample Form with Mixed Field Types",
+  "uuid": "test-form-mixed-uuid",
+  "version": "1.0",
+  "processor": "EncounterFormProcessor",
+  "encounterType": "encounter-type-uuid",
+  "published": false,
+  "retired": false,
+  "pages": [
+    {
+      "label": "Main Page",
+      "sections": [
+        {
+          "label": "Patient Information",
+          "questions": [
+            {
+              "label": "Patient Name",
+              "type": "obs",
+              "id": "patient_name",
+              "questionOptions": {
+                "rendering": "text",
+                "concept": "patient.name.concept.uuid"
+              }
+            },
+            {
+              "label": "Age",
+              "type": "obs",
+              "id": "age",
+              "questionOptions": {
+                "rendering": "number",
+                "concept": "age.concept.uuid",
+                "min": "0",
+                "max": "120"
+              }
+            },
+            {
+              "label": "Date of Birth",
+              "type": "obs",
+              "id": "date_of_birth",
+              "questionOptions": {
+                "rendering": "date",
+                "concept": "date.of.birth.concept.uuid"
+              }
+            },
+            {
+              "label": "Last Visit",
+              "type": "obs",
+              "id": "last_visit",
+              "questionOptions": {
+                "rendering": "datetime",
+                "concept": "last.visit.concept.uuid"
+              }
+            },
+            {
+              "label": "Is Active",
+              "type": "obs",
+              "id": "is_active",
+              "questionOptions": {
+                "rendering": "checkbox",
+                "concept": "is.active.concept.uuid"
+              }
+            },
+            {
+              "label": "Status",
+              "type": "obs",
+              "id": "status",
+              "questionOptions": {
+                "rendering": "select",
+                "concept": "status.concept.uuid",
+                "answers": [
+                  {
+                    "concept": "active.concept.uuid",
+                    "label": "Active"
+                  },
+                  {
+                    "concept": "inactive.concept.uuid",
+                    "label": "Inactive"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "referencedForms": []
+}
