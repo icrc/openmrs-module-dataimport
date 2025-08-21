@@ -1,0 +1,30 @@
+*.class
+.settings
+.project
+.classpath
+target
+
+# IDE Files #
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# macOS Files #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Excel Lock Files #
+~$*.xlsx
+~$*.xls
+/.vscode/

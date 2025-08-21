@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json.openmrs.org/form.schema.json",
+  "name": "Sample Form with Advanced Features",
+  "uuid": "test-form-advanced-uuid",
+  "version": "1.0",
+  "processor": "EncounterFormProcessor",
+  "encounterType": "encounter-type-uuid",
+  "published": false,
+  "retired": false,
+  "pages": [
+    {
+      "label": "Patient Assessment",
+      "sections": [
+        {
+          "label": "Basic Demographics",
+          "questions": [
+            {
+              "label": "Patient Name",
+              "type": "obs",
+              "id": "patient_name",
+              "questionOptions": {
+                "rendering": "text",
+                "concept": "patient.name.concept.uuid",
+                "maxLength": "100"
+              },
+              "required": true
+            },
+            {
+              "label": "Age in Years",
+              "type": "obs",
+              "id": "age",
+              "questionOptions": {
+                "rendering": "number",
+                "concept": "age.concept.uuid",
+                "min": "0",
+                "max": "150"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Medical History",
+          "isExpanded": true,
+          "questions": [
+            {
+              "label": "Previous Surgery",
+              "type": "obs",
+              "id": "previous_surgery",
+              "questionOptions": {
+                "rendering": "radio",
+                "concept": "previous.surgery.concept.uuid",
+                "answers": [
+                  {
+                    "concept": "yes.concept.uuid",
+                    "label": "Yes"
+                  },
+                  {
+                    "concept": "no.concept.uuid",
+                    "label": "No"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "Medications",
+              "type": "obs",
+              "id": "medications",
+              "questionOptions": {
+                "rendering": "textarea",
+                "concept": "medications.concept.uuid",
+                "rows": "3"
+              }
+            },
+            {
+              "label": "Allergies",
+              "type": "obs",
+              "id": "allergies",
+              "questionOptions": {
+                "rendering": "multiCheckbox",
+                "concept": "allergies.concept.uuid",
+                "answers": [
+                  {
+                    "concept": "penicillin.concept.uuid",
+                    "label": "Penicillin"
+                  },
+                  {
+                    "concept": "sulfa.concept.uuid",
+                    "label": "Sulfa"
+                  },
+                  {
+                    "concept": "aspirin.concept.uuid",
+                    "label": "Aspirin"
+                  },
+                  {
+                    "concept": "none.concept.uuid",
+                    "label": "None"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "referencedForms": []
+}

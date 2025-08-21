@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json.openmrs.org/form.schema.json",
+  "name": "Sample Form with Radio Buttons",
+  "uuid": "test-form-radio-uuid",
+  "version": "1.0",
+  "processor": "EncounterFormProcessor",
+  "encounterType": "encounter-type-uuid",
+  "published": false,
+  "retired": false,
+  "pages": [
+    {
+      "label": "Main Page",
+      "sections": [
+        {
+          "label": "Basic Information",
+          "questions": [
+            {
+              "label": "Gender",
+              "type": "obs",
+              "id": "gender",
+              "questionOptions": {
+                "rendering": "radio",
+                "concept": "gender.concept.uuid",
+                "answers": [
+                  {
+                    "concept": "male.concept.uuid",
+                    "label": "Male"
+                  },
+                  {
+                    "concept": "female.concept.uuid", 
+                    "label": "Female"
+                  },
+                  {
+                    "concept": "other.concept.uuid",
+                    "label": "Other"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "Anesthesia Type",
+              "type": "obs",
+              "id": "anesthesia_type",
+              "questionOptions": {
+                "rendering": "radio",
+                "concept": "anesthesia.concept.uuid",
+                "answers": [
+                  {
+                    "concept": "general.concept.uuid",
+                    "label": "General"
+                  },
+                  {
+                    "concept": "local.concept.uuid",
+                    "label": "Local"
+                  },
+                  {
+                    "concept": "regional.concept.uuid",
+                    "label": "Regional"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "referencedForms": []
+}

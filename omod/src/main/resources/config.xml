@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module configVersion="1.2">
+	<id>${project.parent.artifactId}</id>
+	<name>${project.parent.name}</name>
+	<version>${project.parent.version}</version>
+	<package>org.openmrs.module.dataimport</package>
+	<author>mherman22</author>
+	<description>${project.parent.description}</description>
+	<activator>org.openmrs.module.dataimport.DataimportActivator</activator>
+	<require_version>2.7.0</require_version>
+	
+	<extension>
+		<point>org.openmrs.admin.list</point>
+		<class>org.openmrs.module.dataimport.extension.html.AdminList</class>
+	</extension>
+
+	<require_modules>
+		<require_module version="${idgenVersion}">org.openmrs.module.idgen</require_module>
+		<require_module>org.openmrs.module.webservices.rest</require_module>
+	</require_modules>
+
+	<aware_of_modules>
+		<aware_of_module>org.openmrs.module.legacyui</aware_of_module>
+	</aware_of_modules>
+
+	<messages>
+		<lang>en</lang>
+		<file>messages.properties</file>
+	</messages>
+
+	<messages>
+		<lang>fr</lang>
+		<file>messages_fr.properties</file>
+	</messages>
+
+	<messages>
+		<lang>es</lang>
+		<file>messages_es.properties</file>
+	</messages>
+
+</module>
