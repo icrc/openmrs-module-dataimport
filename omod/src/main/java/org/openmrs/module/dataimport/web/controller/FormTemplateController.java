@@ -9,9 +9,7 @@
  */
 package org.openmrs.module.dataimport.web.controller;
 
-import org.openmrs.annotation.Authorized;
 import org.openmrs.api.APIException;
-import org.openmrs.module.dataimport.DataimportConfig;
 import org.openmrs.module.dataimport.api.TemplateGenerationService;
 import org.openmrs.module.dataimport.api.TemplateOptions;
 import org.openmrs.module.webservices.rest.web.RestConstants;
@@ -38,14 +36,12 @@ public class FormTemplateController extends BaseRestController {
 	private TemplateGenerationService templateGenerationService;
 	
 	@PostMapping(value = "/forms/template.xlsx", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	@Authorized(DataimportConfig.MODULE_PRIVILEGE)
 	public ResponseEntity<byte[]> generateTemplateFromPost(@RequestBody TemplateRequest request) {
 		if (request.formUuids == null || request.formUuids.isEmpty()) {
 			throw new APIException("At least one formUuid is required");
 		}
 		
-		TemplateOptions options = request.options != null ? request.options
-		        : templateGenerationService.createDefaultOptions();
+		TemplateOptions options = request.options != null ? request.options : new TemplateOptions();
 		
 		byte[] bytes = templateGenerationService.generateFromFormUuids(request.formUuids, options);
 		

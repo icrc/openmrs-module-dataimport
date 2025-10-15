@@ -9,6 +9,9 @@
  */
 package org.openmrs.module.dataimport.api;
 
+import org.openmrs.annotation.Authorized;
+import org.openmrs.module.dataimport.DataimportConfig;
+
 import java.util.List;
 
 public interface TemplateGenerationService {
@@ -21,12 +24,7 @@ public interface TemplateGenerationService {
 	 * @return Excel workbook as byte array
 	 * @throws org.openmrs.api.APIException if form not found or has no schema
 	 */
+	@Authorized(DataimportConfig.MODULE_PRIVILEGE)
 	byte[] generateFromFormUuids(List<String> formUuids, TemplateOptions opts);
 	
-	/**
-	 * Creates default template options.
-	 * 
-	 * @return Default TemplateOptions with standard settings
-	 */
-	TemplateOptions createDefaultOptions();
 }
