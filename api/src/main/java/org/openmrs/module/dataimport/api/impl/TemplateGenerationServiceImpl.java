@@ -24,7 +24,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Implementation of {@link org.openmrs.module.dataimport.api.TemplateGenerationService} for
@@ -72,14 +71,9 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 					throw new APIException("Form " + uuid + " not found or has no JSON schema resource");
 				}
 				
-				String json;
-				if (opts.locale != null && opts.locale.getLanguage() != null) {
-					json = resolver.fetchSchemaJsonByUuid(uuid, opts.locale.getLanguage());
-				} else {
-					json = resolver.fetchSchemaJsonByUuid(uuid);
-				}
+				String json = resolver.fetchSchemaJsonByUuid(uuid);
 				
-				FormModel formModel = parser.parse(json, opts.locale);
+				FormModel formModel = parser.parse(json, null);
 				enrichFormWithConceptAnswers(formModel);
 				
 				if (merged.encounterTypeUuid == null) {
@@ -105,7 +99,7 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 		}
 		
 		try {
-			return exporter.export(merged, opts.includePatient, opts.includeVisit, opts.locale);
+			return exporter.export(merged, opts.includePatient);
 		}
 		catch (RuntimeException e) {
 			throw new APIException("Failed to generate Excel template: " + e.getMessage(), e);
@@ -115,12 +109,7 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 	@Override
 	public TemplateOptions createDefaultOptions() {
 		TemplateOptions opts = new TemplateOptions();
-		opts.locale = Locale.ENGLISH;
-		opts.includeInstructions = true;
 		opts.includePatient = true;
-		opts.includeVisit = true;
-		opts.addDropdowns = true;
-		opts.separateRepeats = true;
 		return opts;
 	}
 	

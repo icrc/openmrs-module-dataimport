@@ -37,10 +37,7 @@ The module supports OpenMRS Platform 2.7.0 and above hence supporting java 8, 11
    {
      "formUuids": ["c4efe3f7-a556-3377-bc69-cae193418ebd"],
      "options": {
-       "includePatient": true,
-       "includeVisit": false,
-       "lang": "en",
-       "addDropdowns": true
+       "includePatient": true
      }
    }
    ```

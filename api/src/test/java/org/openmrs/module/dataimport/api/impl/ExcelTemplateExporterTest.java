@@ -41,7 +41,7 @@ class ExcelTemplateExporterTest {
 	void testExportBasicForm() throws Exception {
 		FormModel form = createBasicForm();
 		
-		byte[] result = exporter.export(form, true, true, Locale.ENGLISH);
+		byte[] result = exporter.export(form, true);
 		
 		assertNotNull(result);
 		assertTrue(result.length > 0);
@@ -56,7 +56,7 @@ class ExcelTemplateExporterTest {
 	void testCreateAllRequiredSheets() throws Exception {
 		FormModel form = createBasicForm();
 		
-		byte[] result = exporter.export(form, true, true, Locale.ENGLISH);
+		byte[] result = exporter.export(form, true);
 		
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(result))) {
 			List<String> sheetNames = new ArrayList<>();
@@ -65,7 +65,6 @@ class ExcelTemplateExporterTest {
 			}
 			
 			assertTrue(sheetNames.contains("Patient Registration"), "Missing Patient Registration sheet");
-			assertTrue(sheetNames.contains("Visit"), "Missing Visit sheet");
 			
 			// __lists should exist but be hidden
 			Sheet listsSheet = wb.getSheet("__lists");
@@ -79,7 +78,7 @@ class ExcelTemplateExporterTest {
 	void testExportCodedFieldsWithDropdowns() throws Exception {
 		FormModel form = createFormWithCodedFields();
 		
-		byte[] result = exporter.export(form, true, true, Locale.ENGLISH);
+		byte[] result = exporter.export(form, true);
 		
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(result))) {
 			assertTrue(wb.getNumberOfSheets() > 0);
@@ -95,7 +94,7 @@ class ExcelTemplateExporterTest {
 	void testExportRepeatGroupsAsSeparateSheets() throws Exception {
 		FormModel form = createFormWithRepeatGroups();
 		
-		byte[] result = exporter.export(form, true, true, Locale.ENGLISH);
+		byte[] result = exporter.export(form, true);
 		
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(result))) {
 			List<String> sheetNames = new ArrayList<>();
@@ -114,8 +113,8 @@ class ExcelTemplateExporterTest {
 	void testParseAndExportO3Json() throws Exception {
 		String o3Json = createBasicO3Json();
 		
-		FormModel form = parser.parse(o3Json, Locale.ENGLISH);
-		byte[] result = exporter.export(form, true, true, Locale.ENGLISH);
+		FormModel form = parser.parse(o3Json, null);
+		byte[] result = exporter.export(form, true);
 		
 		assertNotNull(result);
 		assertTrue(result.length > 0);
@@ -132,7 +131,7 @@ class ExcelTemplateExporterTest {
 		form.name = "Empty Form";
 		form.formUuid = "empty-form-uuid";
 		
-		byte[] result = exporter.export(form, true, true, Locale.ENGLISH);
+		byte[] result = exporter.export(form, true);
 		
 		assertNotNull(result);
 		assertTrue(result.length > 0);

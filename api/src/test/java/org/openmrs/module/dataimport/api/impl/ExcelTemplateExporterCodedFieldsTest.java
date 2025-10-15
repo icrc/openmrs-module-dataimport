@@ -23,7 +23,6 @@ import org.openmrs.module.dataimport.model.*;
 import org.openmrs.module.dataimport.test.TestDataLoader;
 
 import java.io.ByteArrayInputStream;
-import java.util.Locale;
 
 @DisplayName("ExcelTemplateExporter - Coded Fields Tests")
 class ExcelTemplateExporterCodedFieldsTest {
@@ -42,9 +41,9 @@ class ExcelTemplateExporterCodedFieldsTest {
 	@DisplayName("Should generate Excel with dropdowns for radio button fields")
 	void testGenerateExcelWithRadioButtonDropdowns() throws Exception {
 		String json = TestDataLoader.loadRadioButtonsForm();
-		FormModel form = parser.parse(json, Locale.ENGLISH);
+		FormModel form = parser.parse(json, null);
 		
-		byte[] excelBytes = exporter.export(form, false, false, Locale.ENGLISH);
+		byte[] excelBytes = exporter.export(form, false);
 		
 		assertNotNull(excelBytes);
 		assertTrue(excelBytes.length > 0);
@@ -101,9 +100,9 @@ class ExcelTemplateExporterCodedFieldsTest {
 	@DisplayName("Should generate Excel with proper field types")
 	void testGenerateExcelWithMixedFieldTypes() throws Exception {
 		String json = TestDataLoader.loadMixedFieldsForm();
-		FormModel form = parser.parse(json, Locale.ENGLISH);
+		FormModel form = parser.parse(json, null);
 		
-		byte[] excelBytes = exporter.export(form, false, false, Locale.ENGLISH);
+		byte[] excelBytes = exporter.export(form, false);
 		
 		assertNotNull(excelBytes);
 		assertTrue(excelBytes.length > 0);
@@ -167,7 +166,7 @@ class ExcelTemplateExporterCodedFieldsTest {
 		        + "      ]\n" + "    }\n" + "  ],\n" + "  \"processor\": \"EncounterFormProcessor\",\n"
 		        + "  \"uuid\": \"test-anesthesia-form\",\n" + "  \"referencedForms\": []\n" + "}";
 		
-		FormModel form = parser.parse(jsonContent, Locale.ENGLISH);
+		FormModel form = parser.parse(jsonContent, null);
 		
 		// Verify parsing worked correctly
 		assertEquals("Surgical Operation", form.name);
@@ -192,7 +191,7 @@ class ExcelTemplateExporterCodedFieldsTest {
 		assertEquals("5392d074-eed3-4f88-a8e9-5bae333e7589", monitoredAnswer.conceptUuid);
 		
 		// Test Excel export
-		byte[] excelBytes = exporter.export(form, false, false, Locale.ENGLISH);
+		byte[] excelBytes = exporter.export(form, false);
 		assertNotNull(excelBytes);
 		assertTrue(excelBytes.length > 0);
 		
@@ -244,9 +243,9 @@ class ExcelTemplateExporterCodedFieldsTest {
 	@DisplayName("Should handle repeat groups as separate sheets")
 	void testGenerateExcelWithRepeatGroups() throws Exception {
 		String json = TestDataLoader.loadRepeatGroupsForm();
-		FormModel form = parser.parse(json, Locale.ENGLISH);
+		FormModel form = parser.parse(json, null);
 		
-		byte[] excelBytes = exporter.export(form, false, false, Locale.ENGLISH);
+		byte[] excelBytes = exporter.export(form, false);
 		
 		assertNotNull(excelBytes);
 		assertTrue(excelBytes.length > 0);
