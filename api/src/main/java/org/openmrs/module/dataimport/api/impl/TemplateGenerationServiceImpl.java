@@ -106,13 +106,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 		}
 	}
 	
-	@Override
-	public TemplateOptions createDefaultOptions() {
-		TemplateOptions opts = new TemplateOptions();
-		opts.includePatient = true;
-		return opts;
-	}
-	
 	/**
 	 * Enrich coded fields with concept answers loaded from ConceptService. This is critical for radio
 	 * buttons and selects that don't have inline answers in the form JSON but instead reference a
