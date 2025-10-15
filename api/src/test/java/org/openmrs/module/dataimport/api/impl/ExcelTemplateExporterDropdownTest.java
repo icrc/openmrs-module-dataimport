@@ -23,7 +23,6 @@ import org.openmrs.module.dataimport.model.*;
 import org.openmrs.module.dataimport.test.TestDataLoader;
 
 import java.io.ByteArrayInputStream;
-import java.util.Locale;
 
 @DisplayName("Excel Template Exporter - Dropdown Functionality Test")
 class ExcelTemplateExporterDropdownTest {
@@ -43,7 +42,7 @@ class ExcelTemplateExporterDropdownTest {
 	void testRadioButtonDropdownCreation() throws Exception {
 		// Use the radio buttons test form which has inline answers
 		String json = TestDataLoader.loadRadioButtonsForm();
-		FormModel form = parser.parse(json, Locale.ENGLISH);
+		FormModel form = parser.parse(json, null);
 		
 		// Verify the form has coded fields with answers
 		FieldModel genderField = form.sheets.get(0).fields.get(0);
@@ -54,7 +53,7 @@ class ExcelTemplateExporterDropdownTest {
 		assertEquals("Other", genderField.answers.get(2).label);
 		
 		// Generate Excel
-		byte[] excelBytes = exporter.export(form, false, false, Locale.ENGLISH);
+		byte[] excelBytes = exporter.export(form, false);
 		assertNotNull(excelBytes);
 		assertTrue(excelBytes.length > 0);
 		
@@ -142,7 +141,7 @@ class ExcelTemplateExporterDropdownTest {
 		        + "              }\n" + "            }\n" + "          ]\n" + "        }\n" + "      ]\n" + "    }\n"
 		        + "  ],\n" + "  \"referencedForms\": []\n" + "}";
 		
-		FormModel form = parser.parse(json, Locale.ENGLISH);
+		FormModel form = parser.parse(json, null);
 		
 		// Verify the field is coded but has no answers
 		FieldModel field = form.sheets.get(0).fields.get(0);
@@ -150,7 +149,7 @@ class ExcelTemplateExporterDropdownTest {
 		assertTrue(field.answers.isEmpty(), "Field should have no answers");
 		
 		// Generate Excel - should not crash
-		byte[] excelBytes = exporter.export(form, false, false, Locale.ENGLISH);
+		byte[] excelBytes = exporter.export(form, false);
 		assertNotNull(excelBytes);
 		assertTrue(excelBytes.length > 0);
 		

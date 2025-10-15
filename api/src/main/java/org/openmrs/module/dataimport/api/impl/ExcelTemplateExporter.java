@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Locale;
 
 public class ExcelTemplateExporter {
 	
@@ -64,7 +63,7 @@ public class ExcelTemplateExporter {
 	
 	private static final int LAST_DATA_ROW = 1000;
 	
-	public byte[] export(FormModel form, boolean includePatient, boolean includeVisit, Locale locale) {
+	public byte[] export(FormModel form, boolean includePatient) {
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			DataFormat dataFormat = workbook.createDataFormat();
 			CellStyle dateStyle = workbook.createCellStyle();
@@ -74,8 +73,6 @@ public class ExcelTemplateExporter {
 			
 			if (includePatient)
 				createPatientSheet(workbook);
-			if (includeVisit)
-				createVisitSheet(workbook);
 			
 			getOrCreateListSheet(workbook);
 			
@@ -192,28 +189,6 @@ public class ExcelTemplateExporter {
 		sheet.autoSizeColumn(0);
 		// Freeze header row
 		sheet.createFreezePane(0, 1);
-	}
-	
-	private static void createVisitSheet(Workbook workbook) {
-		Sheet sheet = workbook.createSheet("Visit");
-		CellStyle headerStyle = createHeaderStyle((XSSFWorkbook) workbook);
-		String[] columnHeaders = { PATIENT_REF_HEADER, "Visit Type UUID", "Start Datetime (yyyy-mm-dd hh:mm)",
-		        "Location UUID" };
-		Row headerRow = sheet.createRow(0);
-		for (int columnIndex = 0; columnIndex < columnHeaders.length; columnIndex++) {
-			Cell headerCell = headerRow.createCell(columnIndex);
-			headerCell.setCellValue(columnHeaders[columnIndex]);
-			headerCell.setCellStyle(headerStyle);
-			
-			// Add comment to Patient Ref column to explain its purpose
-			if (columnIndex == 0) {
-				addHeaderComment((XSSFSheet) sheet, 0, "Select an existing Patient Ref from the registration sheet");
-			}
-			
-			sheet.autoSizeColumn(columnIndex);
-		}
-		// Freeze header row
-		((XSSFSheet) sheet).createFreezePane(0, 1);
 	}
 	
 	private static Cell getOrCreate(Sheet sheet, int rowIndex, int columnIndex) {

@@ -13,8 +13,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Locale;
-
 /**
  * Options for template generation
  */
@@ -23,17 +21,5 @@ import java.util.Locale;
 @AllArgsConstructor
 public class TemplateOptions {
 	
-	public Locale locale = Locale.ENGLISH;
-	
-	public boolean includeInstructions = true;
-	
 	public boolean includePatient = true;
-	
-	public boolean includeVisit = true;
-	
-	public boolean addDropdowns = true;
-	
-	public boolean separateRepeats = true;
-	
-	public String locationUuid;
 }
