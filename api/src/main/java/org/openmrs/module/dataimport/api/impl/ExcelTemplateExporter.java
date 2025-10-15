@@ -11,8 +11,16 @@ package org.openmrs.module.dataimport.api.impl;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.ClientAnchor;
+import org.apache.poi.ss.usermodel.Comment;
 import org.apache.poi.ss.usermodel.DataFormat;
+import org.apache.poi.ss.usermodel.DataValidation;
 import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
+import org.apache.poi.ss.usermodel.Drawing;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -42,7 +50,19 @@ public class ExcelTemplateExporter {
 	
 	private static final String LIST_SHEET = "__lists";
 	
+	private static final String PATIENT_SHEET_NAME = "Patient Registration";
+	
+	private static final String REG_SHEET = PATIENT_SHEET_NAME;
+	
+	private static final String PATIENT_REF_HEADER = "Patient Ref";
+	
+	private static final String PATIENT_REFS_RANGE = "PatientRefs";
+	
 	private static final int LIST_START_ROW = 1;
+	
+	private static final int FIRST_DATA_ROW = 1; // row after header
+	
+	private static final int LAST_DATA_ROW = 1000;
 	
 	public byte[] export(FormModel form, boolean includePatient, boolean includeVisit, Locale locale) {
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -62,10 +82,30 @@ public class ExcelTemplateExporter {
 			for (SheetModel sheetModel : form.sheets) {
 				XSSFSheet sheet = workbook.createSheet(sheetModel.sheetName);
 				Row headerRow = sheet.createRow(0);
+				CellStyle headerStyle = createHeaderStyle(workbook);
 				int columnIndex = 0;
+				
+				// Add Patient Ref column as the first column for each form sheet
+				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
+				patientRefHeaderCell.setCellValue(PATIENT_REF_HEADER);
+				patientRefHeaderCell.setCellStyle(headerStyle);
+				addHeaderComment(sheet, columnIndex, "Select an existing Patient Ref from the registration sheet");
+				sheet.autoSizeColumn(columnIndex);
+				columnIndex++;
+				
+				// Inline hint in row 2 to guide users
+				Row hintRow = sheet.getRow(1);
+				if (hintRow == null)
+					hintRow = sheet.createRow(1);
+				Cell hintCell = hintRow.getCell(0);
+				if (hintCell == null)
+					hintCell = hintRow.createCell(0);
+				hintCell.setCellValue("Select a Patient Ref (auto-generated in '" + REG_SHEET + "')");
+				
 				for (FieldModel field : sheetModel.fields) {
 					Cell headerCell = headerRow.createCell(columnIndex);
 					headerCell.setCellValue(labelWithMarkers(field));
+					headerCell.setCellStyle(headerStyle);
 					
 					if (field.datatype == FieldDatatype.DATE) {
 						for (int rowIndex = 1; rowIndex <= 1000; rowIndex++) {
@@ -82,6 +122,17 @@ public class ExcelTemplateExporter {
 					}
 					sheet.autoSizeColumn(columnIndex);
 					columnIndex++;
+				}
+				// Freeze header row
+				sheet.createFreezePane(0, 1);
+			}
+			
+			// Ensure dynamic named range for Patient Ref values exists and apply validation on all non-patient sheets
+			ensurePatientRefsNamedRange(workbook);
+			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+				Sheet s = workbook.getSheetAt(i);
+				if (!PATIENT_SHEET_NAME.equals(s.getSheetName())) {
+					applyPatientRefDropdown((XSSFSheet) s, 0, FIRST_DATA_ROW, LAST_DATA_ROW);
 				}
 			}
 			
@@ -104,24 +155,65 @@ public class ExcelTemplateExporter {
 	}
 	
 	private static void createPatientSheet(Workbook workbook) {
-		Sheet sheet = workbook.createSheet("Patient Registration");
-		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
-		        "City/Village", "Country", "Phone" };
+		XSSFWorkbook wb = (XSSFWorkbook) workbook;
+		XSSFSheet sheet = wb.createSheet(PATIENT_SHEET_NAME);
+		CellStyle headerStyle = createHeaderStyle(wb);
+		String[] columnHeaders = { PATIENT_REF_HEADER, "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)",
+		        "Address Line 1", "City/Village", "Country", "Phone" };
 		Row headerRow = sheet.createRow(0);
 		for (int columnIndex = 0; columnIndex < columnHeaders.length; columnIndex++) {
-			headerRow.createCell(columnIndex).setCellValue(columnHeaders[columnIndex]);
+			Cell headerCell = headerRow.createCell(columnIndex);
+			headerCell.setCellValue(columnHeaders[columnIndex]);
+			headerCell.setCellStyle(headerStyle);
+			if (columnIndex == 0) {
+				addHeaderComment(sheet, columnIndex,
+				    "IDs auto-fill when you enter patient data. Use these refs on other sheets.");
+			}
 			sheet.autoSizeColumn(columnIndex);
 		}
+		for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
+			Row dataRow = sheet.getRow(r);
+			if (dataRow == null)
+				dataRow = sheet.createRow(r);
+			Cell a = dataRow.getCell(0);
+			if (a == null)
+				a = dataRow.createCell(0);
+			String dataRange = "B" + (r + 1) + ":I" + (r + 1);
+			String formula = "IF(COUNTA(" + dataRange + ")=0,\"\",\"P\"&TEXT(ROW()-1,\"000\"))";
+			a.setCellFormula(formula);
+		}
+		Row hint = sheet.getRow(1);
+		if (hint == null)
+			hint = sheet.createRow(1);
+		Cell hintCell = hint.getCell(0);
+		if (hintCell == null)
+			hintCell = hint.createCell(0);
+		hintCell.setCellValue("Hint: Leave this column; IDs auto-fill. Use these refs on other sheets.");
+		sheet.autoSizeColumn(0);
+		// Freeze header row
+		sheet.createFreezePane(0, 1);
 	}
 	
 	private static void createVisitSheet(Workbook workbook) {
 		Sheet sheet = workbook.createSheet("Visit");
-		String[] columnHeaders = { "Visit Type UUID", "Start Datetime (yyyy-mm-dd hh:mm)", "Location UUID" };
+		CellStyle headerStyle = createHeaderStyle((XSSFWorkbook) workbook);
+		String[] columnHeaders = { PATIENT_REF_HEADER, "Visit Type UUID", "Start Datetime (yyyy-mm-dd hh:mm)",
+		        "Location UUID" };
 		Row headerRow = sheet.createRow(0);
 		for (int columnIndex = 0; columnIndex < columnHeaders.length; columnIndex++) {
-			headerRow.createCell(columnIndex).setCellValue(columnHeaders[columnIndex]);
+			Cell headerCell = headerRow.createCell(columnIndex);
+			headerCell.setCellValue(columnHeaders[columnIndex]);
+			headerCell.setCellStyle(headerStyle);
+			
+			// Add comment to Patient Ref column to explain its purpose
+			if (columnIndex == 0) {
+				headerCell.setCellComment(createPatientRefComment(sheet));
+			}
+			
 			sheet.autoSizeColumn(columnIndex);
 		}
+		// Freeze header row
+		((XSSFSheet) sheet).createFreezePane(0, 1);
 	}
 	
 	private static Cell getOrCreate(Sheet sheet, int rowIndex, int columnIndex) {
@@ -245,5 +337,77 @@ public class ExcelTemplateExporter {
 		visibleSheet.addValidationData(dataValidation);
 		log.debug("Dropdown created: '{}' with {} answers (named range: '{}', applied to column {})", headerLabel,
 		    answers.size(), namedRangeName, targetColumnIndex);
+	}
+	
+	/**
+	 * Creates a comment explaining the Patient Ref column purpose and usage.
+	 */
+	private static Comment createPatientRefComment(Sheet sheet) {
+		Drawing<?> drawing = sheet.createDrawingPatriarch();
+		ClientAnchor anchor = sheet.getWorkbook().getCreationHelper().createClientAnchor();
+		anchor.setCol1(0);
+		anchor.setCol2(2);
+		anchor.setRow1(0);
+		anchor.setRow2(4);
+		Comment comment = drawing.createCellComment(anchor);
+		comment.setString(sheet.getWorkbook().getCreationHelper().createRichTextString(
+		    "Patient Ref: Unique identifier linking this record to a patient in the Patient Registration sheet. "
+		            + "Use the same Patient Ref value across all sheets to associate encounters and observations with the correct patient. "
+		            + "This ensures data consistency during import."));
+		return comment;
+	}
+	
+	/** Adds a small tooltip comment on the header cell. */
+	private static void addHeaderComment(XSSFSheet sheet, int columnIndex, String text) {
+		Drawing<?> drawing = sheet.createDrawingPatriarch();
+		ClientAnchor anchor = sheet.getWorkbook().getCreationHelper().createClientAnchor();
+		anchor.setCol1(columnIndex);
+		anchor.setCol2(columnIndex + 2);
+		anchor.setRow1(0);
+		anchor.setRow2(4);
+		Comment comment = drawing.createCellComment(anchor);
+		comment.setString(sheet.getWorkbook().getCreationHelper().createRichTextString(text));
+		sheet.getRow(0).getCell(columnIndex).setCellComment(comment);
+	}
+	
+	/**
+	 * Create/update a named range that covers the Patient Ref values on the Patient Registration sheet.
+	 */
+	private void ensurePatientRefsNamedRange(XSSFWorkbook workbook) {
+		// Dynamic range that grows as refs are added (skips the header in A1)
+		String formula = "IF(COUNTA('" + REG_SHEET + "'!$A:$A)<=1," + "'" + REG_SHEET + "'!$A$2," + "OFFSET('" + REG_SHEET
+		        + "'!$A$2,0,0,COUNTA('" + REG_SHEET + "'!$A:$A)-1,1))";
+		Name name = workbook.getName(PATIENT_REFS_RANGE);
+		if (name == null) {
+			name = workbook.createName();
+			name.setNameName(PATIENT_REFS_RANGE);
+		}
+		name.setRefersToFormula(formula);
+		log.debug("Patient Refs named range '{}' -> {}", PATIENT_REFS_RANGE, formula);
+	}
+	
+	/**
+	 * Apply validation to force selecting Patient Ref from the named range on a given sheet/column.
+	 */
+	private void applyPatientRefDropdown(XSSFSheet sheet, int targetColumnIndex, int firstDataRow, int lastDataRow) {
+		DataValidationHelper helper = sheet.getDataValidationHelper();
+		DataValidationConstraint constraint = helper.createFormulaListConstraint(PATIENT_REFS_RANGE);
+		CellRangeAddressList region = new CellRangeAddressList(firstDataRow, lastDataRow, targetColumnIndex,
+		        targetColumnIndex);
+		DataValidation validation = helper.createValidation(constraint, region);
+		validation.setSuppressDropDownArrow(false);
+		validation.setShowErrorBox(true);
+		validation.setEmptyCellAllowed(true);
+		sheet.addValidationData(validation);
+	}
+	
+	private static CellStyle createHeaderStyle(XSSFWorkbook workbook) {
+		CellStyle style = workbook.createCellStyle();
+		Font font = workbook.createFont();
+		font.setBold(true);
+		style.setFont(font);
+		style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+		return style;
 	}
 }
