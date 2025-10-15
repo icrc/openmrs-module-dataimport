@@ -119,12 +119,12 @@
 			<dependency>
 				<groupId>org.apache.poi</groupId>
 				<artifactId>poi</artifactId>
-				<version>5.4.1</version>
+				<version>${poiVersion}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.poi</groupId>
 				<artifactId>poi-ooxml</artifactId>
-				<version>5.4.1</version>
+				<version>${poiVersion}</version>
 			</dependency>
         </dependencies>
     </dependencyManagement>
@@ -283,6 +283,7 @@
         <junitJupiterVersion>5.11.3</junitJupiterVersion>
         <mockitoVersion>3.12.4</mockitoVersion>
         <powerMockVersion>2.0.9</powerMockVersion>
+		<poiVersion>5.4.1</poiVersion>
         <legacyUiVersion>2.0.0-SNAPSHOT</legacyUiVersion>
 		<idgenVersion>4.14.0</idgenVersion>
 		<log4jVersion>2.24.3</log4jVersion>
