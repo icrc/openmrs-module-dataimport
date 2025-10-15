@@ -207,7 +207,7 @@ public class ExcelTemplateExporter {
 			
 			// Add comment to Patient Ref column to explain its purpose
 			if (columnIndex == 0) {
-				headerCell.setCellComment(createPatientRefComment(sheet));
+				addHeaderComment((XSSFSheet) sheet, 0, "Select an existing Patient Ref from the registration sheet");
 			}
 			
 			sheet.autoSizeColumn(columnIndex);
@@ -337,24 +337,6 @@ public class ExcelTemplateExporter {
 		visibleSheet.addValidationData(dataValidation);
 		log.debug("Dropdown created: '{}' with {} answers (named range: '{}', applied to column {})", headerLabel,
 		    answers.size(), namedRangeName, targetColumnIndex);
-	}
-	
-	/**
-	 * Creates a comment explaining the Patient Ref column purpose and usage.
-	 */
-	private static Comment createPatientRefComment(Sheet sheet) {
-		Drawing<?> drawing = sheet.createDrawingPatriarch();
-		ClientAnchor anchor = sheet.getWorkbook().getCreationHelper().createClientAnchor();
-		anchor.setCol1(0);
-		anchor.setCol2(2);
-		anchor.setRow1(0);
-		anchor.setRow2(4);
-		Comment comment = drawing.createCellComment(anchor);
-		comment.setString(sheet.getWorkbook().getCreationHelper().createRichTextString(
-		    "Patient Ref: Unique identifier linking this record to a patient in the Patient Registration sheet. "
-		            + "Use the same Patient Ref value across all sheets to associate encounters and observations with the correct patient. "
-		            + "This ensures data consistency during import."));
-		return comment;
 	}
 	
 	/** Adds a small tooltip comment on the header cell. */
