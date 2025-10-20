@@ -214,10 +214,6 @@ public class ExcelTemplateExporter {
 		return safeName;
 	}
 	
-	/**
-	 * Centralized method to handle CODED field dropdown creation. Assumes concept answer enrichment has
-	 * already been done by TemplateGenerationServiceImpl.
-	 */
 	private void handleCodedField(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
 		log.debug("Creating dropdown for CODED field: '{}' with {} answers", field.label, field.answers.size());
 		
@@ -231,10 +227,6 @@ public class ExcelTemplateExporter {
 		log.debug("Dropdown created for CODED field: '{}' with {} options", field.label, field.answers.size());
 	}
 	
-	/**
-	 * Create a simple dropdown using the proven approach. This method follows the exact pattern that
-	 * works for showing dropdown arrows.
-	 */
 	private void createSimpleDropdown(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
 		if (field.answers == null || field.answers.isEmpty()) {
 			return;
@@ -283,9 +275,6 @@ public class ExcelTemplateExporter {
 		log.debug("Simple dropdown created for '{}' with {} options using proven approach", fieldName, field.answers.size());
 	}
 	
-	/**
-	 * Create/update a named range that covers the Patient Ref values on the Patient Registration sheet.
-	 */
 	private void ensurePatientRefsNamedRange(XSSFWorkbook workbook) {
 		// Dynamic range that grows as refs are added (skips the header in I1, Patient Ref is now in column I)
 		String formula = "IF(COUNTA('" + REG_SHEET + "'!$I:$I)<=1," + "'" + REG_SHEET + "'!$I$2," + "OFFSET('" + REG_SHEET
