@@ -155,40 +155,70 @@ public class ExcelTemplateExporter {
 		XSSFWorkbook wb = (XSSFWorkbook) workbook;
 		XSSFSheet sheet = wb.createSheet(PATIENT_SHEET_NAME);
 		CellStyle headerStyle = createHeaderStyle(wb);
-		String[] columnHeaders = { PATIENT_REF_HEADER, "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)",
-		        "Address Line 1", "City/Village", "Country", "Phone" };
+		// Patient Ref moved to the end to discourage manual entry
+		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
+		        "City/Village", "Country", "Phone", PATIENT_REF_HEADER };
 		Row headerRow = sheet.createRow(0);
 		for (int columnIndex = 0; columnIndex < columnHeaders.length; columnIndex++) {
 			Cell headerCell = headerRow.createCell(columnIndex);
 			headerCell.setCellValue(columnHeaders[columnIndex]);
 			headerCell.setCellStyle(headerStyle);
-			if (columnIndex == 0) {
-				addHeaderComment(sheet, columnIndex,
-				    "IDs auto-fill when you enter patient data. Use these refs on other sheets.");
+			if (columnIndex == columnHeaders.length - 1) { // Patient Ref is last column
+				addHeaderComment(sheet, columnIndex, "Autofilled");
 			}
 			sheet.autoSizeColumn(columnIndex);
 		}
+		
+		// Create read-only style for Patient Ref column
+		CellStyle readonlyStyle = wb.createCellStyle();
+		readonlyStyle.setLocked(true);
+		readonlyStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+		readonlyStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+		// Create unlocked style for user-editable cells
+		CellStyle unlockedStyle = wb.createCellStyle();
+		unlockedStyle.setLocked(false);
+		
 		for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
 			Row dataRow = sheet.getRow(r);
 			if (dataRow == null)
 				dataRow = sheet.createRow(r);
-			Cell a = dataRow.getCell(0);
-			if (a == null)
-				a = dataRow.createCell(0);
-			String dataRange = "B" + (r + 1) + ":I" + (r + 1);
-			String formula = "IF(COUNTA(" + dataRange + ")=0,\"\",\"P\"&TEXT(ROW()-1,\"000\"))";
-			a.setCellFormula(formula);
+			// Ensure columns A–H are unlocked for user input
+			for (int c = 0; c <= 7; c++) {
+				Cell editableCell = dataRow.getCell(c);
+				if (editableCell == null)
+					editableCell = dataRow.createCell(c);
+				editableCell.setCellStyle(unlockedStyle);
+			}
+			
+			// Patient Ref is in the last column (index 8)
+			Cell patientRefCell = dataRow.getCell(8);
+			if (patientRefCell == null)
+				patientRefCell = dataRow.createCell(8);
+			
+			// Data range for checking if patient data exists (columns A-H, excluding Patient Ref)
+			String dataRange = "A" + (r + 1) + ":H" + (r + 1);
+			// Create concatenated Patient Ref: P001 - Full Name (Gender, DOB)
+			String formula = "IF(COUNTA(" + dataRange + ")=0,\"\",\"P\"&TEXT(ROW()-1,\"000\")&\" - \"&TRIM(A" + (r + 1)
+			        + "&\" \"&B" + (r + 1) + ")&\" (\"&C" + (r + 1) + "&\", \"&TEXT(D" + (r + 1) + ",\"yyyy-mm-dd\")&\")\")";
+			patientRefCell.setCellFormula(formula);
+			patientRefCell.setCellStyle(readonlyStyle);
 		}
+		
+		// Add hint in row 2 for Patient Ref column
 		Row hint = sheet.getRow(1);
 		if (hint == null)
 			hint = sheet.createRow(1);
-		Cell hintCell = hint.getCell(0);
+		Cell hintCell = hint.getCell(8); // Patient Ref column
 		if (hintCell == null)
-			hintCell = hint.createCell(0);
+			hintCell = hint.createCell(8);
 		hintCell.setCellValue("Hint: Leave this column; IDs auto-fill. Use these refs on other sheets.");
-		sheet.autoSizeColumn(0);
+		
+		sheet.autoSizeColumn(8); // Auto-size Patient Ref column
 		// Freeze header row
 		sheet.createFreezePane(0, 1);
+		
+		// Protect the sheet to enforce locking rules (A–H editable, I locked)
+		sheet.protectSheet("dataimport");
 	}
 	
 	private static Cell getOrCreate(Sheet sheet, int rowIndex, int columnIndex) {
@@ -331,9 +361,9 @@ public class ExcelTemplateExporter {
 	 * Create/update a named range that covers the Patient Ref values on the Patient Registration sheet.
 	 */
 	private void ensurePatientRefsNamedRange(XSSFWorkbook workbook) {
-		// Dynamic range that grows as refs are added (skips the header in A1)
-		String formula = "IF(COUNTA('" + REG_SHEET + "'!$A:$A)<=1," + "'" + REG_SHEET + "'!$A$2," + "OFFSET('" + REG_SHEET
-		        + "'!$A$2,0,0,COUNTA('" + REG_SHEET + "'!$A:$A)-1,1))";
+		// Dynamic range that grows as refs are added (skips the header in I1, Patient Ref is now in column I)
+		String formula = "IF(COUNTA('" + REG_SHEET + "'!$I:$I)<=1," + "'" + REG_SHEET + "'!$I$2," + "OFFSET('" + REG_SHEET
+		        + "'!$I$2,0,0,COUNTA('" + REG_SHEET + "'!$I:$I)-1,1))";
 		Name name = workbook.getName(PATIENT_REFS_RANGE);
 		if (name == null) {
 			name = workbook.createName();
