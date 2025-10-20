@@ -11,13 +11,10 @@ package org.openmrs.module.dataimport.api.impl;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.ClientAnchor;
-import org.apache.poi.ss.usermodel.Comment;
 import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.DataValidation;
 import org.apache.poi.ss.usermodel.DataValidationConstraint;
 import org.apache.poi.ss.usermodel.DataValidationHelper;
-import org.apache.poi.ss.usermodel.Drawing;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
@@ -27,12 +24,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.ss.util.CellReference;
-import org.apache.poi.xssf.usermodel.XSSFDataValidation;
-import org.apache.poi.xssf.usermodel.XSSFDataValidationHelper;
-import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
@@ -57,9 +50,7 @@ public class ExcelTemplateExporter {
 	
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
 	
-	private static final int LIST_START_ROW = 1;
-	
-	private static final int FIRST_DATA_ROW = 1; // row after header
+	private static final int FIRST_DATA_ROW = 1;
 	
 	private static final int LAST_DATA_ROW = 1000;
 	
@@ -82,22 +73,11 @@ public class ExcelTemplateExporter {
 				CellStyle headerStyle = createHeaderStyle(workbook);
 				int columnIndex = 0;
 				
-				// Add Patient Ref column as the first column for each form sheet
 				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
 				patientRefHeaderCell.setCellValue(PATIENT_REF_HEADER);
 				patientRefHeaderCell.setCellStyle(headerStyle);
-				addHeaderComment(sheet, columnIndex, "Select an existing Patient Ref from the registration sheet");
-				sheet.autoSizeColumn(columnIndex);
+				sheet.setColumnWidth(columnIndex, 60 * 256);
 				columnIndex++;
-				
-				// Inline hint in row 2 to guide users
-				Row hintRow = sheet.getRow(1);
-				if (hintRow == null)
-					hintRow = sheet.createRow(1);
-				Cell hintCell = hintRow.getCell(0);
-				if (hintCell == null)
-					hintCell = hintRow.createCell(0);
-				hintCell.setCellValue("Select a Patient Ref (auto-generated in '" + REG_SHEET + "')");
 				
 				for (FieldModel field : sheetModel.fields) {
 					Cell headerCell = headerRow.createCell(columnIndex);
@@ -120,11 +100,9 @@ public class ExcelTemplateExporter {
 					sheet.autoSizeColumn(columnIndex);
 					columnIndex++;
 				}
-				// Freeze header row
 				sheet.createFreezePane(0, 1);
 			}
 			
-			// Ensure dynamic named range for Patient Ref values exists and apply validation on all non-patient sheets
 			ensurePatientRefsNamedRange(workbook);
 			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
 				Sheet s = workbook.getSheetAt(i);
@@ -135,7 +113,6 @@ public class ExcelTemplateExporter {
 			
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			workbook.write(outputStream);
-			
 			int totalSheets = workbook.getNumberOfSheets();
 			int namedRanges = workbook.getNumberOfNames();
 			log.info("EXCEL EXPORT COMPLETE: {} sheets, {} named ranges, {} bytes", totalSheets, namedRanges,
@@ -155,7 +132,6 @@ public class ExcelTemplateExporter {
 		XSSFWorkbook wb = (XSSFWorkbook) workbook;
 		XSSFSheet sheet = wb.createSheet(PATIENT_SHEET_NAME);
 		CellStyle headerStyle = createHeaderStyle(wb);
-		// Patient Ref moved to the end to discourage manual entry
 		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
 		        "City/Village", "Country", "Phone", PATIENT_REF_HEADER };
 		Row headerRow = sheet.createRow(0);
@@ -163,18 +139,13 @@ public class ExcelTemplateExporter {
 			Cell headerCell = headerRow.createCell(columnIndex);
 			headerCell.setCellValue(columnHeaders[columnIndex]);
 			headerCell.setCellStyle(headerStyle);
-			if (columnIndex == columnHeaders.length - 1) { // Patient Ref is last column
-				addHeaderComment(sheet, columnIndex, "Autofilled");
-			}
 			sheet.autoSizeColumn(columnIndex);
 		}
 		
-		// Create read-only style for Patient Ref column
 		CellStyle readonlyStyle = wb.createCellStyle();
 		readonlyStyle.setLocked(true);
 		readonlyStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
 		readonlyStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-		// Create unlocked style for user-editable cells
 		CellStyle unlockedStyle = wb.createCellStyle();
 		unlockedStyle.setLocked(false);
 		
@@ -182,7 +153,6 @@ public class ExcelTemplateExporter {
 			Row dataRow = sheet.getRow(r);
 			if (dataRow == null)
 				dataRow = sheet.createRow(r);
-			// Ensure columns A–H are unlocked for user input
 			for (int c = 0; c <= 7; c++) {
 				Cell editableCell = dataRow.getCell(c);
 				if (editableCell == null)
@@ -190,34 +160,19 @@ public class ExcelTemplateExporter {
 				editableCell.setCellStyle(unlockedStyle);
 			}
 			
-			// Patient Ref is in the last column (index 8)
 			Cell patientRefCell = dataRow.getCell(8);
 			if (patientRefCell == null)
 				patientRefCell = dataRow.createCell(8);
 			
-			// Data range for checking if patient data exists (columns A-H, excluding Patient Ref)
 			String dataRange = "A" + (r + 1) + ":H" + (r + 1);
-			// Create concatenated Patient Ref: P001 - Full Name (Gender, DOB)
 			String formula = "IF(COUNTA(" + dataRange + ")=0,\"\",\"P\"&TEXT(ROW()-1,\"000\")&\" - \"&TRIM(A" + (r + 1)
 			        + "&\" \"&B" + (r + 1) + ")&\" (\"&C" + (r + 1) + "&\", \"&TEXT(D" + (r + 1) + ",\"yyyy-mm-dd\")&\")\")";
 			patientRefCell.setCellFormula(formula);
 			patientRefCell.setCellStyle(readonlyStyle);
 		}
 		
-		// Add hint in row 2 for Patient Ref column
-		Row hint = sheet.getRow(1);
-		if (hint == null)
-			hint = sheet.createRow(1);
-		Cell hintCell = hint.getCell(8); // Patient Ref column
-		if (hintCell == null)
-			hintCell = hint.createCell(8);
-		hintCell.setCellValue("Hint: Leave this column; IDs auto-fill. Use these refs on other sheets.");
-		
-		sheet.autoSizeColumn(8); // Auto-size Patient Ref column
-		// Freeze header row
+		sheet.setColumnWidth(8, 60 * 256);
 		sheet.createFreezePane(0, 1);
-		
-		// Protect the sheet to enforce locking rules (A–H editable, I locked)
 		sheet.protectSheet("dataimport");
 	}
 	
@@ -271,90 +226,61 @@ public class ExcelTemplateExporter {
 			return;
 		}
 		
-		addDropdownForCodedField(workbook, sheet, columnIndex, 1, 1000, field.label != null ? field.label : field.id,
-		    field.answers);
+		createSimpleDropdown(workbook, sheet, field, columnIndex);
 		
 		log.debug("Dropdown created for CODED field: '{}' with {} options", field.label, field.answers.size());
 	}
 	
-	private void addDropdownForCodedField(XSSFWorkbook workbook, XSSFSheet visibleSheet, int targetColumnIndex,
-	        int firstDataRow, int lastDataRow, String headerLabel, java.util.List<AnswerModel> answers) {
-		
-		if (answers == null || answers.isEmpty()) {
-			log.warn("addDropdownForCodedField called with empty answers for '{}'", headerLabel);
+	/**
+	 * Create a simple dropdown using the proven approach. This method follows the exact pattern that
+	 * works for showing dropdown arrows.
+	 */
+	private void createSimpleDropdown(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
+		if (field.answers == null || field.answers.isEmpty()) {
 			return;
 		}
 		
-		log.debug("Creating dropdown for '{}' with {} answers in column {}", headerLabel, answers.size(), targetColumnIndex);
+		String fieldName = makeSafeExcelName(field.label != null ? field.label : field.id);
 		
+		// Use the hidden __lists sheet to avoid external link warnings
 		XSSFSheet listSheet = getOrCreateListSheet(workbook);
 		
+		// Find the next available column in the list sheet
 		int listColumnIndex = 0;
-		while (listSheet.getRow(LIST_START_ROW) != null
-		        && listSheet.getRow(LIST_START_ROW).getCell(listColumnIndex) != null) {
+		while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(listColumnIndex) != null) {
 			listColumnIndex++;
 		}
 		
-		int startRowIndex = LIST_START_ROW;
-		int currentRowIndex = startRowIndex;
-		for (AnswerModel answer : answers) {
-			XSSFRow listRow = listSheet.getRow(currentRowIndex);
-			if (listRow == null)
-				listRow = listSheet.createRow(currentRowIndex);
-			listRow.createCell(listColumnIndex).setCellValue(answer.label);
-			currentRowIndex++;
-		}
-		int endRowIndex = currentRowIndex - 1;
-		
-		String baseNamedRangeName = makeSafeExcelName(headerLabel);
-		String namedRangeName = baseNamedRangeName;
-		int nameSuffix = 1;
-		while (workbook.getName(namedRangeName) != null) {
-			namedRangeName = baseNamedRangeName + "_" + (nameSuffix++);
+		// Add the options to the list sheet
+		for (int i = 0; i < field.answers.size(); i++) {
+			Row row = listSheet.getRow(i + 1);
+			if (row == null) {
+				row = listSheet.createRow(i + 1);
+			}
+			Cell cell = row.getCell(listColumnIndex);
+			if (cell == null) {
+				cell = row.createCell(listColumnIndex);
+			}
+			cell.setCellValue(field.answers.get(i).label);
 		}
 		
-		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
-		String listReference = "'" + LIST_SHEET + "'!$" + columnLetter + "$" + (startRowIndex + 1) + ":$" + columnLetter
-		        + "$" + (endRowIndex + 1);
-		
+		// Create named range pointing to the list sheet
 		Name namedRange = workbook.createName();
-		namedRange.setNameName(namedRangeName);
-		namedRange.setRefersToFormula(listReference);
+		namedRange.setNameName(fieldName);
+		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
+		String reference = "'" + LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
+		        + (field.answers.size() + 1);
+		namedRange.setRefersToFormula(reference);
 		
-		if (workbook.getName(namedRangeName) == null) {
-			throw new IllegalStateException("Named range not created: " + namedRangeName);
-		}
+		// Create data validation using the named range
+		DataValidationHelper helper = sheet.getDataValidationHelper();
+		DataValidationConstraint constraint = helper.createFormulaListConstraint(fieldName);
+		CellRangeAddressList region = new CellRangeAddressList(1, 1000, columnIndex, columnIndex);
+		DataValidation validation = helper.createValidation(constraint, region);
 		
-		XSSFDataValidationHelper validationHelper = new XSSFDataValidationHelper(visibleSheet);
-		DataValidationConstraint validationConstraint = validationHelper.createFormulaListConstraint(namedRangeName);
-		CellRangeAddressList validationRegion = new CellRangeAddressList(firstDataRow, lastDataRow, targetColumnIndex,
-		        targetColumnIndex);
-		XSSFDataValidation dataValidation = (XSSFDataValidation) validationHelper.createValidation(validationConstraint,
-		    validationRegion);
+		sheet.addValidationData(validation);
 		
-		dataValidation.setSuppressDropDownArrow(false);
-		dataValidation.setShowErrorBox(true);
-		dataValidation.setShowPromptBox(true);
-		dataValidation.setEmptyCellAllowed(true);
-		dataValidation.createErrorBox("Invalid choice", "Please select a value from the dropdown list.");
-		dataValidation.createPromptBox("Select Option", "Choose an option from the dropdown list");
-		
-		visibleSheet.addValidationData(dataValidation);
-		log.debug("Dropdown created: '{}' with {} answers (named range: '{}', applied to column {})", headerLabel,
-		    answers.size(), namedRangeName, targetColumnIndex);
-	}
-	
-	/** Adds a small tooltip comment on the header cell. */
-	private static void addHeaderComment(XSSFSheet sheet, int columnIndex, String text) {
-		Drawing<?> drawing = sheet.createDrawingPatriarch();
-		ClientAnchor anchor = sheet.getWorkbook().getCreationHelper().createClientAnchor();
-		anchor.setCol1(columnIndex);
-		anchor.setCol2(columnIndex + 2);
-		anchor.setRow1(0);
-		anchor.setRow2(4);
-		Comment comment = drawing.createCellComment(anchor);
-		comment.setString(sheet.getWorkbook().getCreationHelper().createRichTextString(text));
-		sheet.getRow(0).getCell(columnIndex).setCellComment(comment);
+		log.debug("Simple dropdown created for '{}' with {} options using proven approach", fieldName, field.answers.size());
 	}
 	
 	/**
@@ -382,9 +308,6 @@ public class ExcelTemplateExporter {
 		CellRangeAddressList region = new CellRangeAddressList(firstDataRow, lastDataRow, targetColumnIndex,
 		        targetColumnIndex);
 		DataValidation validation = helper.createValidation(constraint, region);
-		validation.setSuppressDropDownArrow(false);
-		validation.setShowErrorBox(true);
-		validation.setEmptyCellAllowed(true);
 		sheet.addValidationData(validation);
 	}
 	
