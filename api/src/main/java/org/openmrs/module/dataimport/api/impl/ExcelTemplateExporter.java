@@ -90,6 +90,23 @@ public class ExcelTemplateExporter {
 				sheet.autoSizeColumn(columnIndex);
 				columnIndex++;
 				
+				// Optional helper: Patient Name column auto-filled based on selected Patient Ref
+				Cell patientNameHeaderCell = headerRow.createCell(columnIndex);
+				patientNameHeaderCell.setCellValue("Patient Name");
+				patientNameHeaderCell.setCellStyle(headerStyle);
+				addHeaderComment(sheet, columnIndex, "Auto-filled from Patient Ref (do not edit)");
+				sheet.autoSizeColumn(columnIndex);
+				int patientNameColIdx = columnIndex;
+				columnIndex++;
+				
+				// Fill Patient Name helper cells with VLOOKUP to Registration sheet
+				for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
+					Cell c = getOrCreate(sheet, r, patientNameColIdx);
+					int excelRow = r + 1; // 1-based in Excel
+					String formula = "IFERROR(VLOOKUP($A" + excelRow + ", '" + REG_SHEET + "'!$A:$B, 2, FALSE), \"\")";
+					c.setCellFormula(formula);
+				}
+				
 				// Inline hint in row 2 to guide users
 				Row hintRow = sheet.getRow(1);
 				if (hintRow == null)
@@ -155,8 +172,8 @@ public class ExcelTemplateExporter {
 		XSSFWorkbook wb = (XSSFWorkbook) workbook;
 		XSSFSheet sheet = wb.createSheet(PATIENT_SHEET_NAME);
 		CellStyle headerStyle = createHeaderStyle(wb);
-		String[] columnHeaders = { PATIENT_REF_HEADER, "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)",
-		        "Address Line 1", "City/Village", "Country", "Phone" };
+		String[] columnHeaders = { PATIENT_REF_HEADER, "Patient Name", "Given Name", "Family Name", "Gender",
+		        "Birthdate (yyyy-mm-dd)", "Address Line 1", "City/Village", "Country", "Phone" };
 		Row headerRow = sheet.createRow(0);
 		for (int columnIndex = 0; columnIndex < columnHeaders.length; columnIndex++) {
 			Cell headerCell = headerRow.createCell(columnIndex);
@@ -175,9 +192,15 @@ public class ExcelTemplateExporter {
 			Cell a = dataRow.getCell(0);
 			if (a == null)
 				a = dataRow.createCell(0);
-			String dataRange = "B" + (r + 1) + ":I" + (r + 1);
+			String dataRange = "C" + (r + 1) + ":J" + (r + 1);
 			String formula = "IF(COUNTA(" + dataRange + ")=0,\"\",\"P\"&TEXT(ROW()-1,\"000\"))";
 			a.setCellFormula(formula);
+			// Auto-fill Patient Name from Given + Family
+			Cell b = dataRow.getCell(1);
+			if (b == null)
+				b = dataRow.createCell(1);
+			String nameFormula = "TRIM(C" + (r + 1) + " & \" \" & D" + (r + 1) + ")";
+			b.setCellFormula(nameFormula);
 		}
 		Row hint = sheet.getRow(1);
 		if (hint == null)
@@ -187,6 +210,7 @@ public class ExcelTemplateExporter {
 			hintCell = hint.createCell(0);
 		hintCell.setCellValue("Hint: Leave this column; IDs auto-fill. Use these refs on other sheets.");
 		sheet.autoSizeColumn(0);
+		sheet.autoSizeColumn(1);
 		// Freeze header row
 		sheet.createFreezePane(0, 1);
 	}
