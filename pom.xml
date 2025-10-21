@@ -24,6 +24,11 @@
       <name>GitHub Packages</name>
       <url>https://maven.pkg.github.com/icrc/openmrs-module-dataimport</url>
     </repository>
+    <snapshotRepository>
+      <id>openmrs-repo-snapshots</id>
+      <name>GitHub Snapshots</name>
+      <url>https://maven.pkg.github.com/icrc/openmrs-module-dataimport</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <organization>
