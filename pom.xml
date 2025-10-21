@@ -295,16 +295,15 @@
   </profiles>
 
   <properties>
-    <openmrsPlatformVersion>2.7.0</openmrsPlatformVersion>
-    <webServices.version>2.46.0</webServices.version>
-    <junitVersion>4.13.2</junitVersion>
-    <junitJupiterVersion>5.11.3</junitJupiterVersion>
+    <openmrsPlatformVersion>2.5.9</openmrsPlatformVersion>
+    <webServices.version>2.33.0</webServices.version>
+    <junitVersion>5.8.1</junitVersion>
     <mockitoVersion>3.12.4</mockitoVersion>
     <powerMockVersion>2.0.9</powerMockVersion>
     <poiVersion>5.4.1</poiVersion>
-    <legacyUiVersion>2.0.0-SNAPSHOT</legacyUiVersion>
-    <idgenVersion>4.14.0</idgenVersion>
-    <log4jVersion>2.24.3</log4jVersion>
+    <legacyUiVersion>1.9.0</legacyUiVersion>
+    <idgenVersion>4.9.0</idgenVersion>
+    <log4jVersion>2.17.2</log4jVersion>
     <lombokVersion>1.18.38</lombokVersion>
     <maven.compiler.source>8</maven.compiler.source>
     <maven.compiler.target>8</maven.compiler.target>

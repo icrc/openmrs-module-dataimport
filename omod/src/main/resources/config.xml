@@ -7,7 +7,7 @@
 	<author>mherman22</author>
 	<description>${project.parent.description}</description>
 	<activator>org.openmrs.module.dataimport.DataimportActivator</activator>
-	<require_version>2.7.0</require_version>
+	<require_version>${openmrsPlatformVersion}</require_version>
 	
 	<extension>
 		<point>org.openmrs.admin.list</point>
