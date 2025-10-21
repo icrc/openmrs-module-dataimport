@@ -174,14 +174,9 @@ public class O3FormParser {
 			field.datatype = FieldDatatype.DATETIME;
 		else if ("number".equals(rendering))
 			field.datatype = FieldDatatype.NUMERIC;
-		else if ("checkbox".equals(rendering) || "toggle".equals(rendering))
+		else if ("toggle".equals(rendering))
 			field.datatype = FieldDatatype.BOOLEAN;
-		else if ("radio".equals(rendering) || "select".equals(rendering) || "select-concept-answers".equals(rendering)
-		        || "multiCheckbox".equals(rendering) || "content-switcher".equals(rendering)
-		        || "checkbox-searchable".equals(rendering) || "ui-select-extended".equals(rendering)
-		        || "encounter-location".equals(rendering) || "encounter-provider".equals(rendering)
-		        || "encounter-role".equals(rendering) || "problem".equals(rendering)
-		        || "workspace-launcher".equals(rendering))
+		else if ("radio".equals(rendering) || "select".equals(rendering))
 			field.datatype = FieldDatatype.CODED;
 		else
 			field.datatype = FieldDatatype.TEXT;
