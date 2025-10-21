@@ -16,7 +16,6 @@
   <description>Enables uploading and validating patient data into OpenMRS from offline sources like Spreadsheets
   </description>
 
-  <!--	<url>https://wiki.openmrs.org/x/FQ4z</url>-->
 
   <distributionManagement>
     <repository>
@@ -25,7 +24,7 @@
       <url>https://maven.pkg.github.com/icrc/openmrs-module-dataimport</url>
     </repository>
     <snapshotRepository>
-      <id>openmrs-repo-snapshots</id>
+      <id>github</id>
       <name>GitHub Snapshots</name>
       <url>https://maven.pkg.github.com/icrc/openmrs-module-dataimport</url>
     </snapshotRepository>
