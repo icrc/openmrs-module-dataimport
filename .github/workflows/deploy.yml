@@ -2,6 +2,7 @@
 name: Deploy SNAPSHOT Version on Main branch
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
 
