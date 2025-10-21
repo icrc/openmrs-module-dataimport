@@ -15,12 +15,25 @@
 	<name>Data Import Module</name>
 	<description>Enables uploading and validating patient data into OpenMRS from offline sources like Spreadsheets</description>
 
-	<url>https://wiki.openmrs.org/x/FQ4z</url>
+<!--	<url>https://wiki.openmrs.org/x/FQ4z</url>-->
+
+	<distributionManagement>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/icrc/openmrs-module-dataimport</url>
+		</repository>
+	</distributionManagement>
+
+	<organization>
+		<name>ICRC</name>
+		<url>https://www.icrc.org/</url>
+	</organization>
 
 	<scm>
-		<connection>scm:git:git@github.com:openmrs/openmrs-module-dataimport.git</connection>
-		<developerConnection>scm:git:git@github.com:openmrs/openmrs-module-dataimport.git</developerConnection>
-		<url>https://github.com/openmrs/openmrs-module-dataimport/</url>
+		<connection>scm:git:git@github.com:icrc/openmrs-module-dataimport.git</connection>
+		<developerConnection>scm:git:git@github.com:icrc/openmrs-module-dataimport.git</developerConnection>
+		<url>https://github.com/icrc/openmrs-module-dataimport/</url>
 	</scm>
 
 	<modules>
@@ -133,7 +146,7 @@
 		<repository>
 			<id>openmrs-repo</id>
 			<name>OpenMRS Nexus Repository</name>
-			<url>https://mavenrepo.openmrs.org/public</url>
+			<url>https://openmrs.jfrog.io/artifactory/public/</url>
 		</repository>
 		<repository>
 			<id>central</id>
@@ -146,7 +159,7 @@
 		<pluginRepository>
 			<id>openmrs-repo</id>
 			<name>OpenMRS Nexus Repository</name>
-			<url>https://mavenrepo.openmrs.org/public</url>
+			<url>https://openmrs.jfrog.io/artifactory/public/</url>
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
