@@ -58,9 +58,11 @@ public class ExcelTemplateExporter {
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			DataFormat dataFormat = workbook.createDataFormat();
 			CellStyle dateStyle = workbook.createCellStyle();
-			dateStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd"));
+			dateStyle.setDataFormat(dataFormat.getFormat("dd/mm/yyyy"));
 			CellStyle dateTimeStyle = workbook.createCellStyle();
-			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
+			dateTimeStyle.setDataFormat(dataFormat.getFormat("dd/mm/yyyy hh:mm"));
+			CellStyle numberStyle = workbook.createCellStyle();
+			numberStyle.setDataFormat(dataFormat.getFormat("0"));
 			
 			if (includePatient)
 				createPatientSheet(workbook);
@@ -93,6 +95,11 @@ public class ExcelTemplateExporter {
 						for (int rowIndex = 1; rowIndex <= 1000; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
 							cell.setCellStyle(dateTimeStyle);
+						}
+					} else if (field.datatype == FieldDatatype.NUMERIC) {
+						for (int rowIndex = 1; rowIndex <= 1000; rowIndex++) {
+							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
+							cell.setCellStyle(numberStyle);
 						}
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
