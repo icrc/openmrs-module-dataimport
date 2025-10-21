@@ -91,6 +91,7 @@ public class ExcelTemplateExporter {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
 							cell.setCellStyle(dateStyle);
 						}
+						handleDateField(workbook, sheet, field, columnIndex);
 					} else if (field.datatype == FieldDatatype.DATETIME) {
 						for (int rowIndex = 1; rowIndex <= 1000; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
@@ -101,6 +102,7 @@ public class ExcelTemplateExporter {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
 							cell.setCellStyle(numberStyle);
 						}
+						handleNumericField(workbook, sheet, field, columnIndex);
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
@@ -280,6 +282,49 @@ public class ExcelTemplateExporter {
 		sheet.addValidationData(validation);
 		
 		log.debug("Simple dropdown created for '{}' with {} options using proven approach", fieldName, field.answers.size());
+	}
+	
+	private void handleNumericField(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
+		log.debug("Creating numeric validation for field: '{}'", field.label);
+		
+		DataValidationHelper helper = sheet.getDataValidationHelper();
+		
+		// Create a constraint that only allows numeric values (including decimals)
+		DataValidationConstraint constraint = helper.createNumericConstraint(DataValidationConstraint.ValidationType.DECIMAL,
+		    DataValidationConstraint.OperatorType.BETWEEN, "-999999999999999999999", "999999999999999999999");
+		
+		CellRangeAddressList region = new CellRangeAddressList(1, 1000, columnIndex, columnIndex);
+		DataValidation validation = helper.createValidation(constraint, region);
+		validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
+		validation.createErrorBox("Invalid Input", "Please enter a valid number");
+		validation.createPromptBox("Numeric Field", "Enter a numeric value");
+		validation.setShowPromptBox(true);
+		
+		sheet.addValidationData(validation);
+		
+		log.debug("Numeric validation created for field: '{}'", field.label);
+	}
+	
+	private void handleDateField(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
+		log.debug("Creating date validation for field: '{}'", field.label);
+		
+		DataValidationHelper helper = sheet.getDataValidationHelper();
+		
+		// Create a constraint that only allows valid dates
+		// Using DATE validation type with a very wide range to allow most valid dates
+		DataValidationConstraint constraint = helper.createDateConstraint(DataValidationConstraint.OperatorType.BETWEEN,
+		    "01/01/1900", "31/12/2099", "dd/mm/yyyy");
+		
+		CellRangeAddressList region = new CellRangeAddressList(1, 1000, columnIndex, columnIndex);
+		DataValidation validation = helper.createValidation(constraint, region);
+		validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
+		validation.createErrorBox("Invalid Date", "Please enter a valid date in dd/mm/yyyy format");
+		validation.createPromptBox("Date Field", "Enter a date in dd/mm/yyyy format");
+		validation.setShowPromptBox(true);
+		
+		sheet.addValidationData(validation);
+		
+		log.debug("Date validation created for field: '{}'", field.label);
 	}
 	
 	private void ensurePatientRefsNamedRange(XSSFWorkbook workbook) {
