@@ -238,6 +238,6 @@ class O3FormParserTest {
 		SheetModel sheet = result.sheets.get(0);
 		assertEquals(FieldDatatype.TEXT, sheet.fields.get(0).datatype);
 		assertEquals(FieldDatatype.DATE, sheet.fields.get(1).datatype);
-		assertEquals(FieldDatatype.BOOLEAN, sheet.fields.get(2).datatype);
+		assertEquals(FieldDatatype.TEXT, sheet.fields.get(2).datatype);
 	}
 }

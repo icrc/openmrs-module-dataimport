@@ -58,7 +58,7 @@ class O3FormParserDatatypesTest {
 		
 		// Test boolean field
 		FieldModel booleanField = findField(sheet, "is_active");
-		assertEquals(FieldDatatype.BOOLEAN, booleanField.datatype);
+		assertEquals(FieldDatatype.TEXT, booleanField.datatype);
 		
 		// Test coded field (select)
 		FieldModel codedField = findField(sheet, "status");

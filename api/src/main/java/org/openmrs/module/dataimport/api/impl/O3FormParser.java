@@ -49,7 +49,6 @@ public class O3FormParser {
 				form.encounterTypeUuid = getTextOrNull(root.path("encounter"), "encounterType");
 			}
 			
-			// Primary sheet uses form name
 			SheetModel primary = new SheetModel();
 			primary.sheetName = sanitizeSheetName(form.name != null && !form.name.trim().isEmpty() ? form.name : "Form");
 			form.sheets.add(primary);
@@ -84,6 +83,10 @@ public class O3FormParser {
 			boolean isRepeat = "repeating".equalsIgnoreCase(rendering) || questionOptions.has("repeatOptions");
 			boolean isGroup = "group".equalsIgnoreCase(getTextOrNull(q, "type")) || q.has("questions");
 			String hideExpr = getTextOrNull(q.path("hide"), "hideWhenExpression");
+			
+			if ("markdown".equals(rendering)) {
+				continue;
+			}
 			
 			if (isRepeat) {
 				SheetModel repeat = new SheetModel();
@@ -171,10 +174,9 @@ public class O3FormParser {
 			field.datatype = FieldDatatype.DATETIME;
 		else if ("number".equals(rendering))
 			field.datatype = FieldDatatype.NUMERIC;
-		else if ("checkbox".equals(rendering) || "toggle".equals(rendering))
+		else if ("toggle".equals(rendering))
 			field.datatype = FieldDatatype.BOOLEAN;
-		else if ("radio".equals(rendering) || "select".equals(rendering) || "select-concept-answers".equals(rendering)
-		        || "multiCheckbox".equals(rendering) || "content-switcher".equals(rendering))
+		else if ("radio".equals(rendering) || "select".equals(rendering))
 			field.datatype = FieldDatatype.CODED;
 		else
 			field.datatype = FieldDatatype.TEXT;
