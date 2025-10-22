@@ -295,7 +295,7 @@
   </profiles>
 
   <properties>
-    <openmrsPlatformVersion>2.5.9</openmrsPlatformVersion>
+    <openmrsPlatformVersion>2.5.14</openmrsPlatformVersion>
     <webServices.version>2.33.0</webServices.version>
     <junitVersion>5.8.1</junitVersion>
     <mockitoVersion>3.12.4</mockitoVersion>
