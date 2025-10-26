@@ -19,17 +19,11 @@ public class SheetModel {
 	
 	public String sheetName;
 	
-	public boolean isRepeat;
-	
-	public String repeatGroupId;
-	
 	public final List<FieldModel> fields = new ArrayList<>();
 	
 	SheetModel shallowCopy() {
 		SheetModel c = new SheetModel();
 		c.sheetName = sheetName;
-		c.isRepeat = isRepeat;
-		c.repeatGroupId = repeatGroupId;
 		for (FieldModel f : fields) {
 			c.fields.add(f.copyHeaderOnly());
 		}

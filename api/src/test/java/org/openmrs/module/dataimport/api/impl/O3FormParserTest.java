@@ -129,7 +129,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse repeat group")
+	@DisplayName("Should parse repeat group as regular group on main sheet")
 	void testParseRepeatGroup() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"repeat-form\",\n" + "    \"name\": \"Repeat Form\",\n" + "    \"pages\": [\n"
 		        + "        {\n" + "            \"sections\": [\n" + "                {\n"
@@ -149,17 +149,13 @@ class O3FormParserTest {
 		
 		FormModel result = parser.parse(json, Locale.ENGLISH);
 		
-		// Should have 2 sheets: main form + repeat sheet
-		assertEquals(2, result.sheets.size());
+		// Should have 1 sheet: main form (repeat groups are treated as regular groups)
+		assertEquals(1, result.sheets.size());
 		
-		// Find the repeat sheet
-		SheetModel repeatSheet = result.sheets.stream().filter(s -> s.isRepeat).findFirst().orElse(null);
-		
-		assertNotNull(repeatSheet);
-		assertEquals("Vitals (repeat)", repeatSheet.sheetName);
-		assertEquals("vitalsGroup", repeatSheet.repeatGroupId);
-		assertEquals(1, repeatSheet.fields.size());
-		assertEquals("temperature", repeatSheet.fields.get(0).id);
+		// The temperature field should be on the main sheet
+		SheetModel mainSheet = result.sheets.get(0);
+		assertEquals(1, mainSheet.fields.size());
+		assertEquals("temperature", mainSheet.fields.get(0).id);
 	}
 	
 	@Test

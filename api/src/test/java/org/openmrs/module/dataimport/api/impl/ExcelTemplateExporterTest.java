@@ -90,8 +90,8 @@ class ExcelTemplateExporterTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle repeat groups as separate sheets")
-	void testExportRepeatGroupsAsSeparateSheets() throws Exception {
+	@DisplayName("Should handle repeat groups on main sheet")
+	void testExportRepeatGroupsOnMainSheet() throws Exception {
 		FormModel form = createFormWithRepeatGroups();
 		
 		byte[] result = exporter.export(form, true);
@@ -102,9 +102,28 @@ class ExcelTemplateExporterTest {
 				sheetNames.add(wb.getSheetName(i));
 			}
 			
-			// Should have a repeat sheet
-			boolean hasRepeatSheet = sheetNames.stream().anyMatch(name -> name.contains("repeat"));
-			assertTrue(hasRepeatSheet, "Missing repeat group sheet");
+			// Should have main sheet with repeat group fields, not a separate repeat sheet
+			// The main sheet should contain the temperature field from the "repeat group"
+			Sheet mainSheet = null;
+			for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+				if (!"__lists".equals(sheetNames.get(i)) && !"Patient Registration".equals(sheetNames.get(i))) {
+					mainSheet = wb.getSheetAt(i);
+					break;
+				}
+			}
+			assertNotNull(mainSheet, "Missing main form sheet");
+			
+			// Check that the main sheet has the temperature field
+			Row headerRow = mainSheet.getRow(0);
+			boolean hasTemperatureHeader = false;
+			for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+				String cellValue = headerRow.getCell(i).getStringCellValue();
+				if ("Temperature".equals(cellValue)) {
+					hasTemperatureHeader = true;
+					break;
+				}
+			}
+			assertTrue(hasTemperatureHeader, "Missing 'Temperature' header in main sheet");
 		}
 	}
 	
@@ -184,19 +203,14 @@ class ExcelTemplateExporterTest {
 	private FormModel createFormWithRepeatGroups() {
 		FormModel form = createBasicForm();
 		
-		SheetModel repeatSheet = new SheetModel();
-		repeatSheet.sheetName = "Vitals (repeat)";
-		repeatSheet.isRepeat = true;
-		repeatSheet.repeatGroupId = "vitalsGroup";
-		
+		// Add repeat group fields to the main sheet (no separate repeat sheet)
 		FieldModel tempField = new FieldModel();
 		tempField.id = "temperature";
 		tempField.label = "Temperature";
 		tempField.datatype = FieldDatatype.NUMERIC;
 		tempField.conceptUuid = "temperature.concept";
 		
-		repeatSheet.fields.add(tempField);
-		form.sheets.add(repeatSheet);
+		form.sheets.get(0).fields.add(tempField);
 		
 		return form;
 	}

@@ -67,31 +67,28 @@ class O3FormParserDatatypesTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle repeat groups correctly")
+	@DisplayName("Should handle repeat groups as regular groups on main sheet")
 	void testParseRepeatGroups() throws Exception {
 		String json = TestDataLoader.loadRepeatGroupsForm();
 		FormModel form = parser.parse(json, Locale.ENGLISH);
 		
-		// Should have main sheet + repeat sheet
-		assertEquals(2, form.sheets.size());
+		// Should have only main sheet (repeat groups are treated as regular groups)
+		assertEquals(1, form.sheets.size());
 		
-		// Main sheet should have patient_name
+		// Main sheet should have all fields including those from repeat groups
 		SheetModel mainSheet = form.sheets.get(0);
+		
+		// Check patient_name field
 		FieldModel nameField = findField(mainSheet, "patient_name");
 		assertEquals("Patient Name", nameField.label);
 		
-		// Repeat sheet should have temperature and blood_pressure
-		SheetModel repeatSheet = form.sheets.get(1);
-		assertTrue(repeatSheet.isRepeat);
-		assertEquals("vitals_group", repeatSheet.repeatGroupId);
-		assertEquals(2, repeatSheet.fields.size());
-		
-		FieldModel tempField = findField(repeatSheet, "temperature");
+		// Check temperature and blood_pressure fields from the "repeating" group
+		FieldModel tempField = findField(mainSheet, "temperature");
 		assertEquals(FieldDatatype.NUMERIC, tempField.datatype);
 		assertEquals(30.0, tempField.min);
 		assertEquals(45.0, tempField.max);
 		
-		FieldModel bpField = findField(repeatSheet, "blood_pressure");
+		FieldModel bpField = findField(mainSheet, "blood_pressure");
 		assertEquals(FieldDatatype.TEXT, bpField.datatype);
 	}
 	
