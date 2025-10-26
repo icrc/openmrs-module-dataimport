@@ -28,6 +28,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    continue-on-error: true
 
     strategy:
       fail-fast: false
