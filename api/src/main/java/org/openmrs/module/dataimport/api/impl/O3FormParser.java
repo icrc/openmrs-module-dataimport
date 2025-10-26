@@ -80,7 +80,6 @@ public class O3FormParser {
 			String label = getTextOrNull(q, "label");
 			JsonNode questionOptions = q.path("questionOptions");
 			String rendering = getTextOrNull(questionOptions, "rendering");
-			boolean isRepeat = "repeating".equalsIgnoreCase(rendering) || questionOptions.has("repeatOptions");
 			boolean isGroup = "group".equalsIgnoreCase(getTextOrNull(q, "type")) || q.has("questions");
 			String hideExpr = getTextOrNull(q.path("hide"), "hideWhenExpression");
 			
@@ -88,18 +87,8 @@ public class O3FormParser {
 				continue;
 			}
 			
-			if (isRepeat) {
-				SheetModel repeat = new SheetModel();
-				repeat.isRepeat = true;
-				repeat.repeatGroupId = qid;
-				repeat.sheetName = sanitizeSheetName((label != null ? label : qid) + " (repeat)");
-				form.sheets.add(repeat);
-				ArrayNode child = getArrayOrNull(q, "questions");
-				if (child != null)
-					walkQuestions(form, repeat, child, path + "/" + qid);
-				continue;
-			}
-			
+			// Treat all groups (including repeating ones) as regular groups
+			// Users can have multiple rows per patient ref on any sheet
 			if (isGroup) {
 				ArrayNode child = getArrayOrNull(q, "questions");
 				if (child != null)

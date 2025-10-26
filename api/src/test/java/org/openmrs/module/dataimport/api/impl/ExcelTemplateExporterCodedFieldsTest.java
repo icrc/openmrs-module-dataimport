@@ -240,7 +240,7 @@ class ExcelTemplateExporterCodedFieldsTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle repeat groups as separate sheets")
+	@DisplayName("Should handle repeat groups on main sheet")
 	void testGenerateExcelWithRepeatGroups() throws Exception {
 		String json = TestDataLoader.loadRepeatGroupsForm();
 		FormModel form = parser.parse(json, null);
@@ -251,40 +251,42 @@ class ExcelTemplateExporterCodedFieldsTest {
 		assertTrue(excelBytes.length > 0);
 		
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(excelBytes))) {
-			// Should have main sheet + repeat sheet + __lists sheet
-			assertTrue(wb.getNumberOfSheets() >= 3);
+			// Should have main sheet + __lists sheet (repeat groups are on main sheet)
+			assertTrue(wb.getNumberOfSheets() >= 2);
 			
-			// Check main sheet (name might be sanitized)
+			// Find the main sheet
 			Sheet mainSheet = null;
-			Sheet repeatSheet = null;
 			for (int i = 0; i < wb.getNumberOfSheets(); i++) {
 				String sheetName = wb.getSheetName(i);
-				if (sheetName.contains("Repeat Groups") || sheetName.contains("Repeat")) {
+				if (!"__lists".equals(sheetName)) {
 					mainSheet = wb.getSheetAt(i);
-				} else if (sheetName.contains("repeat")) {
-					repeatSheet = wb.getSheetAt(i);
+					break;
 				}
 			}
 			assertNotNull(mainSheet, "Missing main form sheet");
-			assertNotNull(repeatSheet, "Missing repeat group sheet");
 			
-			// Verify repeat sheet has the correct fields
-			Row repeatHeaderRow = repeatSheet.getRow(0);
-			assertNotNull(repeatHeaderRow, "Missing repeat sheet header row");
+			// Verify main sheet has all fields including those from repeat groups
+			Row headerRow = mainSheet.getRow(0);
+			assertNotNull(headerRow, "Missing header row");
 			
 			boolean hasTemperatureHeader = false;
 			boolean hasBloodPressureHeader = false;
-			for (int i = 0; i < repeatHeaderRow.getLastCellNum(); i++) {
-				String cellValue = repeatHeaderRow.getCell(i).getStringCellValue();
+			boolean hasPatientNameHeader = false;
+			for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+				String cellValue = headerRow.getCell(i).getStringCellValue();
 				if ("Temperature".equals(cellValue)) {
 					hasTemperatureHeader = true;
 				}
 				if ("Blood Pressure".equals(cellValue)) {
 					hasBloodPressureHeader = true;
 				}
+				if ("Patient Name".equals(cellValue)) {
+					hasPatientNameHeader = true;
+				}
 			}
-			assertTrue(hasTemperatureHeader, "Missing 'Temperature' header in repeat sheet");
-			assertTrue(hasBloodPressureHeader, "Missing 'Blood Pressure' header in repeat sheet");
+			assertTrue(hasPatientNameHeader, "Missing 'Patient Name' header in main sheet");
+			assertTrue(hasTemperatureHeader, "Missing 'Temperature' header in main sheet");
+			assertTrue(hasBloodPressureHeader, "Missing 'Blood Pressure' header in main sheet");
 		}
 	}
 }
