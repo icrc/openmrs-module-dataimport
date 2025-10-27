@@ -106,7 +106,9 @@ class ExcelTemplateExporterTest {
 			// The main sheet should contain the temperature field from the "repeat group"
 			Sheet mainSheet = null;
 			for (int i = 0; i < wb.getNumberOfSheets(); i++) {
-				if (!"__lists".equals(sheetNames.get(i)) && !"Patient Registration".equals(sheetNames.get(i))) {
+				String sheetName = sheetNames.get(i);
+				if (!"__lists".equals(sheetName) && !"__meta".equals(sheetName)
+				        && !"Patient Registration".equals(sheetName)) {
 					mainSheet = wb.getSheetAt(i);
 					break;
 				}

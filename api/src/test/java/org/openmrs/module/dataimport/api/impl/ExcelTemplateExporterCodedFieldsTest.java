@@ -251,14 +251,14 @@ class ExcelTemplateExporterCodedFieldsTest {
 		assertTrue(excelBytes.length > 0);
 		
 		try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(excelBytes))) {
-			// Should have main sheet + __lists sheet (repeat groups are on main sheet)
-			assertTrue(wb.getNumberOfSheets() >= 2);
+			// Should have main sheet + __lists sheet + __meta sheet (repeat groups are on main sheet)
+			assertTrue(wb.getNumberOfSheets() >= 3);
 			
-			// Find the main sheet
+			// Find the main sheet (exclude hidden sheets)
 			Sheet mainSheet = null;
 			for (int i = 0; i < wb.getNumberOfSheets(); i++) {
 				String sheetName = wb.getSheetName(i);
-				if (!"__lists".equals(sheetName)) {
+				if (!"__lists".equals(sheetName) && !"__meta".equals(sheetName)) {
 					mainSheet = wb.getSheetAt(i);
 					break;
 				}

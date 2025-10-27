@@ -37,6 +37,8 @@ public class FieldModel {
 	
 	public Double min, max;
 	
+	public boolean isMulti = false;
+	
 	FieldModel copyHeaderOnly() {
 		FieldModel f = new FieldModel();
 		f.id = id;

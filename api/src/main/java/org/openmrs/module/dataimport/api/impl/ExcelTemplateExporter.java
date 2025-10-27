@@ -35,12 +35,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ExcelTemplateExporter {
 	
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
 	
 	private static final String LIST_SHEET = "__lists";
+	
+	private static final String META_SHEET = "__meta";
 	
 	private static final String PATIENT_SHEET_NAME = "Patient Registration";
 	
@@ -62,10 +67,12 @@ public class ExcelTemplateExporter {
 			CellStyle dateTimeStyle = workbook.createCellStyle();
 			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
 			
-			if (includePatient)
+			if (includePatient) {
 				createPatientSheet(workbook);
+			}
 			
 			getOrCreateListSheet(workbook);
+			createMetaSheet(workbook, form);
 			
 			for (SheetModel sheetModel : form.sheets) {
 				XSSFSheet sheet = workbook.createSheet(sheetModel.sheetName);
@@ -308,5 +315,141 @@ public class ExcelTemplateExporter {
 		style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
 		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
+	}
+	
+	/**
+	 * Creates a hidden metadata sheet with template information for import functionality.
+	 */
+	private void createMetaSheet(XSSFWorkbook workbook, FormModel form) {
+		XSSFSheet metaSheet = workbook.createSheet(META_SHEET);
+		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
+		
+		CellStyle headerStyle = createHeaderStyle(workbook);
+		
+		// Template metadata table
+		Row headerRow = metaSheet.createRow(0);
+		Cell keyHeader = headerRow.createCell(0);
+		keyHeader.setCellValue("key");
+		keyHeader.setCellStyle(headerStyle);
+		Cell valueHeader = headerRow.createCell(1);
+		valueHeader.setCellValue("value");
+		valueHeader.setCellStyle(headerStyle);
+		
+		int rowIndex = 1;
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateVersion");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(1);
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("generatedAt");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(Instant.now().toString());
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("locale");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("en");
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formName");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.name != null ? form.name : "Unknown Form");
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formUuid");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.formUuid != null ? form.formUuid : "");
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("encounterTypeUuid");
+		metaSheet.getRow(rowIndex - 1).createCell(1)
+		        .setCellValue(form.encounterTypeUuid != null ? form.encounterTypeUuid : "");
+		
+		rowIndex += 2; // Skip a row
+		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
+		String[] columnHeaders = { "sheetName", "colIndex", "fieldId", "label", "conceptUuid", "datatype", "isRepeat",
+		        "isMulti", "answersJson" };
+		for (int i = 0; i < columnHeaders.length; i++) {
+			Cell cell = columnHeaderRow.createCell(i);
+			cell.setCellValue(columnHeaders[i]);
+			cell.setCellStyle(headerStyle);
+		}
+		
+		if (workbook.getSheet(PATIENT_SHEET_NAME) != null) {
+			String[] patientHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
+			        "City/Village", "Country", "Phone", "Patient Ref" };
+			for (int colIndex = 0; colIndex < patientHeaders.length; colIndex++) {
+				Row row = metaSheet.createRow(rowIndex++);
+				row.createCell(0).setCellValue(PATIENT_SHEET_NAME);
+				row.createCell(1).setCellValue(colIndex);
+				row.createCell(2).setCellValue(""); // fieldId
+				row.createCell(3).setCellValue(patientHeaders[colIndex]);
+				row.createCell(4).setCellValue(""); // conceptUuid
+				row.createCell(5).setCellValue("TEXT"); // datatype
+				row.createCell(6).setCellValue(false); // isRepeat
+				row.createCell(7).setCellValue(false); // isMulti
+				row.createCell(8).setCellValue("{}"); // answersJson
+			}
+		}
+		
+		// Add form sheet columns
+		for (SheetModel sheetModel : form.sheets) {
+			int colIndex = 0;
+			
+			// Patient Ref column
+			Row row = metaSheet.createRow(rowIndex++);
+			row.createCell(0).setCellValue(sheetModel.sheetName);
+			row.createCell(1).setCellValue(colIndex++);
+			row.createCell(2).setCellValue(""); // fieldId
+			row.createCell(3).setCellValue("Patient Ref");
+			row.createCell(4).setCellValue(""); // conceptUuid
+			row.createCell(5).setCellValue("TEXT"); // datatype
+			row.createCell(6).setCellValue(false); // isRepeat
+			row.createCell(7).setCellValue(false); // isMulti
+			row.createCell(8).setCellValue("{}"); // answersJson
+			
+			// Form field columns
+			for (FieldModel field : sheetModel.fields) {
+				row = metaSheet.createRow(rowIndex++);
+				row.createCell(0).setCellValue(sheetModel.sheetName);
+				row.createCell(1).setCellValue(colIndex++);
+				row.createCell(2).setCellValue(field.id != null ? field.id : "");
+				row.createCell(3).setCellValue(field.label != null ? field.label : "");
+				row.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
+				row.createCell(5).setCellValue(field.datatype != null ? field.datatype.name() : "TEXT");
+				row.createCell(6).setCellValue(false); // isRepeat - TODO: implement repeat groups
+				row.createCell(7).setCellValue(false); // isMulti - TODO: implement multi-select
+				
+				// Build answers JSON for coded fields
+				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
+					Map<String, String> answersMap = new HashMap<>();
+					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
+						if (answer.label != null && answer.conceptUuid != null) {
+							answersMap.put(answer.label, answer.conceptUuid);
+						}
+					}
+					row.createCell(8).setCellValue(mapToJson(answersMap));
+				} else {
+					row.createCell(8).setCellValue("{}");
+				}
+			}
+		}
+		
+		// Auto-size columns
+		for (int i = 0; i < columnHeaders.length; i++) {
+			metaSheet.autoSizeColumn(i);
+		}
+		
+		log.debug("Created metadata sheet with {} rows", rowIndex);
+	}
+	
+	/**
+	 * Simple map to JSON conversion for answers mapping.
+	 */
+	private String mapToJson(Map<String, String> map) {
+		if (map.isEmpty())
+			return "{}";
+		
+		StringBuilder json = new StringBuilder("{");
+		boolean first = true;
+		for (Map.Entry<String, String> entry : map.entrySet()) {
+			if (!first)
+				json.append(",");
+			json.append("\"").append(entry.getKey().replace("\"", "\\\"")).append("\":\"").append(entry.getValue())
+			        .append("\"");
+			first = false;
+		}
+		json.append("}");
+		return json.toString();
 	}
 }
