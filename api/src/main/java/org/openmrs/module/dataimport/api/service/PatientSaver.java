@@ -29,11 +29,19 @@ public class PatientSaver {
 	
 	private static final Logger log = LoggerFactory.getLogger(PatientSaver.class);
 	
+	private PatientService getPatientService() {
+		return Context.getPatientService();
+	}
+	
+	private LocationService getLocationService() {
+		return Context.getLocationService();
+	}
+	
 	public Patient createPatient(String givenName, String familyName, String gender, Date birthdate, String identifierValue,
 	        String identifierTypeUuid, String locationUuid) {
 		
-		PatientService ps = Context.getPatientService();
-		LocationService ls = Context.getLocationService();
+		PatientService ps = getPatientService();
+		LocationService ls = getLocationService();
 		
 		Person person = new Person();
 		person.setGender(gender);
@@ -61,14 +69,14 @@ public class PatientSaver {
 		patient.addIdentifier(pid);
 		
 		patient = ps.savePatient(patient);
-		log.info("Created new patient: {} {} with identifier: {}", givenName, familyName, identifierValue);
+		log.info("Created patient: {} {} with identifier: {}", givenName, familyName, identifierValue);
 		return patient;
 	}
 	
 	public Patient getOrCreateByIdentifier(String identifierValue, String identifierTypeUuid, String locationUuid,
 	        String givenName, String familyName, String gender, Date birthdate) {
 		
-		PatientService ps = Context.getPatientService();
+		PatientService ps = getPatientService();
 		PatientIdentifierType type = ps.getPatientIdentifierTypeByUuid(identifierTypeUuid);
 		
 		if (type == null) {
@@ -79,47 +87,35 @@ public class PatientSaver {
 		Patient existing = existingPatients.stream().findFirst().orElse(null);
 		
 		if (existing != null) {
-			log.info("Found existing patient with identifier: {}", identifierValue);
+			log.debug("Found existing patient with identifier: {}", identifierValue);
 			return existing;
 		}
 		return createPatient(givenName, familyName, gender, birthdate, identifierValue, identifierTypeUuid, locationUuid);
 	}
 	
 	public String getDefaultIdentifierTypeUuid() {
-		try {
-			PatientService ps = Context.getPatientService();
-			PatientIdentifierType openmrsIdType = ps.getPatientIdentifierTypeByName("OpenMRS ID");
-			if (openmrsIdType != null) {
-				return openmrsIdType.getUuid();
-			}
-			
-			List<PatientIdentifierType> types = ps.getAllPatientIdentifierTypes();
-			if (types.isEmpty()) {
-				throw new IllegalStateException("No PatientIdentifierTypes configured in system");
-			}
-			
-			return types.get(0).getUuid();
+		PatientService ps = getPatientService();
+		PatientIdentifierType openmrsIdType = ps.getPatientIdentifierTypeByName("OpenMRS ID");
+		if (openmrsIdType != null) {
+			return openmrsIdType.getUuid();
 		}
-		catch (Exception e) {
-			log.warn("Failed to get default identifier type UUID: {}", e.getMessage());
-			return "PLACEHOLDER_IDENTIFIER_TYPE_UUID";
+		
+		List<PatientIdentifierType> types = ps.getAllPatientIdentifierTypes();
+		if (types.isEmpty()) {
+			throw new IllegalStateException("No PatientIdentifierTypes configured in system");
 		}
+		
+		return types.get(0).getUuid();
 	}
 	
 	public String getDefaultLocationUuid() {
-		try {
-			LocationService ls = Context.getLocationService();
-			Location defaultLocation = ls.getDefaultLocation();
-			
-			if (defaultLocation == null) {
-				throw new IllegalStateException("No default location configured in system");
-			}
-			
-			return defaultLocation.getUuid();
+		LocationService ls = getLocationService();
+		Location defaultLocation = ls.getDefaultLocation();
+		
+		if (defaultLocation == null) {
+			throw new IllegalStateException("No default location configured in system");
 		}
-		catch (Exception e) {
-			log.warn("Failed to get default location UUID: {}", e.getMessage());
-			return "PLACEHOLDER_LOCATION_UUID";
-		}
+		
+		return defaultLocation.getUuid();
 	}
 }

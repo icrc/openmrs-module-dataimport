@@ -21,7 +21,13 @@ public class SheetMeta {
 	
 	public String sheetName;
 	
+	public String formUuid; // NEW: Which form this sheet belongs to
+	
+	public String formName; // NEW: Form display name
+	
 	public String encounterTypeUuid;
+	
+	public String locationUuid; // Per-sheet location override
 	
 	public final List<ColumnMeta> columns = new ArrayList<>();
 	

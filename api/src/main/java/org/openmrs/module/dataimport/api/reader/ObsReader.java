@@ -53,6 +53,24 @@ public class ObsReader {
 			if (WorkbookUtil.Cells.isBlank(cell))
 				continue;
 			
+			if (column.datatype == FieldDatatype.CODED && column.isMulti) {
+				String raw = WorkbookUtil.Cells.getString(cell);
+				if (raw == null || raw.trim().isEmpty()) {
+					continue;
+				}
+				String[] labels = raw.split("\\|");
+				for (String singleLabel : labels) {
+					String mapped = column.getAnswerConceptUuid(singleLabel.trim());
+					if (mapped != null && !mapped.isEmpty()) {
+						obs.add(ObsBlueprint.coded(column.conceptUuid, mapped));
+					} else {
+						log.warn("Unknown coded multi-select value '{}' for concept {} on sheet {} row {}", singleLabel,
+						    column.conceptUuid, sheet.getSheetName(), rowIndex);
+					}
+				}
+				continue;
+			}
+			
 			try {
 				ObsBlueprint obsBlueprint = buildObsFromCell(cell, column);
 				if (obsBlueprint != null) {

@@ -33,14 +33,34 @@ public class EncounterSaver {
 	
 	private static final Logger log = LoggerFactory.getLogger(EncounterSaver.class);
 	
+	private PatientService getPatientService() {
+		return Context.getPatientService();
+	}
+	
+	private EncounterService getEncounterService() {
+		return Context.getEncounterService();
+	}
+	
+	private LocationService getLocationService() {
+		return Context.getLocationService();
+	}
+	
+	private FormService getFormService() {
+		return Context.getFormService();
+	}
+	
+	private ProviderService getProviderService() {
+		return Context.getProviderService();
+	}
+	
 	public Encounter createEncounter(String patientUuid, String encounterTypeUuid, Date when, String locationUuid,
 	        String formUuid, String providerUuid, String encounterRoleUuid) {
 		
-		PatientService patientService = Context.getPatientService();
-		EncounterService encounterService = Context.getEncounterService();
-		LocationService locationService = Context.getLocationService();
-		FormService formService = Context.getFormService();
-		ProviderService providerService = Context.getProviderService();
+		PatientService patientService = getPatientService();
+		EncounterService encounterService = getEncounterService();
+		LocationService locationService = getLocationService();
+		FormService formService = getFormService();
+		ProviderService providerService = getProviderService();
 		
 		Patient patient = patientService.getPatientByUuid(patientUuid);
 		if (patient == null) {
@@ -68,7 +88,7 @@ public class EncounterSaver {
 			if (form != null) {
 				enc.setForm(form);
 			} else {
-				log.warn("Form not found: {}, skipping form assignment", formUuid);
+				log.warn("Form not found, skipping form assignment: {}", formUuid);
 			}
 		}
 		
@@ -85,7 +105,8 @@ public class EncounterSaver {
 				ep.setEncounterRole(role);
 				enc.getEncounterProviders().add(ep);
 			} else {
-				log.warn("Provider or EncounterRole not found: provider={}, role={}", providerUuid, encounterRoleUuid);
+				log.warn("Provider or EncounterRole not found, skipping provider assignment: provider={}, role={}",
+				    providerUuid, encounterRoleUuid);
 			}
 		}
 		
@@ -119,45 +140,29 @@ public class EncounterSaver {
 	}
 	
 	public String getDefaultLocationUuid() {
-		try {
-			LocationService ls = Context.getLocationService();
-			Location defaultLocation = ls.getDefaultLocation();
-			
-			if (defaultLocation == null) {
-				throw new IllegalStateException("No default location configured in system");
-			}
-			
-			return defaultLocation.getUuid();
+		LocationService ls = getLocationService();
+		Location defaultLocation = ls.getDefaultLocation();
+		
+		if (defaultLocation == null) {
+			throw new IllegalStateException("No default location configured in system");
 		}
-		catch (Exception e) {
-			log.warn("Failed to get default location UUID: {}", e.getMessage());
-			// Return a placeholder that will be resolved later when Context is available
-			return "PLACEHOLDER_LOCATION_UUID";
-		}
+		
+		return defaultLocation.getUuid();
 	}
 	
 	public String getDefaultEncounterRoleUuid() {
-		try {
-			EncounterService es = Context.getEncounterService();
-			
-			// Try to get "Unknown" role first
-			EncounterRole unknownRole = es.getEncounterRoleByName("Unknown");
-			if (unknownRole != null) {
-				return unknownRole.getUuid();
-			}
-			
-			// Fallback to first available role
-			java.util.List<EncounterRole> roles = es.getAllEncounterRoles(false);
-			if (roles.isEmpty()) {
-				throw new IllegalStateException("No EncounterRoles configured in system");
-			}
-			
-			return roles.get(0).getUuid();
+		EncounterService es = getEncounterService();
+		
+		EncounterRole unknownRole = es.getEncounterRoleByName("Unknown");
+		if (unknownRole != null) {
+			return unknownRole.getUuid();
 		}
-		catch (Exception e) {
-			log.warn("Failed to get default encounter role UUID: {}", e.getMessage());
-			// Return a placeholder that will be resolved later when Context is available
-			return "PLACEHOLDER_ENCOUNTER_ROLE_UUID";
+		
+		java.util.List<EncounterRole> roles = es.getAllEncounterRoles(false);
+		if (roles.isEmpty()) {
+			throw new IllegalStateException("No EncounterRoles configured in system");
 		}
+		
+		return roles.get(0).getUuid();
 	}
 }

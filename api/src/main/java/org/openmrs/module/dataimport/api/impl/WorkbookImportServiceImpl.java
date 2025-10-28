@@ -67,6 +67,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	
 	@Override
 	public ImportPlan dryRun(InputStream xlsx) {
+		UUID batchId = UUID.randomUUID();
 		try (XSSFWorkbook workbook = new XSSFWorkbook(xlsx)) {
 			TemplateMeta meta = MetaReader.read(workbook);
 			RegistrationReader.PatientIndex patientIndex = RegistrationReader.indexPatients(workbook);
@@ -78,9 +79,9 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			}
 			
 			ImportStats stats = ImportStats.of(okRows, quarantineItems);
-			UUID batchId = UUID.randomUUID();
 			
-			log.info("Dry run completed: {} OK rows, {} quarantined rows", okRows.size(), quarantineItems.size());
+			log.info("Dry-run completed for batch {}: {} OK rows, {} quarantined rows", batchId, okRows.size(),
+			    quarantineItems.size());
 			
 			ImportPlan plan = ImportPlan.builder().batchId(batchId).rowsOk(okRows).issues(quarantineItems).stats(stats)
 			        .patientIndex(patientIndex).build();
@@ -89,7 +90,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			
 		}
 		catch (Exception e) {
-			log.error("Failed to perform dry run", e);
+			log.error("Dry-run failed for batch {}: {}", batchId, e.getMessage(), e);
 			throw new RuntimeException("Failed to perform dry run: " + e.getMessage(), e);
 		}
 	}
@@ -98,7 +99,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	@Transactional
 	public ImportResult commit(UUID batchId) {
 		try {
-			log.info("Commit requested for batch: {}", batchId);
+			log.info("Starting commit for batch: {}", batchId);
 			
 			ImportPlan plan = importPlanStorage.loadPlan(batchId);
 			if (plan == null) {
@@ -106,26 +107,21 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				    Collections.singletonList("Batch ID not found: " + batchId));
 			}
 			
-			Map<String, String> refToPatientUuid = new HashMap<>();
-			PatientSaver patientSaver = new PatientSaver();
-			String defaultIdentifierTypeUuid = patientSaver.getDefaultIdentifierTypeUuid();
-			String defaultLocationUuid = patientSaver.getDefaultLocationUuid();
-			Map<String, RegistrationReader.PatientRow> patientsToCreate = extractPatientsToCreate(plan);
+			log.info("Phase 1: Processing Patient Registration Sheet - Creating {} patients",
+			    plan.getPatientIndex().getPatients().size());
+			Map<String, String> refToPatientUuid = processPatientRegistrationSheet(plan);
 			
-			for (RegistrationReader.PatientRow patientRow : patientsToCreate.values()) {
-				Date birthdate = null;
-				if (patientRow.birthdate != null) {
-					birthdate = Date.from(patientRow.birthdate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
-				}
-				
-				Patient p = patientSaver.getOrCreateByIdentifier(patientRow.patientRef(), defaultIdentifierTypeUuid,
-				    defaultLocationUuid, patientRow.givenName, patientRow.familyName, patientRow.gender, birthdate);
-				refToPatientUuid.put(patientRow.patientRef(), p.getUuid());
+			if (refToPatientUuid.isEmpty()) {
+				log.warn("No patients were created from registration sheet");
+				return ImportResult.failure(batchId, "No patients found in registration sheet",
+				    Collections.singletonList("Patient registration sheet is empty or invalid"));
 			}
 			
 			EncounterSaver encounterSaver = new EncounterSaver();
 			ObsSaver obsSaver = new ObsSaver();
 			List<String> createdEncounterUuids = new ArrayList<>();
+			
+			log.info("Phase 2: Processing Data Sheets - Creating {} encounters and observations", plan.getRowsOk().size());
 			
 			for (RowPlan rp : plan.getRowsOk()) {
 				if (idempotencyService.exists(rp.getIdempotencyKey())) {
@@ -162,8 +158,8 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			importPlanStorage.removePlan(batchId);
 			
 			ImportStats finalStats = ImportStats.of(plan.getRowsOk(), plan.getIssues());
-			log.info("Commit completed successfully for batch: {} - {} encounters created", batchId,
-			    createdEncounterUuids.size());
+			log.info("Import completed successfully for batch: {} - {} patients, {} encounters", batchId,
+			    refToPatientUuid.size(), createdEncounterUuids.size());
 			
 			return ImportResult.success(batchId, finalStats, createdEncounterUuids);
 			
@@ -173,6 +169,43 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			return ImportResult.failure(batchId, "Commit failed: " + e.getMessage(),
 			    Collections.singletonList(e.getMessage()));
 		}
+	}
+	
+	/**
+	 * PHASE 1: Process Patient Registration Sheet - Create all patients first to get their UUIDs. This
+	 * must be done before processing any data sheets because encounters need patient UUIDs.
+	 * 
+	 * @param plan The ImportPlan containing patient data from registration sheet
+	 * @return Map of patientRef -> patientUuid for use in Phase 2
+	 */
+	private Map<String, String> processPatientRegistrationSheet(ImportPlan plan) {
+		Map<String, String> refToPatientUuid = new HashMap<>();
+		PatientSaver patientSaver = new PatientSaver();
+		String defaultIdentifierTypeUuid = patientSaver.getDefaultIdentifierTypeUuid();
+		String defaultLocationUuid = patientSaver.getDefaultLocationUuid();
+		
+		Map<String, RegistrationReader.PatientRow> patientsToCreate = extractPatientsToCreate(plan);
+		for (RegistrationReader.PatientRow patientRow : patientsToCreate.values()) {
+			try {
+				Date birthdate = null;
+				if (patientRow.birthdate != null) {
+					birthdate = Date.from(patientRow.birthdate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
+				}
+				
+				Patient p = patientSaver.getOrCreateByIdentifier(patientRow.patientRef(), defaultIdentifierTypeUuid,
+				    defaultLocationUuid, patientRow.givenName, patientRow.familyName, patientRow.gender, birthdate);
+				
+				refToPatientUuid.put(patientRow.patientRef(), p.getUuid());
+				log.debug("Created/found patient: {} -> {}", patientRow.patientRef(), p.getUuid());
+				
+			}
+			catch (Exception e) {
+				log.error("Failed to create patient {}: {}", patientRow.patientRef(), e.getMessage());
+				// Continue with other patients rather than failing the entire import
+			}
+		}
+		
+		return refToPatientUuid;
 	}
 	
 	private Map<String, RegistrationReader.PatientRow> extractPatientsToCreate(ImportPlan plan) {
@@ -232,7 +265,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				continue;
 			
 			try {
-				processRow(sheet, rowIndex, sheetMeta, patientIndex, okRows, quarantineItems);
+				processRow(sheet, rowIndex, sheetMeta, patientIndex, okRows, quarantineItems, meta.defaultLocationUuid);
 			}
 			catch (Exception e) {
 				log.warn("Failed to process row {} in sheet {}: {}", rowIndex, sheetName, e.getMessage());
@@ -243,7 +276,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	}
 	
 	private void processRow(Sheet sheet, int rowIndex, SheetMeta sheetMeta, RegistrationReader.PatientIndex patientIndex,
-	        List<RowPlan> okRows, List<QuarantineItem> quarantineItems) {
+	        List<RowPlan> okRows, List<QuarantineItem> quarantineItems, String templateDefaultLocationUuid) {
 		
 		String sheetName = sheet.getSheetName();
 		
@@ -261,7 +294,8 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			return;
 		}
 		
-		EncounterBlueprint encounter = EncounterReader.buildEncounter(sheet, rowIndex, sheetMeta);
+		EncounterBlueprint encounter = EncounterReader.buildEncounter(sheet, rowIndex, sheetMeta,
+		    templateDefaultLocationUuid);
 		List<ObsBlueprint> obs = ObsReader.buildObs(sheet, rowIndex, sheetMeta);
 		Validation.checkRow(obs, sheetMeta, quarantineItems, sheetName, rowIndex);
 		

@@ -33,12 +33,9 @@ public class ObsSaver {
 		return Context.getObsService();
 	}
 	
-	/**
-	 * Creates a text observation.
-	 */
 	public Obs addTextObs(Encounter enc, String conceptUuid, String value) {
 		if (value == null || value.trim().isEmpty()) {
-			return null; // Skip empty values
+			return null;
 		}
 		
 		Concept c = getConceptService().getConceptByUuid(conceptUuid);
@@ -51,12 +48,9 @@ public class ObsSaver {
 		return getObsService().saveObs(o, null);
 	}
 	
-	/**
-	 * Creates a numeric observation.
-	 */
 	public Obs addNumericObs(Encounter enc, String conceptUuid, Double value) {
 		if (value == null) {
-			return null; // Skip null values
+			return null;
 		}
 		
 		Concept c = getConceptService().getConceptByUuid(conceptUuid);
@@ -69,12 +63,9 @@ public class ObsSaver {
 		return getObsService().saveObs(o, null);
 	}
 	
-	/**
-	 * Creates a coded observation.
-	 */
 	public Obs addCodedObs(Encounter enc, String questionConceptUuid, String answerConceptUuid) {
 		if (answerConceptUuid == null || answerConceptUuid.trim().isEmpty()) {
-			return null; // Skip empty values
+			return null;
 		}
 		
 		Concept q = getConceptService().getConceptByUuid(questionConceptUuid);
@@ -92,12 +83,9 @@ public class ObsSaver {
 		return getObsService().saveObs(o, null);
 	}
 	
-	/**
-	 * Creates a date observation.
-	 */
 	public Obs addDateObs(Encounter enc, String conceptUuid, Date date) {
 		if (date == null) {
-			return null; // Skip null values
+			return null;
 		}
 		
 		Concept c = getConceptService().getConceptByUuid(conceptUuid);
@@ -110,12 +98,9 @@ public class ObsSaver {
 		return getObsService().saveObs(o, null);
 	}
 	
-	/**
-	 * Creates a datetime observation.
-	 */
 	public Obs addDateTimeObs(Encounter enc, String conceptUuid, Date dateTime) {
 		if (dateTime == null) {
-			return null; // Skip null values
+			return null;
 		}
 		
 		Concept c = getConceptService().getConceptByUuid(conceptUuid);
@@ -128,22 +113,16 @@ public class ObsSaver {
 		return getObsService().saveObs(o, null);
 	}
 	
-	/**
-	 * Creates a boolean observation (as coded true/false).
-	 */
 	public Obs addBooleanObs(Encounter enc, String conceptUuid, Boolean value, String trueConceptUuid,
 	        String falseConceptUuid) {
 		if (value == null) {
-			return null; // Skip null values
+			return null;
 		}
 		
 		String answerConceptUuid = value ? trueConceptUuid : falseConceptUuid;
 		return addCodedObs(enc, conceptUuid, answerConceptUuid);
 	}
 	
-	/**
-	 * Creates an observation from ObsBlueprint.
-	 */
 	public Obs createObsFromBlueprint(Encounter enc, ObsBlueprint blueprint) {
 		if (enc == null) {
 			throw new IllegalArgumentException("Encounter cannot be null");
@@ -157,10 +136,9 @@ public class ObsSaver {
 		
 		ObsBlueprint.ObsValue value = blueprint.getValue();
 		if (value == null) {
-			return null; // Skip empty observations
+			return null;
 		}
 		
-		// Create obs based on value type
 		if (value instanceof ObsBlueprint.ObsValue.TextValue) {
 			String textValue = ((ObsBlueprint.ObsValue.TextValue) value).getValue();
 			return addTextObs(enc, blueprint.getConceptUuid(), textValue);
@@ -174,8 +152,8 @@ public class ObsSaver {
 			return addCodedObs(enc, blueprint.getConceptUuid(), answerConceptUuid);
 			
 		} else if (value instanceof ObsBlueprint.ObsValue.DateValue) {
-			Date dateValue = Date.from(((ObsBlueprint.ObsValue.DateValue) value).getValue()
-			        .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+			Date dateValue = Date.from(
+			    ((ObsBlueprint.ObsValue.DateValue) value).getValue().atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
 			return addDateObs(enc, blueprint.getConceptUuid(), dateValue);
 			
 		} else if (value instanceof ObsBlueprint.ObsValue.DateTimeValue) {
@@ -184,8 +162,6 @@ public class ObsSaver {
 			
 		} else if (value instanceof ObsBlueprint.ObsValue.BooleanValue) {
 			Boolean booleanValue = ((ObsBlueprint.ObsValue.BooleanValue) value).getValue();
-			// For boolean values, we'll use coded concepts
-			// In a real implementation, you'd configure these UUIDs
 			String trueConceptUuid = getBooleanTrueConceptUuid();
 			String falseConceptUuid = getBooleanFalseConceptUuid();
 			return addBooleanObs(enc, blueprint.getConceptUuid(), booleanValue, trueConceptUuid, falseConceptUuid);
@@ -195,9 +171,6 @@ public class ObsSaver {
 		return null;
 	}
 	
-	/**
-	 * Creates base observation with common fields.
-	 */
 	private Obs base(Encounter enc, Concept questionConcept) {
 		Obs o = new Obs();
 		o.setEncounter(enc);
@@ -208,10 +181,6 @@ public class ObsSaver {
 		return o;
 	}
 	
-	/**
-	 * Gets the UUID for boolean true concept. In a real implementation, this would come from Global
-	 * Properties.
-	 */
 	private String getBooleanTrueConceptUuid() {
 		// This is a placeholder - in production you'd configure this
 		Concept trueConcept = getConceptService().getConceptByName("YES");
@@ -223,10 +192,6 @@ public class ObsSaver {
 		throw new IllegalStateException("Boolean true concept not configured");
 	}
 	
-	/**
-	 * Gets the UUID for boolean false concept. In a real implementation, this would come from Global
-	 * Properties.
-	 */
 	private String getBooleanFalseConceptUuid() {
 		// This is a placeholder - in production you'd configure this
 		Concept falseConcept = getConceptService().getConceptByName("NO");
@@ -234,33 +199,6 @@ public class ObsSaver {
 			return falseConcept.getUuid();
 		}
 		
-		// Fallback - this would need to be configured properly
 		throw new IllegalStateException("Boolean false concept not configured");
-	}
-	
-	/**
-	 * Validates observation data before creation.
-	 */
-	public void validateObsData(String conceptUuid, ObsBlueprint.ObsValue value) {
-		if (conceptUuid == null || conceptUuid.trim().isEmpty()) {
-			throw new IllegalArgumentException("Concept UUID is required");
-		}
-		
-		Concept concept = getConceptService().getConceptByUuid(conceptUuid);
-		if (concept == null) {
-			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
-		}
-		
-		if (value == null) {
-			return; // Null values are allowed (will be skipped)
-		}
-		
-		// Type-specific validation
-		if (value instanceof ObsBlueprint.ObsValue.TextValue) {
-			String textValue = ((ObsBlueprint.ObsValue.TextValue) value).getValue();
-			if (textValue != null && textValue.length() > 1000) {
-				throw new IllegalArgumentException("Text value too long: " + textValue.length() + " characters");
-			}
-		}
 	}
 }

@@ -22,4 +22,6 @@ import lombok.NoArgsConstructor;
 public class TemplateOptions {
 	
 	public boolean includePatient = true;
+	
+	public String locationUuid = "";
 }

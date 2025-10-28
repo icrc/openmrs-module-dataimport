@@ -10,7 +10,9 @@
 package org.openmrs.module.dataimport.model;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -24,11 +26,14 @@ public class TemplateMeta {
 	
 	public String locale = "en";
 	
-	public String formName;
+	public String templateName; // Generic name for multi-form templates
 	
-	public String formUuid;
+	public String defaultLocationUuid;
 	
-	public String encounterTypeUuid;
+	public int formCount;
+	
+	// List of forms included in this template
+	public final List<FormInfo> forms = new ArrayList<>();
 	
 	// Map of sheet name to sheet metadata
 	public final Map<String, SheetMeta> sheets = new HashMap<>();
@@ -39,5 +44,34 @@ public class TemplateMeta {
 	
 	public void addSheetMeta(String sheetName, SheetMeta sheetMeta) {
 		sheets.put(sheetName, sheetMeta);
+	}
+	
+	public void addForm(FormInfo formInfo) {
+		forms.add(formInfo);
+		formCount = forms.size();
+	}
+	
+	public static class FormInfo {
+		
+		public String formUuid;
+		
+		public String formName;
+		
+		public String formVersion;
+		
+		public String encounterTypeUuid;
+		
+		public String sheetName;
+		
+		public FormInfo() {
+		}
+		
+		public FormInfo(String formUuid, String formName, String formVersion, String encounterTypeUuid, String sheetName) {
+			this.formUuid = formUuid;
+			this.formName = formName;
+			this.formVersion = formVersion;
+			this.encounterTypeUuid = encounterTypeUuid;
+			this.sheetName = sheetName;
+		}
 	}
 }

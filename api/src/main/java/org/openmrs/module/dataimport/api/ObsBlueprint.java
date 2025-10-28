@@ -9,12 +9,15 @@
  */
 package org.openmrs.module.dataimport.api;
 
+import lombok.Getter;
+
 import java.time.Instant;
 import java.time.LocalDate;
 
 /**
  * Blueprint for creating an observation during import.
  */
+@Getter
 public final class ObsBlueprint {
 	
 	private final String conceptUuid;
@@ -29,19 +32,6 @@ public final class ObsBlueprint {
 		this.groupUuid = groupUuid;
 	}
 	
-	public String getConceptUuid() {
-		return conceptUuid;
-	}
-	
-	public ObsValue getValue() {
-		return value;
-	}
-	
-	public String getGroupUuid() {
-		return groupUuid;
-	}
-	
-	// Factory methods for different value types
 	public static ObsBlueprint text(String conceptUuid, String value) {
 		return new ObsBlueprint(conceptUuid, new ObsValue.TextValue(value), null);
 	}
@@ -75,6 +65,7 @@ public final class ObsBlueprint {
 	 */
 	public abstract static class ObsValue {
 		
+		@Getter
 		public static class TextValue extends ObsValue {
 			
 			private final String value;
@@ -83,11 +74,9 @@ public final class ObsBlueprint {
 				this.value = value;
 			}
 			
-			public String getValue() {
-				return value;
-			}
 		}
 		
+		@Getter
 		public static class NumericValue extends ObsValue {
 			
 			private final Double value;
@@ -96,11 +85,9 @@ public final class ObsBlueprint {
 				this.value = value;
 			}
 			
-			public Double getValue() {
-				return value;
-			}
 		}
 		
+		@Getter
 		public static class CodedValue extends ObsValue {
 			
 			private final String answerConceptUuid;
@@ -109,11 +96,9 @@ public final class ObsBlueprint {
 				this.answerConceptUuid = answerConceptUuid;
 			}
 			
-			public String getAnswerConceptUuid() {
-				return answerConceptUuid;
-			}
 		}
 		
+		@Getter
 		public static class DateValue extends ObsValue {
 			
 			private final LocalDate value;
@@ -122,11 +107,9 @@ public final class ObsBlueprint {
 				this.value = value;
 			}
 			
-			public LocalDate getValue() {
-				return value;
-			}
 		}
 		
+		@Getter
 		public static class DateTimeValue extends ObsValue {
 			
 			private final Instant value;
@@ -135,11 +118,9 @@ public final class ObsBlueprint {
 				this.value = value;
 			}
 			
-			public Instant getValue() {
-				return value;
-			}
 		}
 		
+		@Getter
 		public static class BooleanValue extends ObsValue {
 			
 			private final Boolean value;
@@ -148,9 +129,6 @@ public final class ObsBlueprint {
 				this.value = value;
 			}
 			
-			public Boolean getValue() {
-				return value;
-			}
 		}
 	}
 }

@@ -30,6 +30,7 @@ import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.SheetModel;
+import org.openmrs.module.dataimport.model.TemplateMeta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +61,10 @@ public class ExcelTemplateExporter {
 	private static final int LAST_DATA_ROW = 1000;
 	
 	public byte[] export(FormModel form, boolean includePatient) {
+		return export(form, includePatient, null);
+	}
+	
+	public byte[] export(FormModel form, boolean includePatient, String locationUuid) {
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			DataFormat dataFormat = workbook.createDataFormat();
 			CellStyle dateStyle = workbook.createCellStyle();
@@ -72,7 +77,7 @@ public class ExcelTemplateExporter {
 			}
 			
 			getOrCreateListSheet(workbook);
-			createMetaSheet(workbook, form);
+			createMetaSheet(workbook, form, locationUuid);
 			
 			for (SheetModel sheetModel : form.sheets) {
 				XSSFSheet sheet = workbook.createSheet(sheetModel.sheetName);
@@ -112,9 +117,9 @@ public class ExcelTemplateExporter {
 			
 			ensurePatientRefsNamedRange(workbook);
 			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-				Sheet s = workbook.getSheetAt(i);
+				XSSFSheet s = workbook.getSheetAt(i);
 				if (!PATIENT_SHEET_NAME.equals(s.getSheetName())) {
-					applyPatientRefDropdown((XSSFSheet) s, 0, FIRST_DATA_ROW, LAST_DATA_ROW);
+					applyPatientRefDropdown(s, 0, FIRST_DATA_ROW, LAST_DATA_ROW);
 				}
 			}
 			
@@ -235,7 +240,7 @@ public class ExcelTemplateExporter {
 	}
 	
 	private void createSimpleDropdown(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
-		if (field.answers == null || field.answers.isEmpty()) {
+		if (field.answers.isEmpty()) {
 			return;
 		}
 		
@@ -263,7 +268,6 @@ public class ExcelTemplateExporter {
 			cell.setCellValue(field.answers.get(i).label);
 		}
 		
-		// Create named range pointing to the list sheet
 		Name namedRange = workbook.createName();
 		namedRange.setNameName(fieldName);
 		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
@@ -283,7 +287,6 @@ public class ExcelTemplateExporter {
 	}
 	
 	private void ensurePatientRefsNamedRange(XSSFWorkbook workbook) {
-		// Dynamic range that grows as refs are added (skips the header in I1, Patient Ref is now in column I)
 		String formula = "IF(COUNTA('" + REG_SHEET + "'!$I:$I)<=1," + "'" + REG_SHEET + "'!$I$2," + "OFFSET('" + REG_SHEET
 		        + "'!$I$2,0,0,COUNTA('" + REG_SHEET + "'!$I:$I)-1,1))";
 		Name name = workbook.getName(PATIENT_REFS_RANGE);
@@ -317,10 +320,7 @@ public class ExcelTemplateExporter {
 		return style;
 	}
 	
-	/**
-	 * Creates a hidden metadata sheet with template information for import functionality.
-	 */
-	private void createMetaSheet(XSSFWorkbook workbook, FormModel form) {
+	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid) {
 		XSSFSheet metaSheet = workbook.createSheet(META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
 		
@@ -345,15 +345,52 @@ public class ExcelTemplateExporter {
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("locale");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("en");
 		
-		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formName");
-		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.name != null ? form.name : "Unknown Form");
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateName");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("Multi-Form Template");
 		
-		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formUuid");
-		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.formUuid != null ? form.formUuid : "");
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("defaultLocationUuid");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(locationUuid != null ? locationUuid : "");
 		
-		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("encounterTypeUuid");
-		metaSheet.getRow(rowIndex - 1).createCell(1)
-		        .setCellValue(form.encounterTypeUuid != null ? form.encounterTypeUuid : "");
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formCount");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
+		
+		rowIndex += 2; // Skip a row
+		
+		Row formHeaderRow = metaSheet.createRow(rowIndex++);
+		String[] formHeaders = { "formUuid", "formName", "formVersion", "encounterTypeUuid", "sheetName" };
+		for (int i = 0; i < formHeaders.length; i++) {
+			Cell cell = formHeaderRow.createCell(i);
+			cell.setCellValue(formHeaders[i]);
+			cell.setCellStyle(headerStyle);
+		}
+		
+		// Create a map to track unique forms with their proper information
+		Map<String, TemplateMeta.FormInfo> uniqueForms = new HashMap<>();
+		
+		for (SheetModel sheetModel : form.sheets) {
+			if (sheetModel.formUuid != null && !sheetModel.formUuid.trim().isEmpty()) {
+				TemplateMeta.FormInfo formInfo = uniqueForms.get(sheetModel.formUuid);
+				if (formInfo == null) {
+					formInfo = new TemplateMeta.FormInfo();
+					formInfo.formUuid = sheetModel.formUuid;
+					formInfo.formName = sheetModel.sheetName; // Use sheet name as form name
+					formInfo.formVersion = sheetModel.formVersion != null ? sheetModel.formVersion : "1.0";
+					formInfo.encounterTypeUuid = sheetModel.encounterTypeUuid;
+					formInfo.sheetName = sheetModel.sheetName;
+					uniqueForms.put(sheetModel.formUuid, formInfo);
+				}
+			}
+		}
+		
+		// Create form list entries
+		for (TemplateMeta.FormInfo formInfo : uniqueForms.values()) {
+			Row formRow = metaSheet.createRow(rowIndex++);
+			formRow.createCell(0).setCellValue(formInfo.formUuid);
+			formRow.createCell(1).setCellValue(formInfo.formName);
+			formRow.createCell(2).setCellValue(formInfo.formVersion);
+			formRow.createCell(3).setCellValue(formInfo.encounterTypeUuid != null ? formInfo.encounterTypeUuid : "");
+			formRow.createCell(4).setCellValue(formInfo.sheetName);
+		}
 		
 		rowIndex += 2; // Skip a row
 		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
@@ -382,11 +419,9 @@ public class ExcelTemplateExporter {
 			}
 		}
 		
-		// Add form sheet columns
 		for (SheetModel sheetModel : form.sheets) {
 			int colIndex = 0;
 			
-			// Patient Ref column
 			Row row = metaSheet.createRow(rowIndex++);
 			row.createCell(0).setCellValue(sheetModel.sheetName);
 			row.createCell(1).setCellValue(colIndex++);
@@ -398,7 +433,6 @@ public class ExcelTemplateExporter {
 			row.createCell(7).setCellValue(false); // isMulti
 			row.createCell(8).setCellValue("{}"); // answersJson
 			
-			// Form field columns
 			for (FieldModel field : sheetModel.fields) {
 				row = metaSheet.createRow(rowIndex++);
 				row.createCell(0).setCellValue(sheetModel.sheetName);
@@ -425,7 +459,6 @@ public class ExcelTemplateExporter {
 			}
 		}
 		
-		// Auto-size columns
 		for (int i = 0; i < columnHeaders.length; i++) {
 			metaSheet.autoSizeColumn(i);
 		}
@@ -433,9 +466,6 @@ public class ExcelTemplateExporter {
 		log.debug("Created metadata sheet with {} rows", rowIndex);
 	}
 	
-	/**
-	 * Simple map to JSON conversion for answers mapping.
-	 */
 	private String mapToJson(Map<String, String> map) {
 		if (map.isEmpty())
 			return "{}";
@@ -452,4 +482,5 @@ public class ExcelTemplateExporter {
 		json.append("}");
 		return json.toString();
 	}
+	
 }

@@ -121,6 +121,10 @@ public class RegistrationReader {
 			this.patients = patients;
 		}
 		
+		public Map<String, PatientRow> getPatients() {
+			return patients;
+		}
+		
 		public PatientResolution resolve(String patientRef) {
 			if (patientRef == null || patientRef.isEmpty()) {
 				return PatientResolution.unresolved("Missing patient reference");
