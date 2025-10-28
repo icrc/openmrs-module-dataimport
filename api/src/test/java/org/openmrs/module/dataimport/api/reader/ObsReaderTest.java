@@ -9,9 +9,6 @@
  */
 package org.openmrs.module.dataimport.api.reader;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -26,27 +23,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@DisplayName("ObsReader Multi-Select Tests")
-class ObsReaderMultiSelectTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class ObsReaderTest {
 	
 	@Test
 	@DisplayName("Should create multiple observations for multi-select coded field")
 	void testMultiSelectCodedField() throws Exception {
-		// Create test workbook with multi-select data
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		
-		// Create header row
 		Row headerRow = sheet.createRow(0);
 		headerRow.createCell(0).setCellValue("Patient Ref");
 		headerRow.createCell(1).setCellValue("Symptoms");
 		
-		// Create data row with multi-select values
 		Row dataRow = sheet.createRow(1);
 		dataRow.createCell(0).setCellValue("P001");
 		dataRow.createCell(1).setCellValue("Fever|Headache|Nausea");
 		
-		// Create column metadata for multi-select coded field
 		ColumnMeta symptomsColumn = new ColumnMeta();
 		symptomsColumn.sheetName = "Test Sheet";
 		symptomsColumn.colIndex = 1;
@@ -56,25 +51,20 @@ class ObsReaderMultiSelectTest {
 		symptomsColumn.datatype = FieldDatatype.CODED;
 		symptomsColumn.isMulti = true;
 		
-		// Set up answers mapping
 		Map<String, String> answers = new HashMap<>();
 		answers.put("fever", "fever-concept-uuid");
 		answers.put("headache", "headache-concept-uuid");
 		answers.put("nausea", "nausea-concept-uuid");
 		symptomsColumn.answers = answers;
 		
-		// Create sheet metadata
 		SheetMeta sheetMeta = new SheetMeta();
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		// Test multi-select observation creation
 		List<ObsBlueprint> obs = ObsReader.buildObs(sheet, 1, sheetMeta);
 		
-		// Should create 3 separate observations
 		assertEquals(3, obs.size(), "Should create one observation per selected answer");
 		
-		// Verify each observation
 		assertTrue(obs.stream().anyMatch(o -> o.getConceptUuid().equals("symptoms-concept-uuid")
 		        && ((ObsBlueprint.ObsValue.CodedValue) o.getValue()).getAnswerConceptUuid().equals("fever-concept-uuid")),
 		    "Should have fever observation");
@@ -119,7 +109,6 @@ class ObsReaderMultiSelectTest {
 		
 		List<ObsBlueprint> obs = ObsReader.buildObs(sheet, 1, sheetMeta);
 		
-		// Should only create observations for known values
 		assertEquals(2, obs.size(), "Should only create observations for known values");
 		
 		workbook.close();

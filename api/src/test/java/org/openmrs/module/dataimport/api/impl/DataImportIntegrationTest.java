@@ -9,8 +9,6 @@
  */
 package org.openmrs.module.dataimport.api.impl;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,8 +26,13 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.UUID;
 
-@DisplayName("Production-Ready Data Import Integration Tests")
-class ProductionReadyDataImportTest {
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class DataImportIntegrationTest {
 	
 	private WorkbookImportService importService;
 	
@@ -44,15 +47,12 @@ class ProductionReadyDataImportTest {
 	@Test
 	@DisplayName("Should complete full dry-run and commit workflow")
 	void testFullWorkflow() throws Exception {
-		// Create a test form
 		FormModel form = createTestForm();
-		
-		// Export template
+
 		byte[] templateBytes = exporter.export(form, true);
 		assertNotNull(templateBytes);
 		assertTrue(templateBytes.length > 0);
 		
-		// Perform dry run
 		ImportPlan importPlan;
 		try (InputStream inputStream = new ByteArrayInputStream(templateBytes)) {
 			importPlan = importService.dryRun(inputStream);
@@ -64,17 +64,13 @@ class ProductionReadyDataImportTest {
 		assertNotNull(importPlan.getIssues());
 		assertNotNull(importPlan.getStats());
 		
-		// Verify dry run completed successfully
 		assertEquals(0, importPlan.getIssues().size(), "Should have no validation issues for empty template");
 		
-		// Test commit (will fail gracefully since we don't have OpenMRS context)
 		UUID batchId = importPlan.getBatchId();
 		try {
 			importService.commit(batchId);
-			// If we get here, the commit succeeded (unlikely without OpenMRS context)
 		}
 		catch (Exception e) {
-			// Expected to fail without OpenMRS context
 			assertTrue(e.getMessage().contains("Service not found") || e.getMessage().contains("Context not initialized"));
 		}
 	}
@@ -84,11 +80,9 @@ class ProductionReadyDataImportTest {
 	void testStorageService() {
 		ImportPlanStorageService storage = new ImportPlanStorageService();
 		
-		// Test basic operations
 		assertEquals(0, storage.size());
 		assertFalse(storage.exists(UUID.randomUUID()));
 		
-		// Test cleanup
 		assertDoesNotThrow(() -> {
 			storage.cleanupOldPlans(24);
 		});
@@ -99,11 +93,9 @@ class ProductionReadyDataImportTest {
 	void testIdempotencyService() {
 		IdempotencyService idempotency = new IdempotencyService();
 		
-		// Test basic operations
 		assertEquals(0, idempotency.size());
 		assertFalse(idempotency.exists("test-key"));
 		
-		// Test recording
 		assertDoesNotThrow(() -> {
 			idempotency.record("test-key", "test-encounter-uuid");
 		});
@@ -111,11 +103,9 @@ class ProductionReadyDataImportTest {
 		assertTrue(idempotency.exists("test-key"));
 		assertEquals("test-encounter-uuid", idempotency.getEncounterUuid("test-key"));
 		
-		// Test removal
 		idempotency.remove("test-key");
 		assertFalse(idempotency.exists("test-key"));
 		
-		// Test cleanup
 		assertDoesNotThrow(() -> {
 			idempotency.cleanupOldKeys(24);
 		});
@@ -126,12 +116,10 @@ class ProductionReadyDataImportTest {
 	void testComplexForm() throws Exception {
 		FormModel form = createComplexForm();
 		
-		// Export template
 		byte[] templateBytes = exporter.export(form, true);
 		assertNotNull(templateBytes);
 		assertTrue(templateBytes.length > 0);
 		
-		// Perform dry run
 		try (InputStream inputStream = new ByteArrayInputStream(templateBytes)) {
 			ImportPlan importPlan = importService.dryRun(inputStream);
 			
@@ -139,7 +127,6 @@ class ProductionReadyDataImportTest {
 			assertNotNull(importPlan.getRowsOk());
 			assertNotNull(importPlan.getIssues());
 			
-			// Should complete successfully
 			assertEquals(0, importPlan.getIssues().size());
 		}
 	}
@@ -175,7 +162,6 @@ class ProductionReadyDataImportTest {
 		SheetModel sheet = new SheetModel();
 		sheet.sheetName = "Complex Sheet";
 		
-		// Text field
 		FieldModel textField = new FieldModel();
 		textField.id = "notes";
 		textField.label = "Notes";
@@ -184,7 +170,6 @@ class ProductionReadyDataImportTest {
 		textField.maxLength = 500;
 		sheet.fields.add(textField);
 		
-		// Numeric field
 		FieldModel numericField = new FieldModel();
 		numericField.id = "temperature";
 		numericField.label = "Temperature";
@@ -194,7 +179,6 @@ class ProductionReadyDataImportTest {
 		numericField.max = 45.0;
 		sheet.fields.add(numericField);
 		
-		// Coded field
 		FieldModel codedField = new FieldModel();
 		codedField.id = "status";
 		codedField.label = "Status";
@@ -204,7 +188,6 @@ class ProductionReadyDataImportTest {
 		codedField.answers.add(new AnswerModel("Inactive", "inactive-concept-uuid", "Inactive"));
 		sheet.fields.add(codedField);
 		
-		// Multi-select field
 		FieldModel multiSelectField = new FieldModel();
 		multiSelectField.id = "symptoms";
 		multiSelectField.label = "Symptoms";
@@ -216,7 +199,6 @@ class ProductionReadyDataImportTest {
 		multiSelectField.answers.add(new AnswerModel("Headache", "headache-concept-uuid", "Headache"));
 		sheet.fields.add(multiSelectField);
 		
-		// Date field
 		FieldModel dateField = new FieldModel();
 		dateField.id = "visit_date";
 		dateField.label = "Visit Date";
@@ -224,7 +206,6 @@ class ProductionReadyDataImportTest {
 		dateField.datatype = FieldDatatype.DATE;
 		sheet.fields.add(dateField);
 		
-		// Boolean field
 		FieldModel booleanField = new FieldModel();
 		booleanField.id = "is_active";
 		booleanField.label = "Is Active";
