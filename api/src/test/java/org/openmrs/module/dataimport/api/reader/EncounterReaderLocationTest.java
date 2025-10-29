@@ -30,7 +30,7 @@ class EncounterReaderLocationTest {
 		SheetMeta sheetMeta = new SheetMeta();
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.encounterTypeUuid = "test-encounter-type-uuid";
-
+		
 		String templateDefaultLocationUuid = "template-default-location-uuid";
 		
 		EncounterBlueprint encounter = EncounterReader.buildEncounter(sheet, 1, sheetMeta, templateDefaultLocationUuid);

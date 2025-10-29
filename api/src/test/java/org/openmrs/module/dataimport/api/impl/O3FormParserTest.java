@@ -36,119 +36,119 @@ class O3FormParserTest {
 	void setUp() {
 		parser = new O3FormParser();
 	}
-
-    @Test
-    @DisplayName("Should parse radio button fields with answers correctly")
-    void testParseRadioButtonFields() throws Exception {
-        String json = TestDataLoader.loadRadioButtonsForm();
-        FormModel form = parser.parse(json, Locale.ENGLISH);
-
-        assertEquals("Sample Form with Radio Buttons", form.name);
-        assertEquals("test-form-radio-uuid", form.formUuid);
-        assertEquals(1, form.sheets.size());
-
-        SheetModel sheet = form.sheets.get(0);
-        assertEquals(2, sheet.fields.size());
-
-        FieldModel genderField = sheet.fields.get(0);
-        assertEquals("gender", genderField.id);
-        assertEquals("Gender", genderField.label);
-        assertEquals("gender.concept.uuid", genderField.conceptUuid);
-        assertEquals(FieldDatatype.CODED, genderField.datatype);
-        assertEquals(3, genderField.answers.size());
-
-        AnswerModel maleAnswer = genderField.answers.get(0);
-        assertEquals("Male", maleAnswer.label);
-        assertEquals("male.concept.uuid", maleAnswer.conceptUuid);
-        assertEquals("male.concept.uuid", maleAnswer.value);
-
-        AnswerModel femaleAnswer = genderField.answers.get(1);
-        assertEquals("Female", femaleAnswer.label);
-        assertEquals("female.concept.uuid", femaleAnswer.conceptUuid);
-        assertEquals("female.concept.uuid", femaleAnswer.value);
-
-        FieldModel anesthesiaField = sheet.fields.get(1);
-        assertEquals("anesthesia_type", anesthesiaField.id);
-        assertEquals("Anesthesia Type", anesthesiaField.label);
-        assertEquals("anesthesia.concept.uuid", anesthesiaField.conceptUuid);
-        assertEquals(FieldDatatype.CODED, anesthesiaField.datatype);
-        assertEquals(3, anesthesiaField.answers.size());
-
-        AnswerModel generalAnswer = anesthesiaField.answers.get(0);
-        assertEquals("General", generalAnswer.label);
-        assertEquals("general.concept.uuid", generalAnswer.conceptUuid);
-    }
-
-    @Test
-    @DisplayName("Should handle fields without answers as TEXT type")
-    void testParseFieldsWithoutAnswers() throws Exception {
-        String json = TestDataLoader.loadMixedFieldsForm();
-        FormModel form = parser.parse(json, Locale.ENGLISH);
-
-        SheetModel sheet = form.sheets.get(0);
-
-        FieldModel nameField = sheet.fields.stream().filter(f -> "patient_name".equals(f.id)).findFirst()
-                .orElseThrow(() -> new AssertionError("Patient name field not found"));
-
-        assertEquals("Patient Name", nameField.label);
-        assertEquals(FieldDatatype.TEXT, nameField.datatype);
-        assertTrue(nameField.answers.isEmpty());
-    }
-
-    @Test
-    @DisplayName("Should correctly infer datatypes for all field types")
-    void testInferDatatypes() throws Exception {
-        String json = TestDataLoader.loadMixedFieldsForm();
-        FormModel form = parser.parse(json, Locale.ENGLISH);
-
-        SheetModel sheet = form.sheets.get(0);
-
-        FieldModel textField = findField(sheet, "patient_name");
-        assertEquals(FieldDatatype.TEXT, textField.datatype);
-
-        FieldModel numberField = findField(sheet, "age");
-        assertEquals(FieldDatatype.NUMERIC, numberField.datatype);
-        assertEquals(0.0, numberField.min);
-        assertEquals(120.0, numberField.max);
-
-        FieldModel dateField = findField(sheet, "date_of_birth");
-        assertEquals(FieldDatatype.DATE, dateField.datatype);
-
-        FieldModel datetimeField = findField(sheet, "last_visit");
-        assertEquals(FieldDatatype.DATETIME, datetimeField.datatype);
-
-        FieldModel booleanField = findField(sheet, "is_active");
-        assertEquals(FieldDatatype.TEXT, booleanField.datatype);
-
-        FieldModel codedField = findField(sheet, "status");
-        assertEquals(FieldDatatype.CODED, codedField.datatype);
-        assertEquals(2, codedField.answers.size());
-    }
-
-    @Test
-    @DisplayName("Should handle repeat groups as regular groups on main sheet")
-    void testParseRepeatGroups() throws Exception {
-        String json = TestDataLoader.loadRepeatGroupsForm();
-        FormModel form = parser.parse(json, Locale.ENGLISH);
-
-        assertEquals(1, form.sheets.size());
-        SheetModel mainSheet = form.sheets.get(0);
-        FieldModel nameField = findField(mainSheet, "patient_name");
-        assertEquals("Patient Name", nameField.label);
-
-        FieldModel tempField = findField(mainSheet, "temperature");
-        assertEquals(FieldDatatype.NUMERIC, tempField.datatype);
-        assertEquals(30.0, tempField.min);
-        assertEquals(45.0, tempField.max);
-
-        FieldModel bpField = findField(mainSheet, "blood_pressure");
-        assertEquals(FieldDatatype.TEXT, bpField.datatype);
-    }
-
-    private FieldModel findField(SheetModel sheet, String fieldId) {
-        return sheet.fields.stream().filter(f -> fieldId.equals(f.id)).findFirst()
-                .orElseThrow(() -> new AssertionError("Field not found: " + fieldId));
-    }
+	
+	@Test
+	@DisplayName("Should parse radio button fields with answers correctly")
+	void testParseRadioButtonFields() throws Exception {
+		String json = TestDataLoader.loadRadioButtonsForm();
+		FormModel form = parser.parse(json, Locale.ENGLISH);
+		
+		assertEquals("Sample Form with Radio Buttons", form.name);
+		assertEquals("test-form-radio-uuid", form.formUuid);
+		assertEquals(1, form.sheets.size());
+		
+		SheetModel sheet = form.sheets.get(0);
+		assertEquals(2, sheet.fields.size());
+		
+		FieldModel genderField = sheet.fields.get(0);
+		assertEquals("gender", genderField.id);
+		assertEquals("Gender", genderField.label);
+		assertEquals("gender.concept.uuid", genderField.conceptUuid);
+		assertEquals(FieldDatatype.CODED, genderField.datatype);
+		assertEquals(3, genderField.answers.size());
+		
+		AnswerModel maleAnswer = genderField.answers.get(0);
+		assertEquals("Male", maleAnswer.label);
+		assertEquals("male.concept.uuid", maleAnswer.conceptUuid);
+		assertEquals("male.concept.uuid", maleAnswer.value);
+		
+		AnswerModel femaleAnswer = genderField.answers.get(1);
+		assertEquals("Female", femaleAnswer.label);
+		assertEquals("female.concept.uuid", femaleAnswer.conceptUuid);
+		assertEquals("female.concept.uuid", femaleAnswer.value);
+		
+		FieldModel anesthesiaField = sheet.fields.get(1);
+		assertEquals("anesthesia_type", anesthesiaField.id);
+		assertEquals("Anesthesia Type", anesthesiaField.label);
+		assertEquals("anesthesia.concept.uuid", anesthesiaField.conceptUuid);
+		assertEquals(FieldDatatype.CODED, anesthesiaField.datatype);
+		assertEquals(3, anesthesiaField.answers.size());
+		
+		AnswerModel generalAnswer = anesthesiaField.answers.get(0);
+		assertEquals("General", generalAnswer.label);
+		assertEquals("general.concept.uuid", generalAnswer.conceptUuid);
+	}
+	
+	@Test
+	@DisplayName("Should handle fields without answers as TEXT type")
+	void testParseFieldsWithoutAnswers() throws Exception {
+		String json = TestDataLoader.loadMixedFieldsForm();
+		FormModel form = parser.parse(json, Locale.ENGLISH);
+		
+		SheetModel sheet = form.sheets.get(0);
+		
+		FieldModel nameField = sheet.fields.stream().filter(f -> "patient_name".equals(f.id)).findFirst()
+		        .orElseThrow(() -> new AssertionError("Patient name field not found"));
+		
+		assertEquals("Patient Name", nameField.label);
+		assertEquals(FieldDatatype.TEXT, nameField.datatype);
+		assertTrue(nameField.answers.isEmpty());
+	}
+	
+	@Test
+	@DisplayName("Should correctly infer datatypes for all field types")
+	void testInferDatatypes() throws Exception {
+		String json = TestDataLoader.loadMixedFieldsForm();
+		FormModel form = parser.parse(json, Locale.ENGLISH);
+		
+		SheetModel sheet = form.sheets.get(0);
+		
+		FieldModel textField = findField(sheet, "patient_name");
+		assertEquals(FieldDatatype.TEXT, textField.datatype);
+		
+		FieldModel numberField = findField(sheet, "age");
+		assertEquals(FieldDatatype.NUMERIC, numberField.datatype);
+		assertEquals(0.0, numberField.min);
+		assertEquals(120.0, numberField.max);
+		
+		FieldModel dateField = findField(sheet, "date_of_birth");
+		assertEquals(FieldDatatype.DATE, dateField.datatype);
+		
+		FieldModel datetimeField = findField(sheet, "last_visit");
+		assertEquals(FieldDatatype.DATETIME, datetimeField.datatype);
+		
+		FieldModel booleanField = findField(sheet, "is_active");
+		assertEquals(FieldDatatype.TEXT, booleanField.datatype);
+		
+		FieldModel codedField = findField(sheet, "status");
+		assertEquals(FieldDatatype.CODED, codedField.datatype);
+		assertEquals(2, codedField.answers.size());
+	}
+	
+	@Test
+	@DisplayName("Should handle repeat groups as regular groups on main sheet")
+	void testParseRepeatGroups() throws Exception {
+		String json = TestDataLoader.loadRepeatGroupsForm();
+		FormModel form = parser.parse(json, Locale.ENGLISH);
+		
+		assertEquals(1, form.sheets.size());
+		SheetModel mainSheet = form.sheets.get(0);
+		FieldModel nameField = findField(mainSheet, "patient_name");
+		assertEquals("Patient Name", nameField.label);
+		
+		FieldModel tempField = findField(mainSheet, "temperature");
+		assertEquals(FieldDatatype.NUMERIC, tempField.datatype);
+		assertEquals(30.0, tempField.min);
+		assertEquals(45.0, tempField.max);
+		
+		FieldModel bpField = findField(mainSheet, "blood_pressure");
+		assertEquals(FieldDatatype.TEXT, bpField.datatype);
+	}
+	
+	private FieldModel findField(SheetModel sheet, String fieldId) {
+		return sheet.fields.stream().filter(f -> fieldId.equals(f.id)).findFirst()
+		        .orElseThrow(() -> new AssertionError("Field not found: " + fieldId));
+	}
 	
 	@Test
 	@DisplayName("Should parse basic form with metadata")

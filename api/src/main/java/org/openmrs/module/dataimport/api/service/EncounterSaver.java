@@ -23,6 +23,7 @@ import org.openmrs.api.LocationService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
+import org.openmrs.api.AdministrationService;
 import org.openmrs.module.dataimport.api.EncounterBlueprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,9 +135,24 @@ public class EncounterSaver {
 			locationUuid = getDefaultLocationUuid();
 		}
 		
+		// Resolve encounter type: prefer explicit on blueprint; else derive from form; else GP default
+		String encounterTypeUuid = blueprint.getEncounterTypeUuid();
+		if (encounterTypeUuid == null || encounterTypeUuid.trim().isEmpty()) {
+			String formUuid = blueprint.getFormUuid();
+			if (formUuid != null && !formUuid.trim().isEmpty()) {
+				Form form = getFormService().getFormByUuid(formUuid);
+				if (form != null && form.getEncounterType() != null) {
+					encounterTypeUuid = form.getEncounterType().getUuid();
+				}
+			}
+		}
+		if (encounterTypeUuid == null || encounterTypeUuid.trim().isEmpty()) {
+			encounterTypeUuid = getDefaultEncounterTypeUuid();
+		}
+		
 		String encounterRoleUuid = getDefaultEncounterRoleUuid();
-		return createEncounter(patient.getUuid(), blueprint.getEncounterTypeUuid(), encounterDate, locationUuid,
-		    blueprint.getFormUuid(), blueprint.getProviderUuid(), encounterRoleUuid);
+		return createEncounter(patient.getUuid(), encounterTypeUuid, encounterDate, locationUuid, blueprint.getFormUuid(),
+		    blueprint.getProviderUuid(), encounterRoleUuid);
 	}
 	
 	public String getDefaultLocationUuid() {
@@ -148,6 +164,19 @@ public class EncounterSaver {
 		}
 		
 		return defaultLocation.getUuid();
+	}
+	
+	public String getDefaultEncounterTypeUuid() {
+		AdministrationService adminService = Context.getAdministrationService();
+		String gp = adminService.getGlobalProperty("dataimport.defaultEncounterTypeUuid");
+		if (gp != null && !gp.trim().isEmpty()) {
+			EncounterType type = getEncounterService().getEncounterTypeByUuid(gp);
+			if (type != null) {
+				return type.getUuid();
+			}
+		}
+		throw new IllegalArgumentException(
+		        "EncounterType not found and no form encounter type provided; set GP 'dataimport.defaultEncounterTypeUuid'");
 	}
 	
 	public String getDefaultEncounterRoleUuid() {

@@ -38,4 +38,10 @@
 		<file>messages_es.properties</file>
 	</messages>
 
+    <globalProperty>
+        <property>${project.parent.artifactId}.defaultEncounterTypeUuid</property>
+        <defaultValue>e22e39fd-7db2-45e7-80f1-60fa0d5a4378</defaultValue>
+        <description>Default EncounterType UUID used by dataimport when none is provided</description>
+    </globalProperty>
+
 </module>

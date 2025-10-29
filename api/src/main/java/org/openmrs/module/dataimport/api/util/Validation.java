@@ -14,17 +14,12 @@ import org.openmrs.module.dataimport.api.QuarantineItem;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Validates observation data and creates quarantine items for issues.
- */
 public class Validation {
 	
-	/**
-	 * Validates a row's observations and adds quarantine items for issues.
-	 */
 	public static void checkRow(List<ObsBlueprint> obs, SheetMeta sheetMeta, List<QuarantineItem> quarantineItems,
 	        String sheetName, int rowIndex) {
 		
@@ -37,9 +32,6 @@ public class Validation {
 		}
 	}
 	
-	/**
-	 * Checks if there are any blocking issues for a row.
-	 */
 	public static boolean hasBlocking(List<QuarantineItem> quarantineItems, String sheetName, int rowIndex) {
 		return quarantineItems.stream().anyMatch(item -> sheetName.equals(item.getSheet()) && item.getRow() == rowIndex);
 	}
@@ -52,7 +44,6 @@ public class Validation {
 	private static void validateObs(ObsBlueprint obs, ColumnMeta column, List<QuarantineItem> quarantineItems,
 	        String sheetName, int rowIndex) {
 		
-		// Check required fields
 		if (column.requiredAlways && obs.getValue() == null) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "REQUIRED_FIELD_MISSING",
 			    "Required field is missing"));
@@ -60,9 +51,8 @@ public class Validation {
 		}
 		
 		if (obs.getValue() == null)
-			return; // Skip validation for empty values
-			
-		// Type-specific validation
+			return;
+		
 		switch (obs.getValue().getClass().getSimpleName()) {
 			case "TextValue":
 				validateTextObs(obs, column, quarantineItems, sheetName, rowIndex);
@@ -83,13 +73,11 @@ public class Validation {
 	        String sheetName, int rowIndex) {
 		String value = ((ObsBlueprint.ObsValue.TextValue) obs.getValue()).getValue();
 		
-		// Check max length
 		if (column.maxLength != null && value.length() > column.maxLength) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "TEXT_TOO_LONG",
 			    "Text exceeds maximum length of " + column.maxLength + " characters"));
 		}
 		
-		// Check min length
 		if (column.minLength != null && value.length() < column.minLength) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "TEXT_TOO_SHORT",
 			    "Text is shorter than minimum length of " + column.minLength + " characters"));
@@ -100,13 +88,11 @@ public class Validation {
 	        String sheetName, int rowIndex) {
 		Double value = ((ObsBlueprint.ObsValue.NumericValue) obs.getValue()).getValue();
 		
-		// Check min value
 		if (column.min != null && value < column.min) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "VALUE_TOO_SMALL",
 			    "Value " + value + " is less than minimum " + column.min));
 		}
 		
-		// Check max value
 		if (column.max != null && value > column.max) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "VALUE_TOO_LARGE",
 			    "Value " + value + " is greater than maximum " + column.max));
@@ -117,7 +103,6 @@ public class Validation {
 	        String sheetName, int rowIndex) {
 		String answerConceptUuid = ((ObsBlueprint.ObsValue.CodedValue) obs.getValue()).getAnswerConceptUuid();
 		
-		// Check if the answer concept UUID is valid
 		boolean isValidAnswer = column.answers != null && column.answers.containsValue(answerConceptUuid);
 		if (!isValidAnswer) {
 			List<String> validAnswers = new ArrayList<>();
@@ -132,7 +117,31 @@ public class Validation {
 	
 	private static void validateDateObs(ObsBlueprint obs, ColumnMeta column, List<QuarantineItem> quarantineItems,
 	        String sheetName, int rowIndex) {
-		// Date validation could include range checks, but for now we'll keep it simple
-		// In a real implementation, you might check against min/max date constraints
+		LocalDate value = ((ObsBlueprint.ObsValue.DateValue) obs.getValue()).getValue();
+		
+		// Check minimum date constraint
+		if (column.min != null) {
+			LocalDate minDate = LocalDate.ofEpochDay(column.min.longValue());
+			if (value.isBefore(minDate)) {
+				quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATE_TOO_EARLY",
+				    "Date " + value + " is before minimum date " + minDate));
+			}
+		}
+		
+		// Check maximum date constraint
+		if (column.max != null) {
+			LocalDate maxDate = LocalDate.ofEpochDay(column.max.longValue());
+			if (value.isAfter(maxDate)) {
+				quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATE_TOO_LATE",
+				    "Date " + value + " is after maximum date " + maxDate));
+			}
+		}
+		
+		// Check if date is in the future (common business rule)
+		LocalDate today = LocalDate.now();
+		if (value.isAfter(today)) {
+			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "FUTURE_DATE",
+			    "Date " + value + " is in the future"));
+		}
 	}
 }

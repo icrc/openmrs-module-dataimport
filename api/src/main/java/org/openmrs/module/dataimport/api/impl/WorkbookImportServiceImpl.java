@@ -42,12 +42,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.UUID;
 
@@ -95,9 +95,9 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		}
 	}
 	
-	@Override
-	@Transactional
-	public ImportResult commit(UUID batchId) {
+    @Override
+    @Transactional
+    public ImportResult commit(UUID batchId) {
 		try {
 			log.info("Starting commit for batch: {}", batchId);
 			
@@ -107,15 +107,18 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				    Collections.singletonList("Batch ID not found: " + batchId));
 			}
 			
-			log.info("Phase 1: Processing Patient Registration Sheet - Creating {} patients",
-			    plan.getPatientIndex().getPatients().size());
-			Map<String, String> refToPatientUuid = processPatientRegistrationSheet(plan);
-			
-			if (refToPatientUuid.isEmpty()) {
-				log.warn("No patients were created from registration sheet");
-				return ImportResult.failure(batchId, "No patients found in registration sheet",
-				    Collections.singletonList("Patient registration sheet is empty or invalid"));
-			}
+            log.info("Phase 1: Processing Patient Registration Sheet - Creating {} patients",
+                plan.getPatientIndex().getPatients().size());
+            PatientCreationOutcome creationOutcome = processPatientRegistrationSheet(plan);
+            Map<String, String> refToPatientUuid = creationOutcome.refToPatientUuid;
+            
+            if (refToPatientUuid.isEmpty()) {
+                // Do not fail the import if there are no patients to create from the
+                // registration sheet. We can still proceed if rows already carry a
+                // resolvable patientUuid (existing patients). Rows without a resolvable
+                // patientUuid will be skipped below.
+                log.warn("No patients were created from registration sheet; proceeding to process encounters for resolvable patients only");
+            }
 			
 			EncounterSaver encounterSaver = new EncounterSaver();
 			ObsSaver obsSaver = new ObsSaver();
@@ -123,12 +126,18 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			
 			log.info("Phase 2: Processing Data Sheets - Creating {} encounters and observations", plan.getRowsOk().size());
 			
-			for (RowPlan rp : plan.getRowsOk()) {
+            for (RowPlan rp : plan.getRowsOk()) {
 				if (idempotencyService.exists(rp.getIdempotencyKey())) {
 					log.debug("Skipping duplicate row with idempotency key: {}", rp.getIdempotencyKey());
 					continue;
 				}
 				
+                if (creationOutcome.failedPatientRefs.contains(rp.getPatientRef())) {
+                    // Skip all rows for patients that failed to be created to avoid orphaned data
+                    log.warn("Skipping row for patientRef {} because patient creation failed", rp.getPatientRef());
+                    continue;
+                }
+
 				String patientUuid = refToPatientUuid.getOrDefault(rp.getPatientRef(), rp.getPatientUuid());
 				if (patientUuid == null) {
 					log.warn("No patient UUID found for patient ref: {}", rp.getPatientRef());
@@ -157,11 +166,15 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			
 			importPlanStorage.removePlan(batchId);
 			
-			ImportStats finalStats = ImportStats.of(plan.getRowsOk(), plan.getIssues());
-			log.info("Import completed successfully for batch: {} - {} patients, {} encounters", batchId,
-			    refToPatientUuid.size(), createdEncounterUuids.size());
-			
-			return ImportResult.success(batchId, finalStats, createdEncounterUuids);
+            ImportStats finalStats = ImportStats.of(plan.getRowsOk(), plan.getIssues());
+            log.info("Import completed for batch: {} - {} patients, {} encounters ({} patient creation failures)", batchId,
+                refToPatientUuid.size(), createdEncounterUuids.size(), creationOutcome.errors.size());
+            
+            // Return success but include patient creation errors (if any) for transparency
+            return new ImportResult(true,
+                creationOutcome.errors.isEmpty() ? "Import completed successfully"
+                        : "Import completed with patient creation errors",
+                batchId, finalStats, createdEncounterUuids, creationOutcome.errors);
 			
 		}
 		catch (Exception e) {
@@ -171,42 +184,48 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		}
 	}
 	
-	/**
-	 * PHASE 1: Process Patient Registration Sheet - Create all patients first to get their UUIDs. This
-	 * must be done before processing any data sheets because encounters need patient UUIDs.
-	 * 
-	 * @param plan The ImportPlan containing patient data from registration sheet
-	 * @return Map of patientRef -> patientUuid for use in Phase 2
-	 */
-	private Map<String, String> processPatientRegistrationSheet(ImportPlan plan) {
-		Map<String, String> refToPatientUuid = new HashMap<>();
-		PatientSaver patientSaver = new PatientSaver();
-		String defaultIdentifierTypeUuid = patientSaver.getDefaultIdentifierTypeUuid();
-		String defaultLocationUuid = patientSaver.getDefaultLocationUuid();
-		
-		Map<String, RegistrationReader.PatientRow> patientsToCreate = extractPatientsToCreate(plan);
-		for (RegistrationReader.PatientRow patientRow : patientsToCreate.values()) {
-			try {
-				Date birthdate = null;
-				if (patientRow.birthdate != null) {
-					birthdate = Date.from(patientRow.birthdate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
-				}
-				
-				Patient p = patientSaver.getOrCreateByIdentifier(patientRow.patientRef(), defaultIdentifierTypeUuid,
-				    defaultLocationUuid, patientRow.givenName, patientRow.familyName, patientRow.gender, birthdate);
-				
-				refToPatientUuid.put(patientRow.patientRef(), p.getUuid());
-				log.debug("Created/found patient: {} -> {}", patientRow.patientRef(), p.getUuid());
-				
-			}
-			catch (Exception e) {
-				log.error("Failed to create patient {}: {}", patientRow.patientRef(), e.getMessage());
-				// Continue with other patients rather than failing the entire import
-			}
-		}
-		
-		return refToPatientUuid;
-	}
+    /**
+     * PHASE 1: Process Patient Registration Sheet - Create all patients first to get their UUIDs. This
+     * must be done before processing any data sheets because encounters need patient UUIDs.
+     */
+    private static class PatientCreationOutcome {
+        final Map<String, String> refToPatientUuid = new HashMap<>();
+        final Set<String> failedPatientRefs = new java.util.HashSet<>();
+        final List<String> errors = new ArrayList<>();
+    }
+
+    private PatientCreationOutcome processPatientRegistrationSheet(ImportPlan plan) {
+        PatientCreationOutcome outcome = new PatientCreationOutcome();
+        PatientSaver patientSaver = new PatientSaver();
+        String defaultIdentifierTypeUuid = patientSaver.getDefaultIdentifierTypeUuid();
+        String defaultLocationUuid = patientSaver.getDefaultLocationUuid();
+        
+        Map<String, RegistrationReader.PatientRow> patientsToCreate = extractPatientsToCreate(plan);
+        for (RegistrationReader.PatientRow patientRow : patientsToCreate.values()) {
+            try {
+                Date birthdate = null;
+                if (patientRow.birthdate != null) {
+                    birthdate = Date.from(patientRow.birthdate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
+                }
+                
+                Patient p = patientSaver.createPatientWithGeneratedIdentifier(patientRow.givenName,
+                    patientRow.familyName, patientRow.gender, birthdate, defaultIdentifierTypeUuid,
+                    defaultLocationUuid);
+                
+                outcome.refToPatientUuid.put(patientRow.patientRef(), p.getUuid());
+                log.debug("Created/found patient: {} -> {}", patientRow.patientRef(), p.getUuid());
+                
+            }
+            catch (Exception e) {
+                String errorMsg = "Failed to create patient '" + patientRow.patientRef() + "': " + e.getMessage();
+                log.error(errorMsg);
+                outcome.failedPatientRefs.add(patientRow.patientRef());
+                outcome.errors.add(errorMsg);
+            }
+        }
+        
+        return outcome;
+    }
 	
 	private Map<String, RegistrationReader.PatientRow> extractPatientsToCreate(ImportPlan plan) {
 		Map<String, RegistrationReader.PatientRow> patientsToCreate = new HashMap<>();
@@ -279,6 +298,14 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	        List<RowPlan> okRows, List<QuarantineItem> quarantineItems, String templateDefaultLocationUuid) {
 		
 		String sheetName = sheet.getSheetName();
+		
+		// Validate required metadata: allow missing encounterTypeUuid if a formUuid is present
+		if ((sheetMeta.encounterTypeUuid == null || sheetMeta.encounterTypeUuid.trim().isEmpty())
+		        && (sheetMeta.formUuid == null || sheetMeta.formUuid.trim().isEmpty())) {
+			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, 0, "MISSING_ENCOUNTER_TYPE",
+			    "__meta must provide encounterTypeUuid or formUuid for sheet '" + sheetName + "'"));
+			return;
+		}
 		
 		String patientRef = WorkbookUtil.Cells.getString(sheet, rowIndex, 0);
 		if (patientRef == null || patientRef.trim().isEmpty()) {
