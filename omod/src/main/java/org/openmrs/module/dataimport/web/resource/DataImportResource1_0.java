@@ -9,12 +9,13 @@
  */
 package org.openmrs.module.dataimport.web.resource;
 
+import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.ImportPlan;
 import org.openmrs.module.dataimport.api.ImportResult;
 import org.openmrs.module.dataimport.api.WorkbookImportService;
 import org.openmrs.module.webservices.rest.SimpleObject;
-import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.RequestContext;
+import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.annotation.Resource;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.Uploadable;
@@ -22,7 +23,6 @@ import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResou
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
-import org.openmrs.api.context.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,12 +30,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStream;
 import java.util.UUID;
 
-@Resource(name = RestConstants.VERSION_1 + "/dataimport", supportedClass = SimpleObject.class, supportedOpenmrsVersions = { "2.*" })
+@Resource(name = RestConstants.VERSION_1 + "/dataimport", supportedClass = SimpleObject.class, supportedOpenmrsVersions = {
+        "2.*" })
 @SuppressWarnings("unused")
 public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> implements Uploadable {
 	
 	private static final Logger log = LoggerFactory.getLogger(DataImportResource1_0.class);
-
+	
 	private WorkbookImportService getService() {
 		return Context.getRegisteredComponent("workbookImportService", WorkbookImportService.class);
 	}
@@ -78,8 +79,8 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 			response.put("quarantinedRows", importPlan.getIssues());
 			response.put("message", "Dry run completed successfully");
 			
-			log.info("Dry run completed: {} OK rows, {} quarantined rows", 
-				importPlan.getRowsOk().size(), importPlan.getIssues().size());
+			log.info("Dry run completed: {} OK rows, {} quarantined rows", importPlan.getRowsOk().size(),
+			    importPlan.getIssues().size());
 			
 			return response;
 		}
@@ -90,7 +91,7 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 			return error("Dry run failed: " + errorMessage);
 		}
 	}
-
+	
 	@Override
 	public SimpleObject create(SimpleObject post, RequestContext context) throws ResponseException {
 		String batchIdStr = context.getParameter("batchId");
@@ -143,7 +144,7 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 	
 	@Override
 	public SimpleObject save(SimpleObject delegate) {
-        throw new ResourceDoesNotSupportOperationException();
+		throw new ResourceDoesNotSupportOperationException();
 	}
 	
 	@Override
@@ -153,12 +154,12 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 	
 	@Override
 	public void delete(SimpleObject delegate, String reason, RequestContext context) throws ResponseException {
-        throw new ResourceDoesNotSupportOperationException();
+		throw new ResourceDoesNotSupportOperationException();
 	}
 	
 	@Override
 	public void purge(SimpleObject delegate, RequestContext context) throws ResponseException {
-        throw new ResourceDoesNotSupportOperationException();
+		throw new ResourceDoesNotSupportOperationException();
 	}
 	
 	@Override
@@ -207,4 +208,3 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 		return message;
 	}
 }
-

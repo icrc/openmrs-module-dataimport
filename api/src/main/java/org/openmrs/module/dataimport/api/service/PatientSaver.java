@@ -117,7 +117,8 @@ public class PatientSaver {
 			throw new IllegalStateException("Failed to generate identifier for type: " + idType.getName());
 		}
 		
-		return createPatient(givenName, familyName, gender, birthdate, generatedIdentifier, identifierTypeUuid, locationUuid);
+		return createPatient(givenName, familyName, gender, birthdate, generatedIdentifier, identifierTypeUuid,
+		    locationUuid);
 	}
 	
 	public Patient getOrCreateByIdentifier(String identifierValue, String identifierTypeUuid, String locationUuid,

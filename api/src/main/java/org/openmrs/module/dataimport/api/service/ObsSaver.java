@@ -152,8 +152,8 @@ public class ObsSaver {
 			return addCodedObs(enc, blueprint.getConceptUuid(), answerConceptUuid);
 			
 		} else if (value instanceof ObsBlueprint.ObsValue.DateValue) {
-			Date dateValue = Date.from(((ObsBlueprint.ObsValue.DateValue) value).getValue()
-			        .atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
+			Date dateValue = Date.from(
+			    ((ObsBlueprint.ObsValue.DateValue) value).getValue().atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
 			return addDateObs(enc, blueprint.getConceptUuid(), dateValue);
 			
 		} else if (value instanceof ObsBlueprint.ObsValue.DateTimeValue) {
