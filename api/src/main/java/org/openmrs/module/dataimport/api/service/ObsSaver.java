@@ -43,9 +43,8 @@ public class ObsSaver {
 			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
 		}
 		// Guard against datatype mismatch early to avoid opaque OpenMRS validation errors
-		if (c.getDatatype() != null
-		        && (c.getDatatype().isCoded() || c.getDatatype().isNumeric() || c.getDatatype().isDate()
-		                || c.getDatatype().isDateTime() || c.getDatatype().isBoolean())) {
+		if (c.getDatatype() != null && (c.getDatatype().isCoded() || c.getDatatype().isNumeric() || c.getDatatype().isDate()
+		        || c.getDatatype().isDateTime() || c.getDatatype().isBoolean())) {
 			throw new IllegalArgumentException("Concept '" + c.getName() + "' (" + c.getUuid()
 			        + ") is not a text datatype; update template to CODED/NUMERIC/DATE/DATETIME/BOOLEAN as appropriate");
 		}
@@ -65,8 +64,8 @@ public class ObsSaver {
 			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
 		}
 		if (c.getDatatype() != null && !c.getDatatype().isNumeric()) {
-			throw new IllegalArgumentException("Concept '" + c.getName() + "' (" + c.getUuid()
-			        + ") is not NUMERIC; update template/datatype");
+			throw new IllegalArgumentException(
+			        "Concept '" + c.getName() + "' (" + c.getUuid() + ") is not NUMERIC; update template/datatype");
 		}
 		
 		Obs o = base(enc, c);
@@ -84,8 +83,8 @@ public class ObsSaver {
 			throw new IllegalArgumentException("Question concept not found: " + questionConceptUuid);
 		}
 		if (q.getDatatype() != null && !q.getDatatype().isCoded()) {
-			throw new IllegalArgumentException("Concept '" + q.getName() + "' (" + q.getUuid()
-			        + ") is not CODED; update template/datatype");
+			throw new IllegalArgumentException(
+			        "Concept '" + q.getName() + "' (" + q.getUuid() + ") is not CODED; update template/datatype");
 		}
 		
 		Concept a = getConceptService().getConceptByUuid(answerConceptUuid);
@@ -108,8 +107,8 @@ public class ObsSaver {
 			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
 		}
 		if (c.getDatatype() != null && !(c.getDatatype().isDate() || c.getDatatype().isDateTime())) {
-			throw new IllegalArgumentException("Concept '" + c.getName() + "' (" + c.getUuid()
-			        + ") is not DATE/DATETIME; update template/datatype");
+			throw new IllegalArgumentException(
+			        "Concept '" + c.getName() + "' (" + c.getUuid() + ") is not DATE/DATETIME; update template/datatype");
 		}
 		
 		Obs o = base(enc, c);
@@ -127,8 +126,8 @@ public class ObsSaver {
 			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
 		}
 		if (c.getDatatype() != null && !(c.getDatatype().isDateTime() || c.getDatatype().isDate())) {
-			throw new IllegalArgumentException("Concept '" + c.getName() + "' (" + c.getUuid()
-			        + ") is not DATETIME/DATE; update template/datatype");
+			throw new IllegalArgumentException(
+			        "Concept '" + c.getName() + "' (" + c.getUuid() + ") is not DATETIME/DATE; update template/datatype");
 		}
 		
 		Obs o = base(enc, c);
@@ -148,8 +147,8 @@ public class ObsSaver {
 			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
 		}
 		if (q.getDatatype() != null && !(q.getDatatype().isCoded() || q.getDatatype().isBoolean())) {
-			throw new IllegalArgumentException("Concept '" + q.getName() + "' (" + q.getUuid()
-			        + ") is not BOOLEAN/CODED; update template/datatype");
+			throw new IllegalArgumentException(
+			        "Concept '" + q.getName() + "' (" + q.getUuid() + ") is not BOOLEAN/CODED; update template/datatype");
 		}
 		return addCodedObs(enc, conceptUuid, answerConceptUuid);
 	}
@@ -183,8 +182,8 @@ public class ObsSaver {
 			return addCodedObs(enc, blueprint.getConceptUuid(), answerConceptUuid);
 			
 		} else if (value instanceof ObsBlueprint.ObsValue.DateValue) {
-			Date dateValue = Date.from(((ObsBlueprint.ObsValue.DateValue) value).getValue()
-			        .atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
+			Date dateValue = Date.from(
+			    ((ObsBlueprint.ObsValue.DateValue) value).getValue().atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
 			return addDateObs(enc, blueprint.getConceptUuid(), dateValue);
 			
 		} else if (value instanceof ObsBlueprint.ObsValue.DateTimeValue) {

@@ -14,14 +14,14 @@ import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.Person;
+import org.openmrs.PersonAddress;
 import org.openmrs.PersonAttribute;
 import org.openmrs.PersonAttributeType;
-import org.openmrs.PersonAddress;
 import org.openmrs.PersonName;
 import org.openmrs.api.AdministrationService;
-import org.openmrs.api.PersonService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.PatientService;
+import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.idgen.IdentifierSource;
 import org.openmrs.module.idgen.service.IdentifierSourceService;
@@ -89,8 +89,8 @@ public class PatientSaver {
 			throw new IllegalStateException("Failed to generate identifier for type: " + idType.getName());
 		}
 		
-		return createPatient(givenName, familyName, gender, birthdate, generatedIdentifier, identifierTypeUuid,
-		    locationUuid, addressLine1, cityVillage, country, phone);
+		return createPatient(givenName, familyName, gender, birthdate, generatedIdentifier, identifierTypeUuid, locationUuid,
+		    addressLine1, cityVillage, country, phone);
 	}
 	
 	private void addPhoneAttributeIfPresent(Person person, String phone) {
@@ -138,7 +138,8 @@ public class PatientSaver {
 		person.addName(name);
 		
 		if ((addressLine1 != null && !addressLine1.trim().isEmpty())
-		        || (cityVillage != null && !cityVillage.trim().isEmpty()) || (country != null && !country.trim().isEmpty())) {
+		        || (cityVillage != null && !cityVillage.trim().isEmpty())
+		        || (country != null && !country.trim().isEmpty())) {
 			PersonAddress address = new PersonAddress();
 			address.setAddress1(addressLine1);
 			address.setCityVillage(cityVillage);

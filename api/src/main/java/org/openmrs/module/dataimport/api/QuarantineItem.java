@@ -37,8 +37,8 @@ public final class QuarantineItem {
 		this.message = message;
 		this.hints = hints;
 	}
-
-    public static QuarantineItem error(String sheet, int row, int col, String code, String message) {
+	
+	public static QuarantineItem error(String sheet, int row, int col, String code, String message) {
 		return new QuarantineItem(sheet, row, col, code, message, null);
 	}
 	

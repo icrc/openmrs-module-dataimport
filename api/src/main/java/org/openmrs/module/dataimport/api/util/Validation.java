@@ -9,13 +9,13 @@
  */
 package org.openmrs.module.dataimport.api.util;
 
+import org.openmrs.ConceptDatatype;
+import org.openmrs.api.ConceptService;
+import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.ObsBlueprint;
 import org.openmrs.module.dataimport.api.QuarantineItem;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.SheetMeta;
-import org.openmrs.api.context.Context;
-import org.openmrs.api.ConceptService;
-import org.openmrs.ConceptDatatype;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -97,34 +97,49 @@ public class Validation {
 			boolean ok = false;
 			for (String token : expected.split("\\|")) {
 				String t = token.trim();
-				if ("TEXT".equals(t) && dt.isText()) ok = true;
-				if ("NUMERIC".equals(t) && dt.isNumeric()) ok = true;
-				if ("CODED".equals(t) && dt.isCoded()) ok = true;
-				if ("DATE".equals(t) && dt.isDate()) ok = true;
-				if ("DATETIME".equals(t) && dt.isDateTime()) ok = true;
-				if ("BOOLEAN".equals(t) && dt.isBoolean()) ok = true;
+				if ("TEXT".equals(t) && dt.isText())
+					ok = true;
+				if ("NUMERIC".equals(t) && dt.isNumeric())
+					ok = true;
+				if ("CODED".equals(t) && dt.isCoded())
+					ok = true;
+				if ("DATE".equals(t) && dt.isDate())
+					ok = true;
+				if ("DATETIME".equals(t) && dt.isDateTime())
+					ok = true;
+				if ("BOOLEAN".equals(t) && dt.isBoolean())
+					ok = true;
 			}
 			if (!ok) {
 				String actual = describeDatatype(dt);
 				String label = safeLabel(column);
 				String concept = column.conceptUuid != null ? column.conceptUuid : "";
-				String message = "Column '" + label + "' (concept " + concept
-				        + ") datatype mismatch: expected one of [" + expected + "] but found " + actual;
-				quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATATYPE_MISMATCH", message));
+				String message = "Column '" + label + "' (concept " + concept + ") datatype mismatch: expected one of ["
+				        + expected + "] but found " + actual;
+				quarantineItems
+				        .add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATATYPE_MISMATCH", message));
 			}
-		} catch (Exception ignored) {
+		}
+		catch (Exception ignored) {
 			// In dry-run validation we avoid failing the whole process if concept lookup fails
 		}
 	}
 	
 	private static String describeDatatype(ConceptDatatype dt) {
-		if (dt == null) return "UNKNOWN";
-		if (dt.isText()) return "TEXT";
-		if (dt.isNumeric()) return "NUMERIC";
-		if (dt.isCoded()) return "CODED";
-		if (dt.isDateTime()) return "DATETIME";
-		if (dt.isDate()) return "DATE";
-		if (dt.isBoolean()) return "BOOLEAN";
+		if (dt == null)
+			return "UNKNOWN";
+		if (dt.isText())
+			return "TEXT";
+		if (dt.isNumeric())
+			return "NUMERIC";
+		if (dt.isCoded())
+			return "CODED";
+		if (dt.isDateTime())
+			return "DATETIME";
+		if (dt.isDate())
+			return "DATE";
+		if (dt.isBoolean())
+			return "BOOLEAN";
 		return dt.getName();
 	}
 	
@@ -139,8 +154,7 @@ public class Validation {
 		
 		if (column.minLength != null && value.length() < column.minLength) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "TEXT_TOO_SHORT",
-			    "Column '" + safeLabel(column) + "' is shorter than minimum length of " + column.minLength
-			            + " characters"));
+			    "Column '" + safeLabel(column) + "' is shorter than minimum length of " + column.minLength + " characters"));
 		}
 	}
 	
@@ -204,7 +218,7 @@ public class Validation {
 			    "Column '" + safeLabel(column) + "' date " + value + " is in the future"));
 		}
 	}
-
+	
 	private static String safeLabel(ColumnMeta column) {
 		return column.label != null && !column.label.trim().isEmpty() ? column.label
 		        : (column.fieldId != null ? column.fieldId

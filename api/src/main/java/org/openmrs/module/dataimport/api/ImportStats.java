@@ -38,8 +38,8 @@ public final class ImportStats {
 		this.encountersToCreate = encountersToCreate;
 		this.obsToCreate = obsToCreate;
 	}
-
-    public static ImportStats of(java.util.List<RowPlan> okRows, java.util.List<QuarantineItem> issues) {
+	
+	public static ImportStats of(java.util.List<RowPlan> okRows, java.util.List<QuarantineItem> issues) {
 		int totalRows = okRows.size() + issues.size();
 		int encountersToCreate = okRows.size();
 		int obsToCreate = okRows.stream().mapToInt(r -> r.getObs().size()).sum();

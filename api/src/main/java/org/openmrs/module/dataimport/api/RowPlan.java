@@ -43,5 +43,5 @@ public final class RowPlan {
 		this.obs = obs;
 		this.idempotencyKey = idempotencyKey;
 	}
-
+	
 }

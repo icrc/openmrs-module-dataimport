@@ -41,8 +41,8 @@ public final class ImportResult {
 		this.createdEncounterUuids = createdEncounterUuids;
 		this.errors = errors;
 	}
-
-    public static ImportResult success(UUID batchId, ImportStats stats, List<String> createdEncounterUuids) {
+	
+	public static ImportResult success(UUID batchId, ImportStats stats, List<String> createdEncounterUuids) {
 		return new ImportResult(true, "Import completed successfully", batchId, stats, createdEncounterUuids, null);
 	}
 	

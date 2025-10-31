@@ -25,7 +25,7 @@ public class RegistrationReader {
 	private static final Logger log = LoggerFactory.getLogger(RegistrationReader.class);
 	
 	private static final String PATIENT_SHEET_NAME = "Patient Registration";
-
+	
 	public static PatientIndex indexPatients(org.apache.poi.ss.usermodel.Workbook workbook) {
 		Sheet regSheet = workbook.getSheet(PATIENT_SHEET_NAME);
 		if (regSheet == null) {
@@ -105,7 +105,7 @@ public class RegistrationReader {
 	 * Index for resolving patient references.
 	 */
 	@Getter
-    public static class PatientIndex {
+	public static class PatientIndex {
 		
 		private final Map<String, PatientRow> patients;
 		
@@ -116,8 +116,8 @@ public class RegistrationReader {
 		public PatientIndex(Map<String, PatientRow> patients) {
 			this.patients = patients;
 		}
-
-        public PatientResolution resolve(String patientRef) {
+		
+		public PatientResolution resolve(String patientRef) {
 			if (patientRef == null || patientRef.isEmpty()) {
 				return PatientResolution.unresolved("Missing patient reference");
 			}
@@ -137,7 +137,7 @@ public class RegistrationReader {
 	 * Result of patient resolution.
 	 */
 	@Getter
-    public static class PatientResolution {
+	public static class PatientResolution {
 		
 		private final boolean resolved;
 		
@@ -165,8 +165,8 @@ public class RegistrationReader {
 		public static PatientResolution unresolved(String errorMessage) {
 			return new PatientResolution(false, null, null, errorMessage);
 		}
-
-        public boolean needsCreation() {
+		
+		public boolean needsCreation() {
 			return resolved && patientUuid == null && patientRow != null;
 		}
 	}
