@@ -9,11 +9,14 @@
  */
 package org.openmrs.module.dataimport.api;
 
+import lombok.Getter;
+
 import java.util.List;
 
 /**
  * Plan for importing a single row of data.
  */
+@Getter
 public final class RowPlan {
 	
 	private final String sheetName;
@@ -40,32 +43,5 @@ public final class RowPlan {
 		this.obs = obs;
 		this.idempotencyKey = idempotencyKey;
 	}
-	
-	public String getSheetName() {
-		return sheetName;
-	}
-	
-	public int getRowIndex() {
-		return rowIndex;
-	}
-	
-	public String getPatientRef() {
-		return patientRef;
-	}
-	
-	public String getPatientUuid() {
-		return patientUuid;
-	}
-	
-	public EncounterBlueprint getEncounter() {
-		return encounter;
-	}
-	
-	public List<ObsBlueprint> getObs() {
-		return obs;
-	}
-	
-	public String getIdempotencyKey() {
-		return idempotencyKey;
-	}
+
 }

@@ -9,9 +9,12 @@
  */
 package org.openmrs.module.dataimport.api;
 
+import lombok.Getter;
+
 /**
  * Represents a validation issue that quarantines a row from import.
  */
+@Getter
 public final class QuarantineItem {
 	
 	private final String sheet;
@@ -34,32 +37,8 @@ public final class QuarantineItem {
 		this.message = message;
 		this.hints = hints;
 	}
-	
-	public String getSheet() {
-		return sheet;
-	}
-	
-	public int getRow() {
-		return row;
-	}
-	
-	public int getCol() {
-		return col;
-	}
-	
-	public String getCode() {
-		return code;
-	}
-	
-	public String getMessage() {
-		return message;
-	}
-	
-	public String[] getHints() {
-		return hints;
-	}
-	
-	public static QuarantineItem error(String sheet, int row, int col, String code, String message) {
+
+    public static QuarantineItem error(String sheet, int row, int col, String code, String message) {
 		return new QuarantineItem(sheet, row, col, code, message, null);
 	}
 	

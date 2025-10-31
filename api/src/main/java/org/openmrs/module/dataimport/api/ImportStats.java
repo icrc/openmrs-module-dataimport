@@ -9,9 +9,12 @@
  */
 package org.openmrs.module.dataimport.api;
 
+import lombok.Getter;
+
 /**
  * Statistics about an import operation.
  */
+@Getter
 public final class ImportStats {
 	
 	private final int totalRows;
@@ -35,32 +38,8 @@ public final class ImportStats {
 		this.encountersToCreate = encountersToCreate;
 		this.obsToCreate = obsToCreate;
 	}
-	
-	public int getTotalRows() {
-		return totalRows;
-	}
-	
-	public int getOkRows() {
-		return okRows;
-	}
-	
-	public int getQuarantinedRows() {
-		return quarantinedRows;
-	}
-	
-	public int getPatientsToCreate() {
-		return patientsToCreate;
-	}
-	
-	public int getEncountersToCreate() {
-		return encountersToCreate;
-	}
-	
-	public int getObsToCreate() {
-		return obsToCreate;
-	}
-	
-	public static ImportStats of(java.util.List<RowPlan> okRows, java.util.List<QuarantineItem> issues) {
+
+    public static ImportStats of(java.util.List<RowPlan> okRows, java.util.List<QuarantineItem> issues) {
 		int totalRows = okRows.size() + issues.size();
 		int encountersToCreate = okRows.size();
 		int obsToCreate = okRows.stream().mapToInt(r -> r.getObs().size()).sum();

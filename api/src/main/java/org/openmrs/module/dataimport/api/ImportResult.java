@@ -9,12 +9,15 @@
  */
 package org.openmrs.module.dataimport.api;
 
+import lombok.Getter;
+
 import java.util.List;
 import java.util.UUID;
 
 /**
  * Result of committing an import plan to the database.
  */
+@Getter
 public final class ImportResult {
 	
 	private final boolean success;
@@ -38,32 +41,8 @@ public final class ImportResult {
 		this.createdEncounterUuids = createdEncounterUuids;
 		this.errors = errors;
 	}
-	
-	public boolean isSuccess() {
-		return success;
-	}
-	
-	public String getMessage() {
-		return message;
-	}
-	
-	public UUID getBatchId() {
-		return batchId;
-	}
-	
-	public ImportStats getStats() {
-		return stats;
-	}
-	
-	public List<String> getCreatedEncounterUuids() {
-		return createdEncounterUuids;
-	}
-	
-	public List<String> getErrors() {
-		return errors;
-	}
-	
-	public static ImportResult success(UUID batchId, ImportStats stats, List<String> createdEncounterUuids) {
+
+    public static ImportResult success(UUID batchId, ImportStats stats, List<String> createdEncounterUuids) {
 		return new ImportResult(true, "Import completed successfully", batchId, stats, createdEncounterUuids, null);
 	}
 	

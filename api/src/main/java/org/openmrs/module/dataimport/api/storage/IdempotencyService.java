@@ -23,7 +23,7 @@ public class IdempotencyService {
 	
 	private static final Logger log = LoggerFactory.getLogger(IdempotencyService.class);
 	
-	// In-memory storage (in production, this would be a database table)
+	// TODO: this in-memory storage should be a database table
 	private static final Map<String, String> storage = new ConcurrentHashMap<>();
 	
 	/**
@@ -136,13 +136,5 @@ public class IdempotencyService {
 		if (removedCount > 0) {
 			log.info("Cleaned up {} old idempotency keys", removedCount);
 		}
-	}
-	
-	/**
-	 * Validates that idempotency is properly configured.
-	 */
-	public void validateConfiguration() {
-		// In a real implementation, you'd check Global Properties or other configuration
-		log.info("Idempotency service is enabled - duplicate imports will be prevented");
 	}
 }
