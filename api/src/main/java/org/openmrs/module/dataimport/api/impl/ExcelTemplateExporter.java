@@ -35,12 +35,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ExcelTemplateExporter {
 	
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
 	
 	private static final String LIST_SHEET = "__lists";
+	
+	private static final String META_SHEET = "__meta";
 	
 	private static final String PATIENT_SHEET_NAME = "Patient Registration";
 	
@@ -55,6 +60,10 @@ public class ExcelTemplateExporter {
 	private static final int LAST_DATA_ROW = 1000;
 	
 	public byte[] export(FormModel form, boolean includePatient) {
+		return export(form, includePatient, null);
+	}
+	
+	public byte[] export(FormModel form, boolean includePatient, String locationUuid) {
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			DataFormat dataFormat = workbook.createDataFormat();
 			CellStyle dateStyle = workbook.createCellStyle();
@@ -62,10 +71,12 @@ public class ExcelTemplateExporter {
 			CellStyle dateTimeStyle = workbook.createCellStyle();
 			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
 			
-			if (includePatient)
+			if (includePatient) {
 				createPatientSheet(workbook);
+			}
 			
 			getOrCreateListSheet(workbook);
+			createMetaSheet(workbook, form, locationUuid);
 			
 			for (SheetModel sheetModel : form.sheets) {
 				XSSFSheet sheet = workbook.createSheet(sheetModel.sheetName);
@@ -105,9 +116,9 @@ public class ExcelTemplateExporter {
 			
 			ensurePatientRefsNamedRange(workbook);
 			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-				Sheet s = workbook.getSheetAt(i);
+				XSSFSheet s = workbook.getSheetAt(i);
 				if (!PATIENT_SHEET_NAME.equals(s.getSheetName())) {
-					applyPatientRefDropdown((XSSFSheet) s, 0, FIRST_DATA_ROW, LAST_DATA_ROW);
+					applyPatientRefDropdown(s, 0, FIRST_DATA_ROW, LAST_DATA_ROW);
 				}
 			}
 			
@@ -228,7 +239,7 @@ public class ExcelTemplateExporter {
 	}
 	
 	private void createSimpleDropdown(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
-		if (field.answers == null || field.answers.isEmpty()) {
+		if (field.answers.isEmpty()) {
 			return;
 		}
 		
@@ -256,7 +267,6 @@ public class ExcelTemplateExporter {
 			cell.setCellValue(field.answers.get(i).label);
 		}
 		
-		// Create named range pointing to the list sheet
 		Name namedRange = workbook.createName();
 		namedRange.setNameName(fieldName);
 		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
@@ -276,7 +286,6 @@ public class ExcelTemplateExporter {
 	}
 	
 	private void ensurePatientRefsNamedRange(XSSFWorkbook workbook) {
-		// Dynamic range that grows as refs are added (skips the header in I1, Patient Ref is now in column I)
 		String formula = "IF(COUNTA('" + REG_SHEET + "'!$I:$I)<=1," + "'" + REG_SHEET + "'!$I$2," + "OFFSET('" + REG_SHEET
 		        + "'!$I$2,0,0,COUNTA('" + REG_SHEET + "'!$I:$I)-1,1))";
 		Name name = workbook.getName(PATIENT_REFS_RANGE);
@@ -309,4 +318,153 @@ public class ExcelTemplateExporter {
 		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
 	}
+	
+	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid) {
+		XSSFSheet metaSheet = workbook.createSheet(META_SHEET);
+		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
+		
+		CellStyle headerStyle = createHeaderStyle(workbook);
+		
+		// Template metadata table
+		Row headerRow = metaSheet.createRow(0);
+		Cell keyHeader = headerRow.createCell(0);
+		keyHeader.setCellValue("key");
+		keyHeader.setCellStyle(headerStyle);
+		Cell valueHeader = headerRow.createCell(1);
+		valueHeader.setCellValue("value");
+		valueHeader.setCellStyle(headerStyle);
+		
+		int rowIndex = 1;
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateVersion");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(1);
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("generatedAt");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(Instant.now().toString());
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("locale");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("en");
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateName");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("Multi-Form Template");
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("defaultLocationUuid");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(locationUuid != null ? locationUuid : "");
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formCount");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
+		
+		rowIndex += 2; // Skip a row
+		
+		Row formHeaderRow = metaSheet.createRow(rowIndex++);
+		String[] formHeaders = { "formUuid", "formName", "formVersion", "encounterTypeUuid", "sheetName" };
+		for (int i = 0; i < formHeaders.length; i++) {
+			Cell cell = formHeaderRow.createCell(i);
+			cell.setCellValue(formHeaders[i]);
+			cell.setCellStyle(headerStyle);
+		}
+		
+		for (SheetModel sheetModel : form.sheets) {
+			Row formRow = metaSheet.createRow(rowIndex++);
+			String formUuid = sheetModel.formUuid != null ? sheetModel.formUuid : "";
+			String formName = sheetModel.sheetName;
+			String formVersion = sheetModel.formVersion != null ? sheetModel.formVersion : "1.0";
+			String encounterTypeUuid = sheetModel.encounterTypeUuid != null ? sheetModel.encounterTypeUuid : "";
+			formRow.createCell(0).setCellValue(formUuid);
+			formRow.createCell(1).setCellValue(formName);
+			formRow.createCell(2).setCellValue(formVersion);
+			formRow.createCell(3).setCellValue(encounterTypeUuid);
+			formRow.createCell(4).setCellValue(sheetModel.sheetName);
+		}
+		
+		rowIndex += 2; // Skip a row
+		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
+		String[] columnHeaders = { "sheetName", "colIndex", "fieldId", "label", "conceptUuid", "datatype", "isRepeat",
+		        "isMulti", "answersJson" };
+		for (int i = 0; i < columnHeaders.length; i++) {
+			Cell cell = columnHeaderRow.createCell(i);
+			cell.setCellValue(columnHeaders[i]);
+			cell.setCellStyle(headerStyle);
+		}
+		
+		if (workbook.getSheet(PATIENT_SHEET_NAME) != null) {
+			String[] patientHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
+			        "City/Village", "Country", "Phone", "Patient Ref" };
+			for (int colIndex = 0; colIndex < patientHeaders.length; colIndex++) {
+				Row row = metaSheet.createRow(rowIndex++);
+				row.createCell(0).setCellValue(PATIENT_SHEET_NAME);
+				row.createCell(1).setCellValue(colIndex);
+				row.createCell(2).setCellValue(""); // fieldId
+				row.createCell(3).setCellValue(patientHeaders[colIndex]);
+				row.createCell(4).setCellValue(""); // conceptUuid
+				row.createCell(5).setCellValue("TEXT"); // datatype
+				row.createCell(6).setCellValue(false); // isRepeat
+				row.createCell(7).setCellValue(false); // isMulti
+				row.createCell(8).setCellValue("{}"); // answersJson
+			}
+		}
+		
+		for (SheetModel sheetModel : form.sheets) {
+			int colIndex = 0;
+			
+			Row row = metaSheet.createRow(rowIndex++);
+			row.createCell(0).setCellValue(sheetModel.sheetName);
+			row.createCell(1).setCellValue(colIndex++);
+			row.createCell(2).setCellValue(""); // fieldId
+			row.createCell(3).setCellValue("Patient Ref");
+			row.createCell(4).setCellValue(""); // conceptUuid
+			row.createCell(5).setCellValue("TEXT"); // datatype
+			row.createCell(6).setCellValue(false); // isRepeat
+			row.createCell(7).setCellValue(false); // isMulti
+			row.createCell(8).setCellValue("{}"); // answersJson
+			
+			for (FieldModel field : sheetModel.fields) {
+				row = metaSheet.createRow(rowIndex++);
+				row.createCell(0).setCellValue(sheetModel.sheetName);
+				row.createCell(1).setCellValue(colIndex++);
+				row.createCell(2).setCellValue(field.id != null ? field.id : "");
+				row.createCell(3).setCellValue(field.label != null ? field.label : "");
+				row.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
+				row.createCell(5).setCellValue(field.datatype != null ? field.datatype.name() : "TEXT");
+				row.createCell(6).setCellValue(false); // isRepeat - TODO: implement repeat groups
+				row.createCell(7).setCellValue(false); // isMulti - TODO: implement multi-select
+				
+				// Build answers JSON for coded fields
+				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
+					Map<String, String> answersMap = new HashMap<>();
+					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
+						if (answer.label != null && answer.conceptUuid != null) {
+							answersMap.put(answer.label, answer.conceptUuid);
+						}
+					}
+					row.createCell(8).setCellValue(mapToJson(answersMap));
+				} else {
+					row.createCell(8).setCellValue("{}");
+				}
+			}
+		}
+		
+		for (int i = 0; i < columnHeaders.length; i++) {
+			metaSheet.autoSizeColumn(i);
+		}
+		
+		log.debug("Created metadata sheet with {} rows", rowIndex);
+	}
+	
+	private String mapToJson(Map<String, String> map) {
+		if (map.isEmpty())
+			return "{}";
+		
+		StringBuilder json = new StringBuilder("{");
+		boolean first = true;
+		for (Map.Entry<String, String> entry : map.entrySet()) {
+			if (!first)
+				json.append(",");
+			json.append("\"").append(entry.getKey().replace("\"", "\\\"")).append("\":\"").append(entry.getValue())
+			        .append("\"");
+			first = false;
+		}
+		json.append("}");
+		return json.toString();
+	}
+	
 }

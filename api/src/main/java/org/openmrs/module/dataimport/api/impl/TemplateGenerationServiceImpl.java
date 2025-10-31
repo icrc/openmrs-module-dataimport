@@ -23,12 +23,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Implementation of {@link org.openmrs.module.dataimport.api.TemplateGenerationService} for
- * generating Excel templates from OpenMRS form UUIDs.
- */
 @Service
 public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimport.api.TemplateGenerationService {
 	
@@ -63,7 +60,8 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 		
 		FormModel merged = new FormModel();
 		merged.name = "Template";
-		merged.version = "1";
+		
+		List<String> formVersions = new ArrayList<>();
 		
 		for (String uuid : formUuids) {
 			try {
@@ -75,6 +73,16 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 				
 				FormModel formModel = parser.parse(json, null);
 				enrichFormWithConceptAnswers(formModel);
+				
+				String formVersion = formModel.version != null ? formModel.version : "1.0";
+				formVersions.add(formVersion);
+				
+				// Set form information on each sheet before adding to merged form
+				for (SheetModel sheet : formModel.sheets) {
+					sheet.formUuid = formModel.formUuid;
+					sheet.formVersion = formVersion;
+					sheet.encounterTypeUuid = formModel.encounterTypeUuid;
+				}
 				
 				if (merged.encounterTypeUuid == null) {
 					merged.encounterTypeUuid = formModel.encounterTypeUuid;
@@ -98,8 +106,10 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 			}
 		}
 		
+		merged.version = createCompositeVersion(formVersions);
+		
 		try {
-			return exporter.export(merged, opts.includePatient);
+			return exporter.export(merged, opts.includePatient, opts.locationUuid);
 		}
 		catch (RuntimeException e) {
 			throw new APIException("Failed to generate Excel template: " + e.getMessage(), e);
@@ -152,5 +162,25 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 		
 		log.info("CONCEPT ENRICHMENT SUMMARY: {} CODED fields, {} with inline answers, {} loaded from concepts",
 		    totalCodedFields, fieldsWithInlineAnswers, fieldsLoadedFromConcepts);
+	}
+	
+	/**
+	 * Creates a composite version string from individual form versions. For single form: returns the
+	 * form version as-is For multiple forms: returns comma-separated versions (e.g., "1.0,2.1,1.5")
+	 * 
+	 * @param formVersions List of individual form versions
+	 * @return Composite version string
+	 */
+	private String createCompositeVersion(List<String> formVersions) {
+		if (formVersions.isEmpty()) {
+			return "1.0";
+		}
+		
+		if (formVersions.size() == 1) {
+			return formVersions.get(0);
+		}
+		
+		// Multiple forms: create comma-separated version string
+		return String.join(",", formVersions);
 	}
 }

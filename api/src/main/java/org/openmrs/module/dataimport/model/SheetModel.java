@@ -19,11 +19,20 @@ public class SheetModel {
 	
 	public String sheetName;
 	
+	public String formUuid; // Track which form this sheet belongs to
+	
+	public String formVersion; // Track individual form version
+	
+	public String encounterTypeUuid; // Track encounter type for this sheet
+	
 	public final List<FieldModel> fields = new ArrayList<>();
 	
 	SheetModel shallowCopy() {
 		SheetModel c = new SheetModel();
 		c.sheetName = sheetName;
+		c.formUuid = formUuid;
+		c.formVersion = formVersion;
+		c.encounterTypeUuid = encounterTypeUuid;
 		for (FieldModel f : fields) {
 			c.fields.add(f.copyHeaderOnly());
 		}

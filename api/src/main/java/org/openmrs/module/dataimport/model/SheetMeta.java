@@ -1,0 +1,41 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public License,
+ * v. 2.0. If a copy of the MPL was not distributed with this file, You can
+ * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+ * the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+ *
+ * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
+ * graphic logo is a trademark of OpenMRS Inc.
+ */
+package org.openmrs.module.dataimport.model;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Metadata about a sheet in the Excel template.
+ */
+public class SheetMeta {
+	
+	public String sheetName;
+	
+	public String formUuid; // NEW: Which form this sheet belongs to
+	
+	public String formName; // NEW: Form display name
+	
+	public String encounterTypeUuid;
+	
+	public String locationUuid; // Per-sheet location override
+	
+	public final List<ColumnMeta> columns = new ArrayList<>();
+	
+	public ColumnMeta getColumn(int colIndex) {
+		return columns.stream().filter(c -> c.colIndex == colIndex).findFirst().orElse(null);
+	}
+	
+	public ColumnMeta getColumnByFieldId(String fieldId) {
+		return columns.stream().filter(c -> fieldId.equals(c.fieldId)).findFirst().orElse(null);
+	}
+}
