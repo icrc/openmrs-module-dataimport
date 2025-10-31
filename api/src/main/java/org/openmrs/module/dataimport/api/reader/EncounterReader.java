@@ -24,12 +24,14 @@ public class EncounterReader {
 	        String templateDefaultLocationUuid) {
 		EncounterBlueprint.Builder builder = EncounterBlueprint.builder();
 		
-		// Use encounter type from sheet metadata
+		if (sheetMeta.formUuid != null && !sheetMeta.formUuid.isEmpty()) {
+			builder.formUuid(sheetMeta.formUuid);
+		}
+		
 		if (sheetMeta.encounterTypeUuid != null && !sheetMeta.encounterTypeUuid.isEmpty()) {
 			builder.encounterTypeUuid(sheetMeta.encounterTypeUuid);
 		}
 		
-		// Use location from sheet metadata, fallback to template default
 		String locationUuid = sheetMeta.locationUuid;
 		if (locationUuid == null || locationUuid.isEmpty()) {
 			locationUuid = templateDefaultLocationUuid;
@@ -38,7 +40,6 @@ public class EncounterReader {
 			builder.locationUuid(locationUuid);
 		}
 		
-		// Default to current time - form sheets don't typically have encounter datetime
 		builder.encounterDatetime(Instant.now());
 		
 		// Provider will be resolved at commit time using defaults

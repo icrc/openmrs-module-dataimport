@@ -14,7 +14,12 @@ import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.Person;
+import org.openmrs.PersonAttribute;
+import org.openmrs.PersonAttributeType;
+import org.openmrs.PersonAddress;
 import org.openmrs.PersonName;
+import org.openmrs.api.AdministrationService;
+import org.openmrs.api.PersonService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.context.Context;
@@ -23,7 +28,6 @@ import org.openmrs.module.idgen.service.IdentifierSourceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -39,49 +43,17 @@ public class PatientSaver {
 		return Context.getLocationService();
 	}
 	
-	public Patient createPatient(String givenName, String familyName, String gender, Date birthdate, String identifierValue,
-	        String identifierTypeUuid, String locationUuid) {
-		
-		PatientService ps = getPatientService();
-		LocationService ls = getLocationService();
-		
-		Person person = new Person();
-		person.setGender(gender);
-		person.setBirthdate(birthdate);
-		
-		PersonName name = new PersonName();
-		name.setGivenName(givenName);
-		name.setFamilyName(familyName);
-		name.setPreferred(true);
-		person.addName(name);
-		
-		Patient patient = new Patient(person);
-		PatientIdentifierType idType = ps.getPatientIdentifierTypeByUuid(identifierTypeUuid);
-		if (idType == null) {
-			throw new IllegalArgumentException("PatientIdentifierType not found: " + identifierTypeUuid);
-		}
-		
-		Location idLocation = ls.getLocationByUuid(locationUuid);
-		if (idLocation == null) {
-			throw new IllegalArgumentException("Location not found: " + locationUuid);
-		}
-		
-		PatientIdentifier pid = new PatientIdentifier(identifierValue, idType, idLocation);
-		pid.setPreferred(true);
-		patient.addIdentifier(pid);
-		
-		patient = ps.savePatient(patient);
-		log.info("Created patient: {} {} with identifier: {}", givenName, familyName, identifierValue);
-		return patient;
+	private PersonService getPersonService() {
+		return Context.getPersonService();
 	}
 	
-	/**
-	 * Creates a patient and automatically generates a valid identifier using IdGen for the given
-	 * identifier type. This avoids using non-identifier values (like patientRef) as identifiers and
-	 * ensures validators (e.g., Luhn Mod-30) are satisfied.
-	 */
+	private AdministrationService getAdministrationService() {
+		return Context.getAdministrationService();
+	}
+	
 	public Patient createPatientWithGeneratedIdentifier(String givenName, String familyName, String gender, Date birthdate,
-	        String identifierTypeUuid, String locationUuid) {
+	        String identifierTypeUuid, String locationUuid, String addressLine1, String cityVillage, String country,
+	        String phone) {
 		PatientService ps = getPatientService();
 		LocationService ls = getLocationService();
 		
@@ -118,27 +90,82 @@ public class PatientSaver {
 		}
 		
 		return createPatient(givenName, familyName, gender, birthdate, generatedIdentifier, identifierTypeUuid,
-		    locationUuid);
+		    locationUuid, addressLine1, cityVillage, country, phone);
 	}
 	
-	public Patient getOrCreateByIdentifier(String identifierValue, String identifierTypeUuid, String locationUuid,
-	        String givenName, String familyName, String gender, Date birthdate) {
-		
+	private void addPhoneAttributeIfPresent(Person person, String phone) {
+		if (phone == null || phone.trim().isEmpty()) {
+			return;
+		}
+		PersonAttributeType pat = resolvePhoneAttributeType();
+		if (pat == null) {
+			log.warn("Phone PersonAttributeType not configured; skipping phone attribute");
+			return;
+		}
+		PersonAttribute attr = new PersonAttribute();
+		attr.setAttributeType(pat);
+		attr.setValue(phone);
+		person.addAttribute(attr);
+	}
+	
+	private PersonAttributeType resolvePhoneAttributeType() {
+		AdministrationService as = getAdministrationService();
+		String gp = null;
+		try {
+			gp = as.getGlobalProperty("dataimport.phoneAttributeTypeUuid");
+		}
+		catch (Exception ignored) {}
+		if (gp != null && !gp.trim().isEmpty()) {
+			return getPersonService().getPersonAttributeTypeByUuid(gp);
+		}
+		return null;
+	}
+	
+	public Patient createPatient(String givenName, String familyName, String gender, Date birthdate, String identifierValue,
+	        String identifierTypeUuid, String locationUuid, String addressLine1, String cityVillage, String country,
+	        String phone) {
 		PatientService ps = getPatientService();
-		PatientIdentifierType type = ps.getPatientIdentifierTypeByUuid(identifierTypeUuid);
+		LocationService ls = getLocationService();
 		
-		if (type == null) {
+		Person person = new Person();
+		person.setGender(gender);
+		person.setBirthdate(birthdate);
+		
+		PersonName name = new PersonName();
+		name.setGivenName(givenName);
+		name.setFamilyName(familyName);
+		name.setPreferred(true);
+		person.addName(name);
+		
+		if ((addressLine1 != null && !addressLine1.trim().isEmpty())
+		        || (cityVillage != null && !cityVillage.trim().isEmpty()) || (country != null && !country.trim().isEmpty())) {
+			PersonAddress address = new PersonAddress();
+			address.setAddress1(addressLine1);
+			address.setCityVillage(cityVillage);
+			address.setCountry(country);
+			person.addAddress(address);
+		}
+		
+		addPhoneAttributeIfPresent(person, phone);
+		
+		Patient patient = new Patient(person);
+		PatientIdentifierType idType = ps.getPatientIdentifierTypeByUuid(identifierTypeUuid);
+		if (idType == null) {
 			throw new IllegalArgumentException("PatientIdentifierType not found: " + identifierTypeUuid);
 		}
 		
-		List<Patient> existingPatients = ps.getPatients(null, identifierValue, Collections.singletonList(type), true);
-		Patient existing = existingPatients.stream().findFirst().orElse(null);
-		
-		if (existing != null) {
-			log.debug("Found existing patient with identifier: {}", identifierValue);
-			return existing;
+		Location idLocation = ls.getLocationByUuid(locationUuid);
+		if (idLocation == null) {
+			throw new IllegalArgumentException("Location not found: " + locationUuid);
 		}
-		return createPatient(givenName, familyName, gender, birthdate, identifierValue, identifierTypeUuid, locationUuid);
+		
+		PatientIdentifier pid = new PatientIdentifier(identifierValue, idType, idLocation);
+		pid.setPreferred(true);
+		patient.addIdentifier(pid);
+		
+		patient = ps.savePatient(patient);
+		log.info("Created patient with address and phone: {} {} [{}]", givenName, familyName, identifierValue);
+		return patient;
 	}
 	
 	public String getDefaultIdentifierTypeUuid() {

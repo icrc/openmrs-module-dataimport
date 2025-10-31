@@ -26,10 +26,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Implementation of {@link org.openmrs.module.dataimport.api.TemplateGenerationService} for
- * generating Excel templates from OpenMRS form UUIDs.
- */
 @Service
 public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimport.api.TemplateGenerationService {
 	

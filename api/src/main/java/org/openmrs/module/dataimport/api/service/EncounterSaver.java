@@ -135,7 +135,6 @@ public class EncounterSaver {
 			locationUuid = getDefaultLocationUuid();
 		}
 		
-		// Resolve encounter type: prefer explicit on blueprint; else derive from form; else GP default
 		String encounterTypeUuid = blueprint.getEncounterTypeUuid();
 		if (encounterTypeUuid == null || encounterTypeUuid.trim().isEmpty()) {
 			String formUuid = blueprint.getFormUuid();
@@ -151,8 +150,27 @@ public class EncounterSaver {
 		}
 		
 		String encounterRoleUuid = getDefaultEncounterRoleUuid();
+		String providerUuid = blueprint.getProviderUuid();
+		if (providerUuid == null || providerUuid.trim().isEmpty()) {
+			try {
+				org.openmrs.User user = Context.getAuthenticatedUser();
+				if (user != null && user.getPerson() != null) {
+					java.util.Collection<Provider> providers = getProviderService().getProvidersByPerson(user.getPerson());
+					Provider p = null;
+					if (providers != null && !providers.isEmpty()) {
+						p = providers.iterator().next();
+					}
+					if (p != null) {
+						providerUuid = p.getUuid();
+					}
+				}
+			}
+			catch (Exception ignored) {
+				// If no provider can be resolved, proceed without setting one
+			}
+		}
 		return createEncounter(patient.getUuid(), encounterTypeUuid, encounterDate, locationUuid, blueprint.getFormUuid(),
-		    blueprint.getProviderUuid(), encounterRoleUuid);
+		    providerUuid, encounterRoleUuid);
 	}
 	
 	public String getDefaultLocationUuid() {

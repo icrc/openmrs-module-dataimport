@@ -17,31 +17,16 @@
 		    http://www.springframework.org/schema/util
 		    http://www.springframework.org/schema/util/spring-util-3.0.xsd">
 
-	<!-- Server-side form resolution services -->
 	<bean id="coreFormSchemaResolver" class="org.openmrs.module.dataimport.api.impl.CoreFormSchemaResolver" />
-
 	<bean id="templateGenerationService" class="org.openmrs.module.dataimport.api.impl.TemplateGenerationServiceImpl" />
-	
-	<!-- O3 form parser -->
 	<bean id="o3FormParser" class="org.openmrs.module.dataimport.api.impl.O3FormParser" />
-	
-	<!-- Excel template exporter -->
 	<bean id="excelTemplateExporter" class="org.openmrs.module.dataimport.api.impl.ExcelTemplateExporter" />
-	
-	<!-- Concept answers provider -->
 	<bean id="coreConceptAnswersProvider" class="org.openmrs.module.dataimport.api.impl.CoreConceptAnswersProvider" />
-	
-	<!-- Workbook import service -->
 	<bean id="workbookImportService" class="org.openmrs.module.dataimport.api.impl.WorkbookImportServiceImpl" />
-
 	<bean id="importPlanStorageService" class="org.openmrs.module.dataimport.api.storage.ImportPlanStorageService" />
-
 	<bean id="idempotencyService" class="org.openmrs.module.dataimport.api.storage.IdempotencyService" />
-
 	<bean id="patientSaver" class="org.openmrs.module.dataimport.api.service.PatientSaver" />
-
 	<bean id="encounterSaver" class="org.openmrs.module.dataimport.api.service.EncounterSaver" />
-
 	<bean id="obsSaver" class="org.openmrs.module.dataimport.api.service.ObsSaver" />
-
+    <bean id="validation" class="org.openmrs.module.dataimport.api.util.Validation"/>
 </beans>

@@ -9,6 +9,7 @@
  */
 package org.openmrs.module.dataimport.api.reader;
 
+import lombok.Getter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.openmrs.module.dataimport.api.util.WorkbookUtil;
@@ -19,18 +20,12 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Handles patient resolution from the Patient Registration sheet.
- */
 public class RegistrationReader {
 	
 	private static final Logger log = LoggerFactory.getLogger(RegistrationReader.class);
 	
 	private static final String PATIENT_SHEET_NAME = "Patient Registration";
-	
-	/**
-	 * Creates a patient index from the registration sheet.
-	 */
+
 	public static PatientIndex indexPatients(org.apache.poi.ss.usermodel.Workbook workbook) {
 		Sheet regSheet = workbook.getSheet(PATIENT_SHEET_NAME);
 		if (regSheet == null) {
@@ -109,7 +104,8 @@ public class RegistrationReader {
 	/**
 	 * Index for resolving patient references.
 	 */
-	public static class PatientIndex {
+	@Getter
+    public static class PatientIndex {
 		
 		private final Map<String, PatientRow> patients;
 		
@@ -120,12 +116,8 @@ public class RegistrationReader {
 		public PatientIndex(Map<String, PatientRow> patients) {
 			this.patients = patients;
 		}
-		
-		public Map<String, PatientRow> getPatients() {
-			return patients;
-		}
-		
-		public PatientResolution resolve(String patientRef) {
+
+        public PatientResolution resolve(String patientRef) {
 			if (patientRef == null || patientRef.isEmpty()) {
 				return PatientResolution.unresolved("Missing patient reference");
 			}
@@ -144,7 +136,8 @@ public class RegistrationReader {
 	/**
 	 * Result of patient resolution.
 	 */
-	public static class PatientResolution {
+	@Getter
+    public static class PatientResolution {
 		
 		private final boolean resolved;
 		
@@ -172,24 +165,8 @@ public class RegistrationReader {
 		public static PatientResolution unresolved(String errorMessage) {
 			return new PatientResolution(false, null, null, errorMessage);
 		}
-		
-		public boolean isResolved() {
-			return resolved;
-		}
-		
-		public String getPatientUuid() {
-			return patientUuid;
-		}
-		
-		public PatientRow getPatientRow() {
-			return patientRow;
-		}
-		
-		public String getErrorMessage() {
-			return errorMessage;
-		}
-		
-		public boolean needsCreation() {
+
+        public boolean needsCreation() {
 			return resolved && patientUuid == null && patientRow != null;
 		}
 	}

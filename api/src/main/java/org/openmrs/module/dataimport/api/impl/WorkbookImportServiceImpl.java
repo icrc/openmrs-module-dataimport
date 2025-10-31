@@ -213,7 +213,8 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				}
 				
 				Patient p = patientSaver.createPatientWithGeneratedIdentifier(patientRow.givenName, patientRow.familyName,
-				    patientRow.gender, birthdate, defaultIdentifierTypeUuid, defaultLocationUuid);
+				    patientRow.gender, birthdate, defaultIdentifierTypeUuid, defaultLocationUuid, patientRow.addressLine1,
+				    patientRow.cityVillage, patientRow.country, patientRow.phone);
 				
 				outcome.refToPatientUuid.put(patientRow.patientRef(), p.getUuid());
 				log.debug("Created/found patient: {} -> {}", patientRow.patientRef(), p.getUuid());

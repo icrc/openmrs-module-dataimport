@@ -30,7 +30,6 @@ import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.SheetModel;
-import org.openmrs.module.dataimport.model.TemplateMeta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -364,32 +363,17 @@ public class ExcelTemplateExporter {
 			cell.setCellStyle(headerStyle);
 		}
 		
-		// Create a map to track unique forms with their proper information
-		Map<String, TemplateMeta.FormInfo> uniqueForms = new HashMap<>();
-		
 		for (SheetModel sheetModel : form.sheets) {
-			if (sheetModel.formUuid != null && !sheetModel.formUuid.trim().isEmpty()) {
-				TemplateMeta.FormInfo formInfo = uniqueForms.get(sheetModel.formUuid);
-				if (formInfo == null) {
-					formInfo = new TemplateMeta.FormInfo();
-					formInfo.formUuid = sheetModel.formUuid;
-					formInfo.formName = sheetModel.sheetName; // Use sheet name as form name
-					formInfo.formVersion = sheetModel.formVersion != null ? sheetModel.formVersion : "1.0";
-					formInfo.encounterTypeUuid = sheetModel.encounterTypeUuid;
-					formInfo.sheetName = sheetModel.sheetName;
-					uniqueForms.put(sheetModel.formUuid, formInfo);
-				}
-			}
-		}
-		
-		// Create form list entries
-		for (TemplateMeta.FormInfo formInfo : uniqueForms.values()) {
 			Row formRow = metaSheet.createRow(rowIndex++);
-			formRow.createCell(0).setCellValue(formInfo.formUuid);
-			formRow.createCell(1).setCellValue(formInfo.formName);
-			formRow.createCell(2).setCellValue(formInfo.formVersion);
-			formRow.createCell(3).setCellValue(formInfo.encounterTypeUuid != null ? formInfo.encounterTypeUuid : "");
-			formRow.createCell(4).setCellValue(formInfo.sheetName);
+			String formUuid = sheetModel.formUuid != null ? sheetModel.formUuid : "";
+			String formName = sheetModel.sheetName;
+			String formVersion = sheetModel.formVersion != null ? sheetModel.formVersion : "1.0";
+			String encounterTypeUuid = sheetModel.encounterTypeUuid != null ? sheetModel.encounterTypeUuid : "";
+			formRow.createCell(0).setCellValue(formUuid);
+			formRow.createCell(1).setCellValue(formName);
+			formRow.createCell(2).setCellValue(formVersion);
+			formRow.createCell(3).setCellValue(encounterTypeUuid);
+			formRow.createCell(4).setCellValue(sheetModel.sheetName);
 		}
 		
 		rowIndex += 2; // Skip a row

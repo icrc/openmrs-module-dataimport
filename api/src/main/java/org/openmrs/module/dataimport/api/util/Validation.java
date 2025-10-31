@@ -13,6 +13,9 @@ import org.openmrs.module.dataimport.api.ObsBlueprint;
 import org.openmrs.module.dataimport.api.QuarantineItem;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.SheetMeta;
+import org.openmrs.api.context.Context;
+import org.openmrs.api.ConceptService;
+import org.openmrs.ConceptDatatype;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -46,7 +49,7 @@ public class Validation {
 		
 		if (column.requiredAlways && obs.getValue() == null) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "REQUIRED_FIELD_MISSING",
-			    "Required field is missing"));
+			    "Required field is missing for column '" + safeLabel(column) + "'"));
 			return;
 		}
 		
@@ -55,18 +58,74 @@ public class Validation {
 		
 		switch (obs.getValue().getClass().getSimpleName()) {
 			case "TextValue":
+				validateDatatype(sheetName, rowIndex, column, "TEXT", quarantineItems);
 				validateTextObs(obs, column, quarantineItems, sheetName, rowIndex);
 				break;
 			case "NumericValue":
+				validateDatatype(sheetName, rowIndex, column, "NUMERIC", quarantineItems);
 				validateNumericObs(obs, column, quarantineItems, sheetName, rowIndex);
 				break;
 			case "CodedValue":
+				validateDatatype(sheetName, rowIndex, column, "CODED", quarantineItems);
 				validateCodedObs(obs, column, quarantineItems, sheetName, rowIndex);
 				break;
 			case "DateValue":
+				validateDatatype(sheetName, rowIndex, column, "DATE|DATETIME", quarantineItems);
 				validateDateObs(obs, column, quarantineItems, sheetName, rowIndex);
 				break;
+			case "DateTimeValue":
+				validateDatatype(sheetName, rowIndex, column, "DATETIME|DATE", quarantineItems);
+				break;
+			case "BooleanValue":
+				validateDatatype(sheetName, rowIndex, column, "BOOLEAN|CODED", quarantineItems);
+				break;
 		}
+	}
+	
+	/**
+	 * Validates that the OpenMRS concept datatype matches the value type being imported.
+	 */
+	private static void validateDatatype(String sheetName, int rowIndex, ColumnMeta column, String expected,
+	        List<QuarantineItem> quarantineItems) {
+		try {
+			ConceptService cs = Context.getConceptService();
+			if (cs == null)
+				return; // outside runtime; skip
+			ConceptDatatype dt = cs.getConceptByUuid(column.conceptUuid).getDatatype();
+			if (dt == null)
+				return;
+			boolean ok = false;
+			for (String token : expected.split("\\|")) {
+				String t = token.trim();
+				if ("TEXT".equals(t) && dt.isText()) ok = true;
+				if ("NUMERIC".equals(t) && dt.isNumeric()) ok = true;
+				if ("CODED".equals(t) && dt.isCoded()) ok = true;
+				if ("DATE".equals(t) && dt.isDate()) ok = true;
+				if ("DATETIME".equals(t) && dt.isDateTime()) ok = true;
+				if ("BOOLEAN".equals(t) && dt.isBoolean()) ok = true;
+			}
+			if (!ok) {
+				String actual = describeDatatype(dt);
+				String label = safeLabel(column);
+				String concept = column.conceptUuid != null ? column.conceptUuid : "";
+				String message = "Column '" + label + "' (concept " + concept
+				        + ") datatype mismatch: expected one of [" + expected + "] but found " + actual;
+				quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATATYPE_MISMATCH", message));
+			}
+		} catch (Exception ignored) {
+			// In dry-run validation we avoid failing the whole process if concept lookup fails
+		}
+	}
+	
+	private static String describeDatatype(ConceptDatatype dt) {
+		if (dt == null) return "UNKNOWN";
+		if (dt.isText()) return "TEXT";
+		if (dt.isNumeric()) return "NUMERIC";
+		if (dt.isCoded()) return "CODED";
+		if (dt.isDateTime()) return "DATETIME";
+		if (dt.isDate()) return "DATE";
+		if (dt.isBoolean()) return "BOOLEAN";
+		return dt.getName();
 	}
 	
 	private static void validateTextObs(ObsBlueprint obs, ColumnMeta column, List<QuarantineItem> quarantineItems,
@@ -75,12 +134,13 @@ public class Validation {
 		
 		if (column.maxLength != null && value.length() > column.maxLength) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "TEXT_TOO_LONG",
-			    "Text exceeds maximum length of " + column.maxLength + " characters"));
+			    "Column '" + safeLabel(column) + "' exceeds maximum length of " + column.maxLength + " characters"));
 		}
 		
 		if (column.minLength != null && value.length() < column.minLength) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "TEXT_TOO_SHORT",
-			    "Text is shorter than minimum length of " + column.minLength + " characters"));
+			    "Column '" + safeLabel(column) + "' is shorter than minimum length of " + column.minLength
+			            + " characters"));
 		}
 	}
 	
@@ -90,12 +150,12 @@ public class Validation {
 		
 		if (column.min != null && value < column.min) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "VALUE_TOO_SMALL",
-			    "Value " + value + " is less than minimum " + column.min));
+			    "Column '" + safeLabel(column) + "' value " + value + " is less than minimum " + column.min));
 		}
 		
 		if (column.max != null && value > column.max) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "VALUE_TOO_LARGE",
-			    "Value " + value + " is greater than maximum " + column.max));
+			    "Column '" + safeLabel(column) + "' value " + value + " is greater than maximum " + column.max));
 		}
 	}
 	
@@ -111,7 +171,8 @@ public class Validation {
 			}
 			
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "INVALID_CODED_VALUE",
-			    "Invalid coded value: " + answerConceptUuid, validAnswers.toArray(new String[0])));
+			    "Invalid coded value for column '" + safeLabel(column) + "': " + answerConceptUuid,
+			    validAnswers.toArray(new String[0])));
 		}
 	}
 	
@@ -124,7 +185,7 @@ public class Validation {
 			LocalDate minDate = LocalDate.ofEpochDay(column.min.longValue());
 			if (value.isBefore(minDate)) {
 				quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATE_TOO_EARLY",
-				    "Date " + value + " is before minimum date " + minDate));
+				    "Column '" + safeLabel(column) + "' date " + value + " is before minimum date " + minDate));
 			}
 		}
 		
@@ -133,15 +194,20 @@ public class Validation {
 			LocalDate maxDate = LocalDate.ofEpochDay(column.max.longValue());
 			if (value.isAfter(maxDate)) {
 				quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATE_TOO_LATE",
-				    "Date " + value + " is after maximum date " + maxDate));
+				    "Column '" + safeLabel(column) + "' date " + value + " is after maximum date " + maxDate));
 			}
 		}
 		
-		// Check if date is in the future (common business rule)
 		LocalDate today = LocalDate.now();
 		if (value.isAfter(today)) {
 			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "FUTURE_DATE",
-			    "Date " + value + " is in the future"));
+			    "Column '" + safeLabel(column) + "' date " + value + " is in the future"));
 		}
+	}
+
+	private static String safeLabel(ColumnMeta column) {
+		return column.label != null && !column.label.trim().isEmpty() ? column.label
+		        : (column.fieldId != null ? column.fieldId
+		                : (column.conceptUuid != null ? column.conceptUuid : ("col " + column.colIndex)));
 	}
 }

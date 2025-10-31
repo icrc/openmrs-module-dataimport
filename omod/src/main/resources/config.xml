@@ -44,4 +44,10 @@
         <description>Default EncounterType UUID used by dataimport when none is provided</description>
     </globalProperty>
 
+    <globalProperty>
+        <property>${project.parent.artifactId}.phoneAttributeTypeUuid</property>
+        <defaultValue>14d4f066-15f5-102d-96e4-000c29c2a5d7</defaultValue>
+        <description>Default PersonAttributeType for the phone attribute</description>
+    </globalProperty>
+
 </module>
