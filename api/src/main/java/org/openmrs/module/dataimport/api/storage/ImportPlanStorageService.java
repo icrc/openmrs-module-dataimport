@@ -37,8 +37,6 @@ public class ImportPlanStorageService {
 		}
 		
 		storage.put(plan.getBatchId(), plan);
-		log.info("Stored ImportPlan with batch ID: {} ({} rows OK, {} issues)", plan.getBatchId(), plan.getRowsOk().size(),
-		    plan.getIssues().size());
 	}
 	
 	/**
@@ -54,9 +52,6 @@ public class ImportPlanStorageService {
 			log.warn("ImportPlan not found for batch ID: {}", batchId);
 			return null;
 		}
-		
-		log.debug("Loaded ImportPlan with batch ID: {} ({} rows OK, {} issues)", batchId, plan.getRowsOk().size(),
-		    plan.getIssues().size());
 		return plan;
 	}
 	

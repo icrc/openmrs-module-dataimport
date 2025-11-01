@@ -23,6 +23,7 @@ import org.openmrs.module.dataimport.api.ObsBlueprint;
 import org.openmrs.module.dataimport.api.QuarantineItem;
 import org.openmrs.module.dataimport.api.RowPlan;
 import org.openmrs.module.dataimport.api.WorkbookImportService;
+import org.openmrs.module.dataimport.api.reader.ConceptsReader;
 import org.openmrs.module.dataimport.api.reader.EncounterReader;
 import org.openmrs.module.dataimport.api.reader.MetaReader;
 import org.openmrs.module.dataimport.api.reader.ObsReader;
@@ -69,7 +70,12 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	public ImportPlan dryRun(InputStream xlsx) {
 		UUID batchId = UUID.randomUUID();
 		try (XSSFWorkbook workbook = new XSSFWorkbook(xlsx)) {
-			TemplateMeta meta = MetaReader.read(workbook);
+			TemplateMeta meta = MetaReader.read(workbook, false);
+			// Optional: read __concepts sheet for enhanced validation/debugging
+			java.util.List<ConceptsReader.RowData> concepts = ConceptsReader.readIfPresent(workbook);
+			if (!concepts.isEmpty()) {
+				validateConceptsSheet(meta, concepts);
+			}
 			RegistrationReader.PatientIndex patientIndex = RegistrationReader.indexPatients(workbook);
 			List<RowPlan> okRows = new ArrayList<>();
 			List<QuarantineItem> quarantineItems = new ArrayList<>();
@@ -107,8 +113,6 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				    Collections.singletonList("Batch ID not found: " + batchId));
 			}
 			
-			log.info("Phase 1: Processing Patient Registration Sheet - Creating {} patients",
-			    plan.getPatientIndex().getPatients().size());
 			PatientCreationOutcome creationOutcome = processPatientRegistrationSheet(plan);
 			Map<String, String> refToPatientUuid = creationOutcome.refToPatientUuid;
 			
@@ -124,8 +128,11 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			EncounterSaver encounterSaver = new EncounterSaver();
 			ObsSaver obsSaver = new ObsSaver();
 			List<String> createdEncounterUuids = new ArrayList<>();
+			List<String> commitErrors = new ArrayList<>(creationOutcome.errors);
 			
-			log.info("Phase 2: Processing Data Sheets - Creating {} encounters and observations", plan.getRowsOk().size());
+			int failedEncounters = 0;
+			int failedObs = 0;
+			int skippedRows = 0;
 			
 			for (RowPlan rp : plan.getRowsOk()) {
 				if (idempotencyService.exists(rp.getIdempotencyKey())) {
@@ -136,29 +143,50 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				if (creationOutcome.failedPatientRefs.contains(rp.getPatientRef())) {
 					// Skip all rows for patients that failed to be created to avoid orphaned data
 					log.warn("Skipping row for patientRef {} because patient creation failed", rp.getPatientRef());
+					skippedRows++;
 					continue;
 				}
 				
 				String patientUuid = refToPatientUuid.getOrDefault(rp.getPatientRef(), rp.getPatientUuid());
 				if (patientUuid == null) {
 					log.warn("No patient UUID found for patient ref: {}", rp.getPatientRef());
+					skippedRows++;
 					continue;
 				}
 				
 				Patient patient = Context.getPatientService().getPatientByUuid(patientUuid);
 				if (patient == null) {
 					log.warn("Patient not found for UUID: {}", patientUuid);
+					skippedRows++;
 					continue;
 				}
 				
-				Encounter enc = encounterSaver.createEncounterFromBlueprint(patient, rp.getEncounter());
-				createdEncounterUuids.add(enc.getUuid());
+				Encounter enc;
+				try {
+					enc = encounterSaver.createEncounterFromBlueprint(patient, rp.getEncounter());
+					createdEncounterUuids.add(enc.getUuid());
+				}
+				catch (Exception e) {
+					log.error("Failed to create encounter for row {} (sheet {}): {}", rp.getRowIndex(), rp.getSheetName(),
+					    e.getMessage());
+					failedEncounters++;
+					commitErrors.add("Row " + rp.getRowIndex() + " (sheet " + rp.getSheetName()
+					        + "): Encounter creation failed: " + e.getMessage());
+					continue;
+				}
 				
 				for (ObsBlueprint obsBlueprint : rp.getObs()) {
-					Obs obs = obsSaver.createObsFromBlueprint(enc, obsBlueprint);
-					if (obs != null) {
-						log.debug("Created obs: {} = {}", obs.getConcept().getName().getName(),
-						    obs.getValueAsString(Context.getLocale()));
+					try {
+						Obs obs = obsSaver.createObsFromBlueprint(enc, obsBlueprint);
+						if (obs != null) {
+							log.debug("Created obs: {} = {}", obs.getConcept().getName().getName(),
+							    obs.getValueAsString(Context.getLocale()));
+						}
+					}
+					catch (Exception e) {
+						log.warn("Failed to create obs for concept {} in row {} (sheet {}): {}",
+						    obsBlueprint.getConceptUuid(), rp.getRowIndex(), rp.getSheetName(), e.getMessage());
+						failedObs++;
 					}
 				}
 				
@@ -168,20 +196,58 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			importPlanStorage.removePlan(batchId);
 			
 			ImportStats finalStats = ImportStats.of(plan.getRowsOk(), plan.getIssues());
-			log.info("Import completed for batch: {} - {} patients, {} encounters ({} patient creation failures)", batchId,
-			    refToPatientUuid.size(), createdEncounterUuids.size(), creationOutcome.errors.size());
 			
-			// Return success but include patient creation errors (if any) for transparency
-			return new ImportResult(true,
-			        creationOutcome.errors.isEmpty() ? "Import completed successfully"
-			                : "Import completed with patient creation errors",
-			        batchId, finalStats, createdEncounterUuids, creationOutcome.errors);
+			// Build summary message with failure counts
+			String summary = String.format("Import completed: %d patients, %d encounters", refToPatientUuid.size(),
+			    createdEncounterUuids.size());
+			if (failedEncounters > 0 || failedObs > 0 || skippedRows > 0 || !creationOutcome.errors.isEmpty()) {
+				StringBuilder issues = new StringBuilder();
+				if (failedEncounters > 0)
+					issues.append(String.format("%d encounter failures, ", failedEncounters));
+				if (failedObs > 0)
+					issues.append(String.format("%d obs failures, ", failedObs));
+				if (skippedRows > 0)
+					issues.append(String.format("%d rows skipped, ", skippedRows));
+				if (!creationOutcome.errors.isEmpty()) {
+					issues.append(String.format("%d patient creation errors", creationOutcome.errors.size()));
+				}
+				if (issues.length() > 0) {
+					if (issues.charAt(issues.length() - 2) == ',') {
+						issues.delete(issues.length() - 2, issues.length());
+					}
+					summary = summary + " (" + issues.toString() + ")";
+				}
+			}
+			
+			log.info("Import completed for batch: {} - {}", batchId, summary);
+			
+			// Return success but include all errors for transparency
+			return new ImportResult(true, summary, batchId, finalStats, createdEncounterUuids, commitErrors);
 			
 		}
 		catch (Exception e) {
 			log.error("Commit failed for batch: {}", batchId, e);
 			return ImportResult.failure(batchId, "Commit failed: " + e.getMessage(),
 			    Collections.singletonList(e.getMessage()));
+		}
+	}
+	
+	@Override
+	public byte[] generateQuarantineReport(InputStream originalWorkbook, UUID batchId) {
+		try {
+			log.info("Generating quarantine report for batch: {}", batchId);
+			
+			ImportPlan plan = importPlanStorage.loadPlan(batchId);
+			if (plan == null) {
+				throw new IllegalArgumentException("Import plan not found for batch: " + batchId);
+			}
+			
+			QuarantineReportGenerator generator = new QuarantineReportGenerator();
+			return generator.generateReport(originalWorkbook, plan);
+		}
+		catch (Exception e) {
+			log.error("Failed to generate quarantine report for batch: {}", batchId, e);
+			throw new RuntimeException("Failed to generate quarantine report: " + e.getMessage(), e);
 		}
 	}
 	
@@ -283,7 +349,13 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			return;
 		}
 		
-		for (int rowIndex = 1; rowIndex <= WorkbookUtil.lastDataRow(sheet); rowIndex++) {
+		int lastRow = WorkbookUtil.lastDataRow(sheet);
+		if (lastRow < 1) {
+			log.debug("Sheet '{}' has no data rows — skipping", sheetName);
+			return;
+		}
+		
+		for (int rowIndex = 1; rowIndex <= lastRow; rowIndex++) {
 			if (WorkbookUtil.isEmptyRow(sheet, rowIndex))
 				continue;
 			
@@ -302,14 +374,6 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	        List<RowPlan> okRows, List<QuarantineItem> quarantineItems, String templateDefaultLocationUuid) {
 		
 		String sheetName = sheet.getSheetName();
-		
-		// Validate required metadata: allow missing encounterTypeUuid if a formUuid is present
-		if ((sheetMeta.encounterTypeUuid == null || sheetMeta.encounterTypeUuid.trim().isEmpty())
-		        && (sheetMeta.formUuid == null || sheetMeta.formUuid.trim().isEmpty())) {
-			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, 0, "MISSING_ENCOUNTER_TYPE",
-			    "__meta must provide encounterTypeUuid or formUuid for sheet '" + sheetName + "'"));
-			return;
-		}
 		
 		String patientRef = WorkbookUtil.Cells.getString(sheet, rowIndex, 0);
 		if (patientRef == null || patientRef.trim().isEmpty()) {
@@ -337,5 +401,66 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			        obs, idempotencyKey);
 			okRows.add(rowPlan);
 		}
+	}
+	
+	/**
+	 * Cross-checks __concepts rows against __meta-derived sheet/column metadata. Non-blocking; logs
+	 * warnings.
+	 */
+	private void validateConceptsSheet(TemplateMeta meta, List<ConceptsReader.RowData> concepts) {
+		Map<String, SheetMeta> sheetByName = new HashMap<>();
+		for (Map.Entry<String, SheetMeta> e : meta.sheets.entrySet()) {
+			sheetByName.put(e.getKey(), e.getValue());
+		}
+		for (ConceptsReader.RowData rd : concepts) {
+			SheetMeta sheetMeta = sheetByName.get(rd.sheetName);
+			if (sheetMeta == null) {
+				log.warn("__concepts references unknown sheet '{}'; check template generation", rd.sheetName);
+				continue;
+			}
+			// Find matching column by fieldId or label
+			org.openmrs.module.dataimport.model.ColumnMeta col = null;
+			for (org.openmrs.module.dataimport.model.ColumnMeta c : sheetMeta.columns) {
+				if (c.fieldId != null && c.fieldId.equals(rd.fieldId)) {
+					col = c;
+					break;
+				}
+				if (col == null && c.label != null && c.label.equals(rd.questionLabel)) {
+					col = c;
+				}
+			}
+			if (col == null) {
+				log.warn("__concepts field '{}' not found in __meta for sheet '{}'", rd.fieldId, rd.sheetName);
+				continue;
+			}
+			if (col.conceptUuid != null && rd.questionConceptUuid != null
+			        && !col.conceptUuid.equals(rd.questionConceptUuid)) {
+				log.warn("Concept UUID mismatch for field '{}' on sheet '{}': __meta={} vs __concepts={} ", rd.fieldId,
+				    rd.sheetName, col.conceptUuid, rd.questionConceptUuid);
+			}
+			// If coded, ensure answers mapping present; enrich from __concepts if missing, then validate
+			if (col.datatype != null && col.datatype == org.openmrs.module.dataimport.model.FieldDatatype.CODED) {
+				if ((col.answers == null || col.answers.isEmpty()) && rd.answerLabel != null
+				        && rd.answerConceptUuid != null) {
+					if (col.answers == null)
+						col.answers = new HashMap<>();
+					col.answers.put(normalize(rd.answerLabel), rd.answerConceptUuid);
+				}
+				if (rd.answerLabel != null && rd.answerConceptUuid != null) {
+					String mapped = col.getAnswerConceptUuid(rd.answerLabel);
+					if (mapped == null || !mapped.equals(rd.answerConceptUuid)) {
+						log.warn(
+						    "Answer mapping mismatch for field '{}' on sheet '{}': label='{}' metaUuid='{}' conceptsUuid='{}'",
+						    rd.fieldId, rd.sheetName, rd.answerLabel, mapped, rd.answerConceptUuid);
+					}
+				}
+			}
+		}
+	}
+	
+	private String normalize(String label) {
+		if (label == null)
+			return null;
+		return label.trim().toLowerCase().replaceAll("\\s+", " ");
 	}
 }

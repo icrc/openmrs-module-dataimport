@@ -48,7 +48,18 @@ public class ColumnMeta {
 	public String getAnswerConceptUuid(String label) {
 		if (answers == null)
 			return null;
-		return answers.get(normalizeLabel(label));
+		// First try exact match (for legacy templates that stored raw labels)
+		String direct = answers.get(label);
+		if (direct != null)
+			return direct;
+		// Then try normalized key match
+		String target = normalizeLabel(label);
+		for (Map.Entry<String, String> e : answers.entrySet()) {
+			if (normalizeLabel(e.getKey()).equals(target)) {
+				return e.getValue();
+			}
+		}
+		return null;
 	}
 	
 	private String normalizeLabel(String label) {

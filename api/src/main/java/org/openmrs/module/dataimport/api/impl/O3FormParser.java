@@ -165,10 +165,16 @@ public class O3FormParser {
 			field.datatype = FieldDatatype.NUMERIC;
 		else if ("toggle".equals(rendering))
 			field.datatype = FieldDatatype.BOOLEAN;
-		else if ("radio".equals(rendering) || "select".equals(rendering))
+		else if ("radio".equals(rendering) || "select".equals(rendering) || "checkbox".equals(rendering)
+		        || "multiCheckbox".equals(rendering))
 			field.datatype = FieldDatatype.CODED;
 		else
 			field.datatype = FieldDatatype.TEXT;
+		
+		// For checkbox/multiCheckbox, set isMulti flag
+		if ("multiCheckbox".equals(rendering)) {
+			field.isMulti = true;
+		}
 		
 		if (field.datatype == FieldDatatype.CODED && questionOptions.has("answers")) {
 			JsonNode answersNode = questionOptions.get("answers");

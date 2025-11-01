@@ -118,7 +118,7 @@ class O3FormParserTest {
 		assertEquals(FieldDatatype.DATETIME, datetimeField.datatype);
 		
 		FieldModel booleanField = findField(sheet, "is_active");
-		assertEquals(FieldDatatype.TEXT, booleanField.datatype);
+		assertEquals(FieldDatatype.CODED, booleanField.datatype); // checkbox without answers is CODED
 		
 		FieldModel codedField = findField(sheet, "status");
 		assertEquals(FieldDatatype.CODED, codedField.datatype);
@@ -352,6 +352,44 @@ class O3FormParserTest {
 		SheetModel sheet = result.sheets.get(0);
 		assertEquals(FieldDatatype.TEXT, sheet.fields.get(0).datatype);
 		assertEquals(FieldDatatype.DATE, sheet.fields.get(1).datatype);
-		assertEquals(FieldDatatype.TEXT, sheet.fields.get(2).datatype);
+		assertEquals(FieldDatatype.CODED, sheet.fields.get(2).datatype); // checkbox without answers is CODED
+	}
+	
+	@Test
+	@DisplayName("Should set isMulti flag for multiCheckbox fields")
+	void testMultiCheckboxIsMultiFlag() throws Exception {
+		String json = "{\n" + "    \"uuid\": \"checkbox-form\",\n" + "    \"name\": \"Checkbox Form\",\n"
+		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
+		        + "                    \"questions\": [\n" + "                        {\n"
+		        + "                            \"id\": \"singleCheckbox\",\n"
+		        + "                            \"questionOptions\": {\n"
+		        + "                                \"rendering\": \"checkbox\",\n"
+		        + "                                \"concept\": \"checkbox.concept\",\n"
+		        + "                                \"answers\": [\n"
+		        + "                                    {\"label\": \"Yes\", \"concept\": \"yes.concept\"},\n"
+		        + "                                    {\"label\": \"No\", \"concept\": \"no.concept\"}\n"
+		        + "                                ]\n" + "                            }\n" + "                        },\n"
+		        + "                        {\n" + "                            \"id\": \"multiCheckbox\",\n"
+		        + "                            \"questionOptions\": {\n"
+		        + "                                \"rendering\": \"multiCheckbox\",\n"
+		        + "                                \"concept\": \"allergies.concept\",\n"
+		        + "                                \"answers\": [\n"
+		        + "                                    {\"label\": \"Penicillin\", \"concept\": \"pen.concept\"},\n"
+		        + "                                    {\"label\": \"Sulfa\", \"concept\": \"sulfa.concept\"}\n"
+		        + "                                ]\n" + "                            }\n" + "                        }\n"
+		        + "                    ]\n" + "                }\n" + "            ]\n" + "        }\n" + "    ]\n" + "}";
+		
+		FormModel result = parser.parse(json, Locale.ENGLISH);
+		
+		SheetModel sheet = result.sheets.get(0);
+		FieldModel singleCheckbox = findField(sheet, "singleCheckbox");
+		assertEquals(FieldDatatype.CODED, singleCheckbox.datatype);
+		assertEquals(2, singleCheckbox.answers.size());
+		assertTrue(singleCheckbox.isMulti == false); // checkbox is NOT multi
+		
+		FieldModel multiCheckbox = findField(sheet, "multiCheckbox");
+		assertEquals(FieldDatatype.CODED, multiCheckbox.datatype);
+		assertEquals(2, multiCheckbox.answers.size());
+		assertTrue(multiCheckbox.isMulti == true); // multiCheckbox IS multi
 	}
 }
