@@ -260,7 +260,7 @@ public class MetaReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should validate missing conceptUuid and fail fast")
+	@DisplayName("Should allow missing conceptUuid for non-Patient Ref columns (will be skipped during import)")
 	void testMissingConceptUuidValidation() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
@@ -290,12 +290,11 @@ public class MetaReaderTest {
 		invalidRow.createCell(7).setCellValue(false);
 		invalidRow.createCell(8).setCellValue("{}");
 		
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-			MetaReader.read(workbook);
-		});
-		
-		assertTrue(exception.getMessage().contains("missing conceptUuid"));
-		assertTrue(exception.getMessage().contains("Test Field"));
+		// Should not throw - columns without conceptUuid are allowed
+		// They will be skipped during obs creation
+		TemplateMeta meta = MetaReader.read(workbook);
+		assertNotNull(meta);
+		assertEquals(1, meta.sheets.size());
 		
 		workbook.close();
 	}

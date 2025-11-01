@@ -32,4 +32,13 @@ public interface WorkbookImportService {
 	 * @return ImportResult containing execution results
 	 */
 	ImportResult commit(UUID batchId);
+	
+	/**
+	 * Generates a color-coded Excel report with quarantined rows highlighted.
+	 * 
+	 * @param originalWorkbook The original workbook as an InputStream
+	 * @param batchId UUID of the batch to get the import plan for
+	 * @return Excel file as byte array with error rows highlighted
+	 */
+	byte[] generateQuarantineReport(InputStream originalWorkbook, UUID batchId);
 }

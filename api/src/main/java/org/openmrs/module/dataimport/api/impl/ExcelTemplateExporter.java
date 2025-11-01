@@ -26,6 +26,9 @@ import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openmrs.Concept;
+import org.openmrs.api.ConceptService;
+import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
@@ -47,6 +50,8 @@ public class ExcelTemplateExporter {
 	
 	private static final String META_SHEET = "__meta";
 	
+	private static final String CONCEPTS_SHEET = "__concepts";
+	
 	private static final String PATIENT_SHEET_NAME = "Patient Registration";
 	
 	private static final String REG_SHEET = PATIENT_SHEET_NAME;
@@ -58,6 +63,9 @@ public class ExcelTemplateExporter {
 	private static final int FIRST_DATA_ROW = 1;
 	
 	private static final int LAST_DATA_ROW = 1000;
+	
+	// Track used names to avoid duplicates across multiple sheets
+	private final Map<String, Integer> usedNames = new HashMap<>();
 	
 	public byte[] export(FormModel form, boolean includePatient) {
 		return export(form, includePatient, null);
@@ -114,6 +122,7 @@ public class ExcelTemplateExporter {
 				sheet.createFreezePane(0, 1);
 			}
 			
+			createConceptsSheet(workbook, form);
 			ensurePatientRefsNamedRange(workbook);
 			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
 				XSSFSheet s = workbook.getSheetAt(i);
@@ -225,6 +234,25 @@ public class ExcelTemplateExporter {
 		return safeName;
 	}
 	
+	private String makeUniqueExcelName(String baseName) {
+		String safeName = makeSafeExcelName(baseName);
+		Integer count = usedNames.get(safeName);
+		if (count == null) {
+			usedNames.put(safeName, 1);
+			return safeName;
+		}
+		count++;
+		usedNames.put(safeName, count);
+		
+		// Append counter to make unique, but ensure total length doesn't exceed 240
+		String uniqueName = safeName + "_" + count;
+		if (uniqueName.length() > 240) {
+			int availableSpace = 240 - String.valueOf(count).length() - 1; // -1 for underscore
+			uniqueName = safeName.substring(0, Math.max(1, availableSpace)) + "_" + count;
+		}
+		return uniqueName;
+	}
+	
 	private void handleCodedField(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
 		log.debug("Creating dropdown for CODED field: '{}' with {} answers", field.label, field.answers.size());
 		
@@ -243,7 +271,7 @@ public class ExcelTemplateExporter {
 			return;
 		}
 		
-		String fieldName = makeSafeExcelName(field.label != null ? field.label : field.id);
+		String fieldName = makeUniqueExcelName(field.label != null ? field.label : field.id);
 		
 		// Use the hidden __lists sheet to avoid external link warnings
 		XSSFSheet listSheet = getOrCreateListSheet(workbook);
@@ -426,14 +454,14 @@ public class ExcelTemplateExporter {
 				row.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
 				row.createCell(5).setCellValue(field.datatype != null ? field.datatype.name() : "TEXT");
 				row.createCell(6).setCellValue(false); // isRepeat - TODO: implement repeat groups
-				row.createCell(7).setCellValue(false); // isMulti - TODO: implement multi-select
+				row.createCell(7).setCellValue(field.isMulti); // isMulti
 				
 				// Build answers JSON for coded fields
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
 					Map<String, String> answersMap = new HashMap<>();
 					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
 						if (answer.label != null && answer.conceptUuid != null) {
-							answersMap.put(answer.label, answer.conceptUuid);
+							answersMap.put(normalizeLabel(answer.label), answer.conceptUuid);
 						}
 					}
 					row.createCell(8).setCellValue(mapToJson(answersMap));
@@ -448,6 +476,93 @@ public class ExcelTemplateExporter {
 		}
 		
 		log.debug("Created metadata sheet with {} rows", rowIndex);
+	}
+	
+	private void createConceptsSheet(XSSFWorkbook workbook, FormModel form) {
+		XSSFSheet conceptsSheet = workbook.createSheet(CONCEPTS_SHEET);
+		workbook.setSheetHidden(workbook.getSheetIndex(conceptsSheet), true);
+		CellStyle headerStyle = createHeaderStyle(workbook);
+		Row header = conceptsSheet.createRow(0);
+		String[] headers = { "sheetName", "fieldId", "questionLabel", "questionConceptUuid", "questionDatatype",
+		        "questionClass", "isMulti", "answerLabel", "answerConceptUuid", "answerDatatype", "answerClass" };
+		for (int i = 0; i < headers.length; i++) {
+			Cell cell = header.createCell(i);
+			cell.setCellValue(headers[i]);
+			cell.setCellStyle(headerStyle);
+		}
+		int rowIndex = 1;
+		ConceptService conceptService = null;
+		try {
+			conceptService = Context.getConceptService();
+		}
+		catch (Exception ignore) {
+			// Running outside OpenMRS context (tests), concept details will be left blank
+		}
+		for (SheetModel sheetModel : form.sheets) {
+			for (FieldModel field : sheetModel.fields) {
+				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
+					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
+						Row r = conceptsSheet.createRow(rowIndex++);
+						r.createCell(0).setCellValue(sheetModel.sheetName);
+						r.createCell(1).setCellValue(field.id != null ? field.id : "");
+						r.createCell(2).setCellValue(field.label != null ? field.label : "");
+						r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
+						// question concept metadata via ConceptService if available
+						String qDatatype = "";
+						String qClass = "";
+						if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+							Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
+							if (qc != null) {
+								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
+							}
+						}
+						r.createCell(4).setCellValue(qDatatype);
+						r.createCell(5).setCellValue(qClass);
+						r.createCell(6).setCellValue(field.isMulti);
+						r.createCell(7).setCellValue(answer.label != null ? answer.label : "");
+						r.createCell(8).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
+						// answer concept metadata via ConceptService if available
+						String aDatatype = "";
+						String aClass = "";
+						if (conceptService != null && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
+							Concept ac = conceptService.getConceptByUuid(answer.conceptUuid);
+							if (ac != null) {
+								aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
+								aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
+							}
+						}
+						r.createCell(9).setCellValue(aDatatype);
+						r.createCell(10).setCellValue(aClass);
+					}
+				} else {
+					Row r = conceptsSheet.createRow(rowIndex++);
+					r.createCell(0).setCellValue(sheetModel.sheetName);
+					r.createCell(1).setCellValue(field.id != null ? field.id : "");
+					r.createCell(2).setCellValue(field.label != null ? field.label : "");
+					r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
+					String qDatatype = "";
+					String qClass = "";
+					if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+						Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
+						if (qc != null) {
+							qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+							qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
+						}
+					}
+					r.createCell(4).setCellValue(qDatatype);
+					r.createCell(5).setCellValue(qClass);
+					r.createCell(6).setCellValue(field.isMulti);
+					r.createCell(7).setCellValue("");
+					r.createCell(8).setCellValue("");
+					r.createCell(9).setCellValue("");
+					r.createCell(10).setCellValue("");
+				}
+			}
+		}
+		for (int i = 0; i < headers.length; i++) {
+			conceptsSheet.autoSizeColumn(i);
+		}
 	}
 	
 	private String mapToJson(Map<String, String> map) {
@@ -465,6 +580,12 @@ public class ExcelTemplateExporter {
 		}
 		json.append("}");
 		return json.toString();
+	}
+	
+	private String normalizeLabel(String label) {
+		if (label == null)
+			return null;
+		return label.trim().toLowerCase().replaceAll("\\s+", " ");
 	}
 	
 }

@@ -35,6 +35,10 @@ public class MetaReader {
 	private static final String META_SHEET = "__meta";
 	
 	public static TemplateMeta read(Workbook workbook) {
+		return read(workbook, true);
+	}
+	
+	public static TemplateMeta read(Workbook workbook, boolean strict) {
 		Sheet metaSheet = workbook.getSheet(META_SHEET);
 		if (metaSheet == null) {
 			throw new IllegalArgumentException("Workbook does not contain required __meta sheet");
@@ -72,7 +76,7 @@ public class MetaReader {
 			throw new IllegalArgumentException("Could not find column metadata table in __meta sheet");
 		}
 		
-		readColumnMetadata(metaSheet, meta, columnTableStartRow);
+		readColumnMetadata(metaSheet, meta, columnTableStartRow, strict);
 		readFormList(metaSheet, meta);
 		
 		log.debug("Read template metadata: version={}, template={}, {} forms, {} sheets", meta.templateVersion,
@@ -150,7 +154,7 @@ public class MetaReader {
 		return -1;
 	}
 	
-	private static void readColumnMetadata(Sheet metaSheet, TemplateMeta meta, int startRow) {
+	private static void readColumnMetadata(Sheet metaSheet, TemplateMeta meta, int startRow, boolean strict) {
 		for (int rowIndex = startRow + 1; rowIndex <= metaSheet.getLastRowNum(); rowIndex++) {
 			Row row = metaSheet.getRow(rowIndex);
 			if (row == null)
@@ -167,15 +171,23 @@ public class MetaReader {
 					        + columnMeta.label + "' on sheet '" + columnMeta.sheetName + "'");
 				}
 				if (columnMeta.conceptUuid == null || columnMeta.conceptUuid.trim().isEmpty()) {
-					throw new IllegalArgumentException("__meta validation failed: missing conceptUuid for column '"
-					        + columnMeta.label + "' on sheet '" + columnMeta.sheetName + "'");
+					// Columns without conceptUuid are allowed (e.g., calculated, display-only fields)
+					// They will be skipped during obs creation by ObsReader
+					log.debug("Column '{}' on sheet '{}' has no conceptUuid — will be skipped during import",
+					    columnMeta.label, columnMeta.sheetName);
 				}
-				// For coded fields, answers mapping must be present (even if empty string is user input
+				// For coded fields, answers mapping handling depends on strict mode
 				if (columnMeta.datatype == FieldDatatype.CODED
 				        && (columnMeta.answers == null || columnMeta.answers.isEmpty())) {
-					throw new IllegalArgumentException(
-					        "__meta validation failed: missing coded answers mapping for column '" + columnMeta.label + "' ("
-					                + columnMeta.conceptUuid + ") on sheet '" + columnMeta.sheetName + "'");
+					if (strict) {
+						throw new IllegalArgumentException(
+						        "__meta validation failed: missing coded answers mapping for column '" + columnMeta.label
+						                + "' (" + columnMeta.conceptUuid + ") on sheet '" + columnMeta.sheetName + "'");
+					} else {
+						log.warn(
+						    "__meta warning: missing coded answers mapping for column '{}' ({}) on sheet '{}' — proceeding in lenient mode",
+						    columnMeta.label, columnMeta.conceptUuid, columnMeta.sheetName);
+					}
 				}
 			}
 			
