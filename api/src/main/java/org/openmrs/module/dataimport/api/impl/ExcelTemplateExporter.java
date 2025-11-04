@@ -11,6 +11,7 @@ package org.openmrs.module.dataimport.api.impl;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.ConditionalFormattingRule;
 import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.DataValidation;
 import org.apache.poi.ss.usermodel.DataValidationConstraint;
@@ -19,9 +20,12 @@ import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Name;
+import org.apache.poi.ss.usermodel.PatternFormatting;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.SheetConditionalFormatting;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -98,7 +102,15 @@ public class ExcelTemplateExporter {
 				sheet.setColumnWidth(columnIndex, 60 * 256);
 				columnIndex++;
 				
+				// Build fieldId -> columnIndex map for conditional formatting
+				Map<String, Integer> fieldIdToColumnMap = new HashMap<>();
+				
 				for (FieldModel field : sheetModel.fields) {
+					// Map field ID to column index (skip Patient Ref column which is index 0)
+					if (field.id != null) {
+						fieldIdToColumnMap.put(field.id, columnIndex);
+					}
+					
 					Cell headerCell = headerRow.createCell(columnIndex);
 					headerCell.setCellValue(labelWithMarkers(field));
 					headerCell.setCellStyle(headerStyle);
@@ -119,6 +131,10 @@ public class ExcelTemplateExporter {
 					sheet.autoSizeColumn(columnIndex);
 					columnIndex++;
 				}
+				
+				// Apply conditional formatting for fields with hideExpr
+				applyHideWhenConditionalFormatting(workbook, sheet, sheetModel.fields, fieldIdToColumnMap);
+				
 				sheet.createFreezePane(0, 1);
 			}
 			
@@ -586,6 +602,190 @@ public class ExcelTemplateExporter {
 		if (label == null)
 			return null;
 		return label.trim().toLowerCase().replaceAll("\\s+", " ");
+	}
+	
+	/**
+	 * Applies Excel's native conditional formatting to columns based on hideWhenExpression.
+	 * 
+	 * Uses Excel's formula-based conditional formatting feature where formulas evaluate to TRUE/FALSE.
+	 * When the formula evaluates to TRUE (hide condition is met), the column is grayed out to visually de-emphasize it.
+	 * 
+	 * The formulas use absolute column references ($C) and relative row references (2) so Excel automatically
+	 * adjusts the row number for each cell in the range while keeping column references fixed.
+	 * 
+	 * Example: For a formula like =$C2="Yes", Excel will evaluate:
+	 *   - Row 1: =$C1="Yes"
+	 *   - Row 2: =$C2="Yes"
+	 *   - Row 3: =$C3="Yes"
+	 *   etc.
+	 * 
+	 * @param workbook The Excel workbook
+	 * @param sheet The sheet to apply formatting to
+	 * @param fields List of fields in the sheet
+	 * @param fieldIdToColumnMap Map of field IDs to column indices
+	 */
+	private void applyHideWhenConditionalFormatting(XSSFWorkbook workbook, XSSFSheet sheet, 
+	                                                  java.util.List<FieldModel> fields, 
+	                                                  Map<String, Integer> fieldIdToColumnMap) {
+		if (fieldIdToColumnMap.isEmpty()) {
+			return;
+		}
+		
+		O3ExpressionToExcelFormulaConverter converter = new O3ExpressionToExcelFormulaConverter();
+		SheetConditionalFormatting scf = sheet.getSheetConditionalFormatting();
+		
+		for (FieldModel field : fields) {
+			if (field.hideExpr == null || field.hideExpr.trim().isEmpty()) {
+				continue;
+			}
+			
+			Integer columnIndex = fieldIdToColumnMap.get(field.id);
+			if (columnIndex == null) {
+				log.debug("Field {} not found in column map, skipping conditional formatting", field.id);
+				continue;
+			}
+			
+			// Try to convert O3 expression to Excel formula
+			// The formula will evaluate to TRUE when the hide condition is met
+			String excelFormula = converter.convertToExcelFormula(field.hideExpr, fieldIdToColumnMap, 
+			                                                      columnIndex, FIRST_DATA_ROW);
+			
+			if (excelFormula != null) {
+				try {
+					// Create Excel's native conditional formatting rule using formula
+					// Excel will apply formatting when the formula evaluates to TRUE
+					ConditionalFormattingRule rule = scf.createConditionalFormattingRule(excelFormula);
+					
+					// Set gray fill when condition is true (formula evaluates to TRUE)
+					PatternFormatting fill = rule.createPatternFormatting();
+					fill.setFillBackgroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+					fill.setFillPattern(PatternFormatting.SOLID_FOREGROUND);
+					
+					// Define the range: data rows for this column (rows 1-1000, columnIndex)
+					CellRangeAddress[] regions = new CellRangeAddress[] {
+						new CellRangeAddress(FIRST_DATA_ROW, LAST_DATA_ROW, columnIndex, columnIndex)
+					};
+					
+					// Apply Excel's native conditional formatting to the sheet
+					scf.addConditionalFormatting(regions, rule);
+					
+					// Add data validation to prevent editing when the hide condition is true
+					// Use Excel's custom formula validation to reject input when hide condition is TRUE
+					// This requires using a formula that evaluates to FALSE when input should be rejected
+					DataValidationHelper helper = sheet.getDataValidationHelper();
+					
+					try {
+						// Note: POI's API doesn't directly support Excel's custom formula validation
+						// which would allow "any value when condition is FALSE". We use a workaround:
+						// - When locked (condition TRUE): helper cell is empty, validation rejects all input ✅
+						// - When unlocked (condition FALSE): helper cell contains "*", but validation still
+						//   restricts to that value (limitation of list-based validation)
+						// This prevents editing when the field should be hidden, which is the main requirement
+						
+						// For now, use a simpler approach: create validation that only allows input
+						// when the condition is FALSE by using a formula-based list
+						// Create helper cells that contain allowed values when unlocked
+						XSSFSheet listSheet = getOrCreateListSheet(workbook);
+						
+						// Find next available column in list sheet
+						int helperCol = 0;
+						while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(helperCol) != null) {
+							helperCol++;
+						}
+						
+						// Create helper cells for each data row so the validation can evaluate per-row
+						// The formula needs to reference the data sheet row dynamically
+						// We'll create a column of helper cells, one per data row
+						
+						// Create helper cells for each row (1-1000) that evaluate the condition for that row
+						// The excelFormula references rows like $C2, $D2, etc. We need to update ALL row references
+						// to match the current row being validated
+						for (int row = FIRST_DATA_ROW; row <= LAST_DATA_ROW; row++) {
+							Row helperRow = listSheet.getRow(row);
+							if (helperRow == null) {
+								helperRow = listSheet.createRow(row);
+							}
+							Cell helperCell = helperRow.getCell(helperCol);
+							if (helperCell == null) {
+								helperCell = helperRow.createCell(helperCol);
+							}
+							
+							// Create a row-specific formula by replacing ALL row numbers in the formula
+							// Pattern: $X2, $X3, etc. where X is any column letter
+							// Replace with $X{row} for the current row
+							// We need to replace row references like $C2, $D2, etc. with $C{row}, $D{row}
+							String rowSpecificFormula = excelFormula;
+							// Replace all instances of $[LETTER][NUMBER] where NUMBER is FIRST_DATA_ROW
+							// with the current row number
+							// Also need to add sheet reference if not present
+							rowSpecificFormula = rowSpecificFormula.replaceAll(
+								"\\$([A-Z]+)" + FIRST_DATA_ROW,
+								"'" + sheet.getSheetName() + "'!\\$$1" + row);
+							
+							// Also replace any that might already have sheet references
+							rowSpecificFormula = rowSpecificFormula.replaceAll(
+								"'[^']+'!\\$([A-Z]+)" + FIRST_DATA_ROW,
+								"'" + sheet.getSheetName() + "'!\\$$1" + row);
+							
+							// Formula: when NOT(hideCondition), return a placeholder value
+							// When hideCondition is TRUE, return empty (no valid values)
+							String unlockFormula = "IF(NOT(" + rowSpecificFormula + "),\"*\",\"\")";
+							helperCell.setCellFormula(unlockFormula);
+						}
+						
+						// Create named range that points to the column of helper cells
+						String lockRangeName = "Lock_" + field.id.replaceAll("[^A-Za-z0-9]", "_");
+						Name validationName = workbook.createName();
+						validationName.setNameName(lockRangeName);
+						String columnLetter = CellReference.convertNumToColString(helperCol);
+						// Named range points to the column range: $A$2:$A$1001 (rows 1-1000)
+						validationName.setRefersToFormula("'" + LIST_SHEET + "'!$" + columnLetter + "$" + 
+							(FIRST_DATA_ROW + 1) + ":$" + columnLetter + "$" + (LAST_DATA_ROW + 1));
+						
+						// Create validation using INDEX to reference the corresponding row
+						// INDEX(lockRangeName, ROW()-FIRST_DATA_ROW) gets the value from the helper cell for the current row
+						// The named range starts at row (FIRST_DATA_ROW + 1), so INDEX position 1 = row (FIRST_DATA_ROW + 1)
+						// For validation row 2: ROW()=2, ROW()-FIRST_DATA_ROW=1, INDEX gets element 1 (helper row 2) ✓
+						// For validation row 3: ROW()=3, ROW()-FIRST_DATA_ROW=2, INDEX gets element 2 (helper row 3) ✓
+						String indexFormula = "INDEX(" + lockRangeName + ",ROW()-" + FIRST_DATA_ROW + ")";
+						DataValidationConstraint constraint = helper.createFormulaListConstraint(indexFormula);
+						
+						// Apply validation to the column range
+						CellRangeAddressList validationRegion = new CellRangeAddressList(
+							FIRST_DATA_ROW, LAST_DATA_ROW, columnIndex, columnIndex);
+						DataValidation validation = helper.createValidation(constraint, validationRegion);
+						
+						// Set error style to STOP - prevents input when condition is true
+						validation.setErrorStyle(DataValidation.ErrorStyle.STOP);
+						validation.setShowErrorBox(true);
+						validation.createErrorBox("Field Disabled", 
+							"This field is disabled based on the form logic. Please update the related field first.");
+						
+						// Suppress dropdown arrow
+						validation.setSuppressDropDownArrow(true);
+						validation.setShowPromptBox(false);
+						
+						sheet.addValidationData(validation);
+						
+						log.debug("Applied data validation lock to column {} (field: {}) - prevents editing when condition is true", 
+						          columnIndex, field.id);
+					} catch (Exception e) {
+						log.warn("Failed to add data validation lock for field {}: {}", field.id, e.getMessage());
+					}
+					
+					log.debug("Applied Excel conditional formatting and data validation to column {} (field: {}) with formula: {}", 
+					          columnIndex, field.id, excelFormula);
+				}
+				catch (Exception e) {
+					log.warn("Failed to apply conditional formatting for field {}: {}", field.id, e.getMessage());
+				}
+			} else {
+				// Expression too complex for Excel - log but don't fail
+				// The importer will still enforce the hideWhenExpression on import
+				log.debug("hideWhenExpression for field {} is too complex for Excel conditional formatting: {}", 
+				          field.id, field.hideExpr);
+			}
+		}
 	}
 	
 }

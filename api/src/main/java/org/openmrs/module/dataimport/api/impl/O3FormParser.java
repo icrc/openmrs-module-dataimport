@@ -81,7 +81,14 @@ public class O3FormParser {
 			JsonNode questionOptions = q.path("questionOptions");
 			String rendering = getTextOrNull(questionOptions, "rendering");
 			boolean isGroup = "group".equalsIgnoreCase(getTextOrNull(q, "type")) || q.has("questions");
+			
+			// Check for hideWhenExpression in multiple locations:
+			// 1. Directly on question: q.hide.hideWhenExpression
+			// 2. In behaviours array: q.behaviours[].hide.hideWhenExpression
 			String hideExpr = getTextOrNull(q.path("hide"), "hideWhenExpression");
+			if (hideExpr == null) {
+				hideExpr = extractHideExprFromBehaviours(q);
+			}
 			
 			if ("markdown".equals(rendering)) {
 				continue;
@@ -248,5 +255,28 @@ public class O3FormParser {
 		catch (NumberFormatException e) {
 			return null;
 		}
+	}
+	
+	/**
+	 * Extracts hideWhenExpression from behaviours array if present.
+	 * Looks through each behaviour object for hide.hideWhenExpression.
+	 * 
+	 * @param question The question JSON node
+	 * @return The hideWhenExpression string, or null if not found
+	 */
+	private static String extractHideExprFromBehaviours(JsonNode question) {
+		ArrayNode behaviours = getArrayOrNull(question, "behaviours");
+		if (behaviours == null) {
+			return null;
+		}
+		
+		for (JsonNode behaviour : behaviours) {
+			String hideExpr = getTextOrNull(behaviour.path("hide"), "hideWhenExpression");
+			if (hideExpr != null) {
+				return hideExpr;
+			}
+		}
+		
+		return null;
 	}
 }
