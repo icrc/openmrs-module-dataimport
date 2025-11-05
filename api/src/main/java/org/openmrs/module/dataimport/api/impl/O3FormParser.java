@@ -9,8 +9,6 @@
  */
 package org.openmrs.module.dataimport.api.impl;
 
-import static java.util.Objects.requireNonNull;
-
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
@@ -91,13 +89,22 @@ public class O3FormParser {
 			// Users can have multiple rows per patient ref on any sheet
 			if (isGroup) {
 				ArrayNode child = getArrayOrNull(q, "questions");
-				if (child != null)
-					walkQuestions(form, current, child, path + "/" + qid);
+				if (child != null) {
+					// Use qid if available, otherwise generate a fallback for the path
+					String groupId = (qid != null && !qid.trim().isEmpty()) ? qid
+					        : generateFallbackId(label, path, current.fields.size());
+					walkQuestions(form, current, child, path + "/" + groupId);
+				}
 				continue;
 			}
 			
 			FieldModel field = new FieldModel();
-			field.id = requireNonNull(qid, "form field id is required");
+			// Generate fallback ID if qid is missing (some forms are built without IDs)
+			if (qid == null || qid.trim().isEmpty()) {
+				field.id = generateFallbackId(label, path, current.fields.size());
+			} else {
+				field.id = qid;
+			}
 			field.label = label != null ? label : field.id;
 			field.conceptUuid = getTextOrNull(questionOptions, "concept");
 			field.hideExpr = hideExpr;
@@ -171,7 +178,6 @@ public class O3FormParser {
 		else
 			field.datatype = FieldDatatype.TEXT;
 		
-		// For checkbox/multiCheckbox, set isMulti flag
 		if ("multiCheckbox".equals(rendering)) {
 			field.isMulti = true;
 		}
@@ -181,8 +187,15 @@ public class O3FormParser {
 			if (answersNode != null && answersNode.isArray()) {
 				ArrayNode answersArray = (ArrayNode) answersNode;
 				for (JsonNode answerNode : answersArray) {
-					String answerLabel = getTextOrNull(answerNode, "label");
-					String answerConceptUuid = getTextOrNull(answerNode, "concept");
+					String answerLabel;
+					String answerConceptUuid;
+					if (answerNode.isTextual()) {
+						answerConceptUuid = answerNode.asText();
+						answerLabel = null;
+					} else {
+						answerLabel = getTextOrNull(answerNode, "label");
+						answerConceptUuid = getTextOrNull(answerNode, "concept");
+					}
 					String answerValue = answerConceptUuid != null ? answerConceptUuid
 					        : (answerLabel != null ? answerLabel : "");
 					field.answers.add(new AnswerModel(answerLabel, answerConceptUuid, answerValue));
@@ -248,5 +261,53 @@ public class O3FormParser {
 		catch (NumberFormatException e) {
 			return null;
 		}
+	}
+	
+	/**
+	 * Generates a fallback ID for fields that don't have an ID in the form schema. Uses label if
+	 * available, otherwise path, otherwise a generic identifier. Ensures the ID is not a valid Excel
+	 * cell reference (e.g., "q1", "A1").
+	 */
+	private static String generateFallbackId(String label, String path, int fieldIndex) {
+		String candidate = null;
+		
+		if (label != null && !label.trim().isEmpty()) {
+			// Sanitize label to create a valid ID
+			String sanitized = label.trim().toLowerCase().replaceAll("[^a-z0-9_]", "_").replaceAll("_+", "_")
+			        .replaceAll("^_|_$", "");
+			if (!sanitized.isEmpty()) {
+				candidate = sanitized;
+			}
+		}
+		if (candidate == null && path != null && !path.trim().isEmpty()) {
+			String sanitized = path.trim().replaceAll("[^a-zA-Z0-9_/]", "_").replaceAll("_+", "_").replaceAll("^/|/$", "");
+			if (!sanitized.isEmpty()) {
+				candidate = sanitized.replace("/", "_") + "_field";
+			}
+		}
+		if (candidate == null) {
+			candidate = "field_" + fieldIndex;
+		}
+		
+		// If the candidate looks like an Excel cell reference (e.g., "q1", "a1", "B2"), modify it
+		if (isExcelCellReference(candidate)) {
+			candidate = "field_" + candidate;
+		}
+		
+		return candidate;
+	}
+	
+	/**
+	 * Checks if a string looks like a valid Excel cell reference (e.g., "A1", "Q1", "AB123"). Excel
+	 * cell references are one or more letters followed by one or more digits.
+	 */
+	private static boolean isExcelCellReference(String str) {
+		if (str == null || str.isEmpty()) {
+			return false;
+		}
+		// Pattern: one or more letters, followed by one or more digits (and nothing else)
+		String lower = str.toLowerCase();
+		// Match pattern: starts with letters, then has digits, then ends
+		return lower.matches("^[a-z]+\\d+$");
 	}
 }

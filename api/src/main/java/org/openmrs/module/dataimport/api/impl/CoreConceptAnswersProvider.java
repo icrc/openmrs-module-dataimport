@@ -80,6 +80,59 @@ public class CoreConceptAnswersProvider extends BaseOpenmrsService implements Co
 		}
 	}
 	
+	@Override
+	public AnswerModel loadSingleConcept(String conceptUuid) {
+		if (conceptUuid == null || conceptUuid.trim().isEmpty()) {
+			return null;
+		}
+		
+		try {
+			ConceptService cs = Context.getConceptService();
+			if (cs == null) {
+				log.error("ConceptService is not available - cannot lookup concept " + conceptUuid);
+				return null;
+			}
+			
+			Concept concept = cs.getConceptByUuid(conceptUuid);
+			
+			if (concept == null) {
+				// Try to get more diagnostic info
+				log.warn("Concept not found for UUID: " + conceptUuid
+				        + " (ConceptService is available, but concept doesn't exist in database)");
+				// Check if it might be a concept ID instead of UUID
+				try {
+					int conceptId = Integer.parseInt(conceptUuid);
+					Concept byId = cs.getConcept(conceptId);
+					if (byId != null) {
+						log.info("Found concept by ID " + conceptId + " instead of UUID - UUID is: " + byId.getUuid());
+					}
+				}
+				catch (NumberFormatException e) {
+					// Not a numeric ID, that's fine
+				}
+				return null;
+			}
+			
+			// Check if concept is retired
+			if (concept.getRetired() != null && concept.getRetired()) {
+				log.warn("Concept " + conceptUuid + " is retired, but using it anyway");
+			}
+			
+			String label = getConceptName(concept);
+			if (label == null || label.trim().isEmpty()) {
+				log.warn("Concept " + conceptUuid + " found but has no name - using UUID as fallback");
+				return null;
+			}
+			
+			log.debug("Successfully loaded concept " + conceptUuid + " -> label: " + label);
+			return new AnswerModel(label, conceptUuid, conceptUuid);
+		}
+		catch (RuntimeException e) {
+			log.error("Error loading single concept " + conceptUuid + ": " + e.getMessage(), e);
+			return null;
+		}
+	}
+	
 	private String getConceptName(Concept concept) {
 		if (concept == null) {
 			return null;

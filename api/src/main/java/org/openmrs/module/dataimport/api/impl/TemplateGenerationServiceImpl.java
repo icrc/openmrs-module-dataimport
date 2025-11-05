@@ -77,7 +77,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 				String formVersion = formModel.version != null ? formModel.version : "1.0";
 				formVersions.add(formVersion);
 				
-				// Set form information on each sheet before adding to merged form
 				for (SheetModel sheet : formModel.sheets) {
 					sheet.formUuid = formModel.formUuid;
 					sheet.formVersion = formVersion;
@@ -121,7 +120,9 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 	 * buttons and selects that don't have inline answers in the form JSON but instead reference a
 	 * concept's answers.
 	 * <p>
-	 * This method ensures all CODED fields have their answers populated before Excel export.
+	 * This method ensures all CODED fields have their answers populated before Excel export. It also
+	 * enriches inline answers that have concept UUIDs but no labels by looking up the concept names
+	 * from OpenMRS.
 	 * 
 	 * @param form The form to enrich
 	 */
@@ -131,6 +132,7 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 		int totalCodedFields = 0;
 		int fieldsWithInlineAnswers = 0;
 		int fieldsLoadedFromConcepts = 0;
+		int answersEnriched = 0;
 		
 		for (SheetModel sheet : form.sheets) {
 			for (FieldModel field : sheet.fields) {
@@ -142,6 +144,25 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 					if (!field.answers.isEmpty()) {
 						fieldsWithInlineAnswers++;
 						log.info("Field '{}' already has {} inline answers", field.label, field.answers.size());
+						
+						for (AnswerModel answer : field.answers) {
+							boolean missingLabel = (answer.label == null || answer.label.trim().isEmpty());
+							if (missingLabel && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
+								log.info("Enriching answer with concept UUID '{}' - looking up concept name",
+								    answer.conceptUuid);
+								AnswerModel conceptAnswer = conceptAnswersProvider.loadSingleConcept(answer.conceptUuid);
+								if (conceptAnswer != null && conceptAnswer.label != null) {
+									answer.label = conceptAnswer.label;
+									answersEnriched++;
+									log.info("Enriched answer: concept '{}' -> label '{}'", answer.conceptUuid,
+									    answer.label);
+								} else {
+									answer.label = answer.conceptUuid;
+									log.warn("Could not load concept name for UUID '{}', using UUID as label",
+									    answer.conceptUuid);
+								}
+							}
+						}
 					} else if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
 						log.info("Loading concept answers for '{}' from concept {}", field.label, field.conceptUuid);
 						List<AnswerModel> loadedAnswers = conceptAnswersProvider.loadAnswersForConcept(field.conceptUuid);
@@ -160,8 +181,9 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 			}
 		}
 		
-		log.info("CONCEPT ENRICHMENT SUMMARY: {} CODED fields, {} with inline answers, {} loaded from concepts",
-		    totalCodedFields, fieldsWithInlineAnswers, fieldsLoadedFromConcepts);
+		log.info(
+		    "CONCEPT ENRICHMENT SUMMARY: {} CODED fields, {} with inline answers, {} loaded from concepts, {} answers enriched with labels",
+		    totalCodedFields, fieldsWithInlineAnswers, fieldsLoadedFromConcepts, answersEnriched);
 	}
 	
 	/**
@@ -180,7 +202,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 			return formVersions.get(0);
 		}
 		
-		// Multiple forms: create comma-separated version string
 		return String.join(",", formVersions);
 	}
 }
