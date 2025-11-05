@@ -89,8 +89,8 @@ public class PatientSaver {
 			throw new IllegalStateException("Failed to generate identifier for type: " + idType.getName());
 		}
 		
-		return createPatient(givenName, familyName, gender, birthdate, generatedIdentifier, identifierTypeUuid, locationUuid,
-		    addressLine1, cityVillage, country, phone);
+		return createPatient(givenName, familyName, gender, birthdate, generatedIdentifier, identifierTypeUuid,
+		    locationUuid, addressLine1, cityVillage, country, phone);
 	}
 	
 	private void addPhoneAttributeIfPresent(Person person, String phone) {
@@ -138,8 +138,7 @@ public class PatientSaver {
 		person.addName(name);
 		
 		if ((addressLine1 != null && !addressLine1.trim().isEmpty())
-		        || (cityVillage != null && !cityVillage.trim().isEmpty())
-		        || (country != null && !country.trim().isEmpty())) {
+		        || (cityVillage != null && !cityVillage.trim().isEmpty()) || (country != null && !country.trim().isEmpty())) {
 			PersonAddress address = new PersonAddress();
 			address.setAddress1(addressLine1);
 			address.setCityVillage(cityVillage);

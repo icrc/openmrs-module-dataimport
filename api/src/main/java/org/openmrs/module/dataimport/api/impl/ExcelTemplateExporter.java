@@ -229,9 +229,29 @@ public class ExcelTemplateExporter {
 		if (!safeName.isEmpty() && !Character.isLetter(safeName.charAt(0)) && safeName.charAt(0) != '_') {
 			safeName = "_" + safeName;
 		}
+		
+		// Excel doesn't allow named ranges to have names that are valid cell references (e.g., "q1", "A1")
+		// A valid cell reference is: one or more letters followed by one or more digits (nothing else)
+		// Use regex to check if it matches this exact pattern
+		if (isExcelCellReference(safeName)) {
+			safeName = "field_" + safeName;
+		}
+		
 		if (safeName.length() > 240)
 			safeName = safeName.substring(0, 240);
 		return safeName;
+	}
+	
+	/**
+	 * Checks if a string is a valid Excel cell reference (e.g., "A1", "Q1", "AB123").
+	 * Excel cell references are one or more letters followed by one or more digits.
+	 */
+	private boolean isExcelCellReference(String str) {
+		if (str == null || str.isEmpty()) {
+			return false;
+		}
+		// Pattern: one or more letters, followed by one or more digits, and nothing else
+		return str.matches("^[A-Za-z]+\\d+$");
 	}
 	
 	private String makeUniqueExcelName(String baseName) {
