@@ -178,7 +178,6 @@ public class O3FormParser {
 		else
 			field.datatype = FieldDatatype.TEXT;
 		
-		// For checkbox/multiCheckbox, set isMulti flag
 		if ("multiCheckbox".equals(rendering)) {
 			field.isMulti = true;
 		}
@@ -191,13 +190,11 @@ public class O3FormParser {
 					String answerLabel;
 					String answerConceptUuid;
 					if (answerNode.isTextual()) {
-						// Handle simple string answers interpreted as concept UUIDs
 						answerConceptUuid = answerNode.asText();
-						answerLabel = null; // Leave null - enrichment will look up the concept name
+						answerLabel = null;
 					} else {
 						answerLabel = getTextOrNull(answerNode, "label");
 						answerConceptUuid = getTextOrNull(answerNode, "concept");
-						// Leave label as null if missing - enrichment will look it up from concept UUID
 					}
 					String answerValue = answerConceptUuid != null ? answerConceptUuid
 					        : (answerLabel != null ? answerLabel : "");

@@ -77,7 +77,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 				String formVersion = formModel.version != null ? formModel.version : "1.0";
 				formVersions.add(formVersion);
 				
-				// Set form information on each sheet before adding to merged form
 				for (SheetModel sheet : formModel.sheets) {
 					sheet.formUuid = formModel.formUuid;
 					sheet.formVersion = formVersion;
@@ -146,7 +145,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 						fieldsWithInlineAnswers++;
 						log.info("Field '{}' already has {} inline answers", field.label, field.answers.size());
 						
-						// NEW: Enrich inline answers that have concept UUIDs but no labels
 						for (AnswerModel answer : field.answers) {
 							boolean missingLabel = (answer.label == null || answer.label.trim().isEmpty());
 							if (missingLabel && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
@@ -159,7 +157,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 									log.info("Enriched answer: concept '{}' -> label '{}'", answer.conceptUuid,
 									    answer.label);
 								} else {
-									// Fallback: use UUID as label if concept lookup fails
 									answer.label = answer.conceptUuid;
 									log.warn("Could not load concept name for UUID '{}', using UUID as label",
 									    answer.conceptUuid);
@@ -205,7 +202,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 			return formVersions.get(0);
 		}
 		
-		// Multiple forms: create comma-separated version string
 		return String.join(",", formVersions);
 	}
 }
