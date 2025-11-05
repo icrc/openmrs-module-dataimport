@@ -85,10 +85,11 @@ public class ExcelTemplateExporter {
 			}
 			
 			getOrCreateListSheet(workbook);
-			createMetaSheet(workbook, form, locationUuid);
 			
 			for (SheetModel sheetModel : form.sheets) {
-				XSSFSheet sheet = workbook.createSheet(sheetModel.sheetName);
+				String uniqueSheetName = getUniqueSheetName(workbook, sheetModel.sheetName);
+				sheetModel.sheetName = uniqueSheetName;
+				XSSFSheet sheet = workbook.createSheet(uniqueSheetName);
 				Row headerRow = sheet.createRow(0);
 				CellStyle headerStyle = createHeaderStyle(workbook);
 				int columnIndex = 0;
@@ -123,6 +124,7 @@ public class ExcelTemplateExporter {
 				sheet.createFreezePane(0, 1);
 			}
 			
+			createMetaSheet(workbook, form, locationUuid);
 			createConceptsSheet(workbook, form);
 			ensurePatientRefsNamedRange(workbook);
 			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
@@ -221,6 +223,59 @@ public class ExcelTemplateExporter {
 			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
 		}
 		return listSheet;
+	}
+	
+	/**
+	 * Generates a unique sheet name by checking if the name already exists in the workbook. If it
+	 * exists, appends a counter suffix (e.g., "_1", "_2") until a unique name is found. Excel sheet
+	 * names are limited to 31 characters, so the name is truncated if necessary.
+	 * 
+	 * @param workbook The workbook to check for existing sheet names
+	 * @param baseName The base sheet name to make unique
+	 * @return A unique sheet name that doesn't exist in the workbook
+	 */
+	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
+		if (baseName == null || baseName.trim().isEmpty()) {
+			baseName = "Sheet";
+		}
+		
+		final int MAX_SHEET_NAME_LENGTH = 31;
+		String sanitized = baseName.replaceAll("[\\\\/*?\\[\\]:]", "_");
+		
+		if (sanitized.length() > MAX_SHEET_NAME_LENGTH) {
+			sanitized = sanitized.substring(0, MAX_SHEET_NAME_LENGTH);
+		}
+		
+		String candidate = sanitized;
+		int counter = 1;
+		
+		while (workbook.getSheet(candidate) != null) {
+			String suffix = "_" + counter;
+			int maxBaseLength = MAX_SHEET_NAME_LENGTH - suffix.length();
+			
+			String base = sanitized;
+			if (base.length() > maxBaseLength) {
+				base = sanitized.substring(0, maxBaseLength);
+			}
+			
+			candidate = base + suffix;
+			counter++;
+			
+			if (counter > 1000) {
+				log.warn("Generated many unique sheet names, using timestamp suffix");
+				candidate = base + "_" + System.currentTimeMillis();
+				if (candidate.length() > MAX_SHEET_NAME_LENGTH) {
+					candidate = candidate.substring(0, MAX_SHEET_NAME_LENGTH);
+				}
+				break;
+			}
+		}
+		
+		if (!candidate.equals(sanitized)) {
+			log.debug("Sheet name '{}' already exists, using unique name '{}'", baseName, candidate);
+		}
+		
+		return candidate;
 	}
 	
 	private String makeSafeExcelName(String baseName) {
