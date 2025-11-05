@@ -65,7 +65,8 @@ public class ExcelTemplateExporter {
 	
 	private static final int LAST_DATA_ROW = 1000;
 	
-	// Track used names to avoid duplicates across multiple sheets
+	private static final int STANDARD_COLUMN_WIDTH = 20 * 256;
+	
 	private final Map<String, Integer> usedNames = new HashMap<>();
 	
 	public byte[] export(FormModel form, boolean includePatient) {
@@ -118,7 +119,7 @@ public class ExcelTemplateExporter {
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
-					sheet.autoSizeColumn(columnIndex);
+					sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
 				sheet.createFreezePane(0, 1);
@@ -162,7 +163,9 @@ public class ExcelTemplateExporter {
 			Cell headerCell = headerRow.createCell(columnIndex);
 			headerCell.setCellValue(columnHeaders[columnIndex]);
 			headerCell.setCellStyle(headerStyle);
-			sheet.autoSizeColumn(columnIndex);
+			if (columnIndex != 8) {
+				sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
+			}
 		}
 		
 		CellStyle readonlyStyle = wb.createCellStyle();
@@ -306,7 +309,6 @@ public class ExcelTemplateExporter {
 		if (str == null || str.isEmpty()) {
 			return false;
 		}
-		// Pattern: one or more letters, followed by one or more digits, and nothing else
 		return str.matches("^[A-Za-z]+\\d+$");
 	}
 	
@@ -320,7 +322,6 @@ public class ExcelTemplateExporter {
 		count++;
 		usedNames.put(safeName, count);
 		
-		// Append counter to make unique, but ensure total length doesn't exceed 240
 		String uniqueName = safeName + "_" + count;
 		if (uniqueName.length() > 240) {
 			int availableSpace = 240 - String.valueOf(count).length() - 1; // -1 for underscore
@@ -349,16 +350,13 @@ public class ExcelTemplateExporter {
 		
 		String fieldName = makeUniqueExcelName(field.label != null ? field.label : field.id);
 		
-		// Use the hidden __lists sheet to avoid external link warnings
 		XSSFSheet listSheet = getOrCreateListSheet(workbook);
 		
-		// Find the next available column in the list sheet
 		int listColumnIndex = 0;
 		while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(listColumnIndex) != null) {
 			listColumnIndex++;
 		}
 		
-		// Add the options to the list sheet
 		for (int i = 0; i < field.answers.size(); i++) {
 			Row row = listSheet.getRow(i + 1);
 			if (row == null) {
@@ -369,7 +367,6 @@ public class ExcelTemplateExporter {
 				cell = row.createCell(listColumnIndex);
 			}
 			AnswerModel answer = field.answers.get(i);
-			// Use label if available, otherwise fall back to concept UUID or value
 			String displayValue = answer.label != null ? answer.label
 			        : (answer.conceptUuid != null ? answer.conceptUuid : (answer.value != null ? answer.value : ""));
 			cell.setCellValue(displayValue);
@@ -382,7 +379,6 @@ public class ExcelTemplateExporter {
 		        + (field.answers.size() + 1);
 		namedRange.setRefersToFormula(reference);
 		
-		// Create data validation using the named range
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint(fieldName);
 		CellRangeAddressList region = new CellRangeAddressList(1, 1000, columnIndex, columnIndex);
@@ -433,7 +429,6 @@ public class ExcelTemplateExporter {
 		
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		
-		// Template metadata table
 		Row headerRow = metaSheet.createRow(0);
 		Cell keyHeader = headerRow.createCell(0);
 		keyHeader.setCellValue("key");
