@@ -26,4 +26,12 @@ public interface ConceptAnswersProvider extends OpenmrsService {
 	 * @return List of answers (label + conceptUuid + value)
 	 */
 	List<AnswerModel> loadAnswersForConcept(String conceptUuid);
+	
+	/**
+	 * Load a single concept by its UUID and return it as an AnswerModel
+	 * 
+	 * @param conceptUuid The UUID of the concept
+	 * @return AnswerModel with the concept's name as label, or null if concept not found
+	 */
+	AnswerModel loadSingleConcept(String conceptUuid);
 }

@@ -91,8 +91,7 @@ public class O3FormParser {
 				ArrayNode child = getArrayOrNull(q, "questions");
 				if (child != null) {
 					// Use qid if available, otherwise generate a fallback for the path
-					String groupId = (qid != null && !qid.trim().isEmpty()) 
-					        ? qid 
+					String groupId = (qid != null && !qid.trim().isEmpty()) ? qid
 					        : generateFallbackId(label, path, current.fields.size());
 					walkQuestions(form, current, child, path + "/" + groupId);
 				}
@@ -189,8 +188,17 @@ public class O3FormParser {
 			if (answersNode != null && answersNode.isArray()) {
 				ArrayNode answersArray = (ArrayNode) answersNode;
 				for (JsonNode answerNode : answersArray) {
-					String answerLabel = getTextOrNull(answerNode, "label");
-					String answerConceptUuid = getTextOrNull(answerNode, "concept");
+					String answerLabel;
+					String answerConceptUuid;
+					if (answerNode.isTextual()) {
+						// Handle simple string answers interpreted as concept UUIDs
+						answerConceptUuid = answerNode.asText();
+						answerLabel = null; // Leave null - enrichment will look up the concept name
+					} else {
+						answerLabel = getTextOrNull(answerNode, "label");
+						answerConceptUuid = getTextOrNull(answerNode, "concept");
+						// Leave label as null if missing - enrichment will look it up from concept UUID
+					}
 					String answerValue = answerConceptUuid != null ? answerConceptUuid
 					        : (answerLabel != null ? answerLabel : "");
 					field.answers.add(new AnswerModel(answerLabel, answerConceptUuid, answerValue));
@@ -259,29 +267,23 @@ public class O3FormParser {
 	}
 	
 	/**
-	 * Generates a fallback ID for fields that don't have an ID in the form schema.
-	 * Uses label if available, otherwise path, otherwise a generic identifier.
-	 * Ensures the ID is not a valid Excel cell reference (e.g., "q1", "A1").
+	 * Generates a fallback ID for fields that don't have an ID in the form schema. Uses label if
+	 * available, otherwise path, otherwise a generic identifier. Ensures the ID is not a valid Excel
+	 * cell reference (e.g., "q1", "A1").
 	 */
 	private static String generateFallbackId(String label, String path, int fieldIndex) {
 		String candidate = null;
 		
 		if (label != null && !label.trim().isEmpty()) {
 			// Sanitize label to create a valid ID
-			String sanitized = label.trim()
-			        .toLowerCase()
-			        .replaceAll("[^a-z0-9_]", "_")
-			        .replaceAll("_+", "_")
+			String sanitized = label.trim().toLowerCase().replaceAll("[^a-z0-9_]", "_").replaceAll("_+", "_")
 			        .replaceAll("^_|_$", "");
 			if (!sanitized.isEmpty()) {
 				candidate = sanitized;
 			}
 		}
 		if (candidate == null && path != null && !path.trim().isEmpty()) {
-			String sanitized = path.trim()
-			        .replaceAll("[^a-zA-Z0-9_/]", "_")
-			        .replaceAll("_+", "_")
-			        .replaceAll("^/|/$", "");
+			String sanitized = path.trim().replaceAll("[^a-zA-Z0-9_/]", "_").replaceAll("_+", "_").replaceAll("^/|/$", "");
 			if (!sanitized.isEmpty()) {
 				candidate = sanitized.replace("/", "_") + "_field";
 			}
@@ -299,8 +301,8 @@ public class O3FormParser {
 	}
 	
 	/**
-	 * Checks if a string looks like a valid Excel cell reference (e.g., "A1", "Q1", "AB123").
-	 * Excel cell references are one or more letters followed by one or more digits.
+	 * Checks if a string looks like a valid Excel cell reference (e.g., "A1", "Q1", "AB123"). Excel
+	 * cell references are one or more letters followed by one or more digits.
 	 */
 	private static boolean isExcelCellReference(String str) {
 		if (str == null || str.isEmpty()) {

@@ -29,6 +29,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openmrs.Concept;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
@@ -243,8 +244,8 @@ public class ExcelTemplateExporter {
 	}
 	
 	/**
-	 * Checks if a string is a valid Excel cell reference (e.g., "A1", "Q1", "AB123").
-	 * Excel cell references are one or more letters followed by one or more digits.
+	 * Checks if a string is a valid Excel cell reference (e.g., "A1", "Q1", "AB123"). Excel cell
+	 * references are one or more letters followed by one or more digits.
 	 */
 	private boolean isExcelCellReference(String str) {
 		if (str == null || str.isEmpty()) {
@@ -312,7 +313,11 @@ public class ExcelTemplateExporter {
 			if (cell == null) {
 				cell = row.createCell(listColumnIndex);
 			}
-			cell.setCellValue(field.answers.get(i).label);
+			AnswerModel answer = field.answers.get(i);
+			// Use label if available, otherwise fall back to concept UUID or value
+			String displayValue = answer.label != null ? answer.label
+			        : (answer.conceptUuid != null ? answer.conceptUuid : (answer.value != null ? answer.value : ""));
+			cell.setCellValue(displayValue);
 		}
 		
 		Name namedRange = workbook.createName();
