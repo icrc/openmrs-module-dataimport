@@ -128,7 +128,7 @@ public class PatientSaver {
 		LocationService ls = getLocationService();
 		
 		Person person = new Person();
-		person.setGender(gender);
+		person.setGender(normalizeGender(gender));
 		person.setBirthdate(birthdate);
 		
 		PersonName name = new PersonName();
@@ -193,5 +193,29 @@ public class PatientSaver {
 		}
 		
 		return defaultLocation.getUuid();
+	}
+	
+	private String normalizeGender(String gender) {
+		if (gender == null || gender.trim().isEmpty()) {
+			return null;
+		}
+		
+		String normalized = gender.trim();
+		String lower = normalized.toLowerCase();
+		
+		if (lower.equals("male") || lower.equals("m")) {
+			return "M";
+		} else if (lower.equals("female") || lower.equals("f")) {
+			return "F";
+		} else if (lower.equals("unknown") || lower.equals("other") || lower.equals("o")) {
+			return null;
+		}
+		
+		if (normalized.equals("M") || normalized.equals("F") || normalized.equals("O")) {
+			return normalized.equals("O") ? null : normalized;
+		}
+		
+		log.warn("Unrecognized gender value '{}', setting to null", gender);
+		return null;
 	}
 }

@@ -156,6 +156,7 @@ public class ExcelTemplateExporter {
 		XSSFWorkbook wb = (XSSFWorkbook) workbook;
 		XSSFSheet sheet = wb.createSheet(PATIENT_SHEET_NAME);
 		CellStyle headerStyle = createHeaderStyle(wb);
+		DataFormat dataFormat = wb.createDataFormat();
 		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
 		        "City/Village", "Country", "Phone", PATIENT_REF_HEADER };
 		Row headerRow = sheet.createRow(0);
@@ -174,6 +175,11 @@ public class ExcelTemplateExporter {
 		readonlyStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		CellStyle unlockedStyle = wb.createCellStyle();
 		unlockedStyle.setLocked(false);
+		CellStyle textStyle = wb.createCellStyle();
+		textStyle.setLocked(false);
+		textStyle.setDataFormat(dataFormat.getFormat("@"));
+		
+		createGenderDropdown(wb, sheet);
 		
 		for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
 			Row dataRow = sheet.getRow(r);
@@ -183,7 +189,11 @@ public class ExcelTemplateExporter {
 				Cell editableCell = dataRow.getCell(c);
 				if (editableCell == null)
 					editableCell = dataRow.createCell(c);
-				editableCell.setCellStyle(unlockedStyle);
+				if (c == 7) {
+					editableCell.setCellStyle(textStyle);
+				} else {
+					editableCell.setCellStyle(unlockedStyle);
+				}
 			}
 			
 			Cell patientRefCell = dataRow.getCell(8);
@@ -200,6 +210,45 @@ public class ExcelTemplateExporter {
 		sheet.setColumnWidth(8, 60 * 256);
 		sheet.createFreezePane(0, 1);
 		sheet.protectSheet("dataimport");
+	}
+	
+	private static void createGenderDropdown(XSSFWorkbook workbook, XSSFSheet sheet) {
+		XSSFSheet listSheet = workbook.getSheet(LIST_SHEET);
+		if (listSheet == null) {
+			listSheet = workbook.createSheet(LIST_SHEET);
+			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
+		}
+		
+		int listColumnIndex = 0;
+		while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(listColumnIndex) != null) {
+			listColumnIndex++;
+		}
+		
+		String[] genderOptions = { "Male", "Female", "Unknown" };
+		for (int i = 0; i < genderOptions.length; i++) {
+			Row row = listSheet.getRow(i + 1);
+			if (row == null) {
+				row = listSheet.createRow(i + 1);
+			}
+			Cell cell = row.getCell(listColumnIndex);
+			if (cell == null) {
+				cell = row.createCell(listColumnIndex);
+			}
+			cell.setCellValue(genderOptions[i]);
+		}
+		
+		Name namedRange = workbook.createName();
+		namedRange.setNameName("GenderOptions");
+		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
+		String reference = "'" + LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
+		        + (genderOptions.length + 1);
+		namedRange.setRefersToFormula(reference);
+		
+		DataValidationHelper helper = sheet.getDataValidationHelper();
+		DataValidationConstraint constraint = helper.createFormulaListConstraint("GenderOptions");
+		CellRangeAddressList region = new CellRangeAddressList(FIRST_DATA_ROW, LAST_DATA_ROW, 2, 2);
+		DataValidation validation = helper.createValidation(constraint, region);
+		sheet.addValidationData(validation);
 	}
 	
 	private static Cell getOrCreate(Sheet sheet, int rowIndex, int columnIndex) {
