@@ -28,13 +28,6 @@ public class O3FormParser {
 	
 	private final ObjectMapper mapper = new ObjectMapper();
 	
-	/**
-	 * Parses O3 form schema JSON into the form model.
-	 *
-	 * @param schemaJson The O3 form schema JSON string
-	 * @param locale The locale for parsing (reserved for future localization)
-	 * @return FormModel object representing the parsed form
-	 */
 	public FormModel parse(String schemaJson, Locale locale) {
 		try {
 			JsonNode root = mapper.readTree(schemaJson);
@@ -85,12 +78,9 @@ public class O3FormParser {
 				continue;
 			}
 			
-			// Treat all groups (including repeating ones) as regular groups
-			// Users can have multiple rows per patient ref on any sheet
 			if (isGroup) {
 				ArrayNode child = getArrayOrNull(q, "questions");
 				if (child != null) {
-					// Use qid if available, otherwise generate a fallback for the path
 					String groupId = (qid != null && !qid.trim().isEmpty()) ? qid
 					        : generateFallbackId(label, path, current.fields.size());
 					walkQuestions(form, current, child, path + "/" + groupId);
@@ -99,7 +89,6 @@ public class O3FormParser {
 			}
 			
 			FieldModel field = new FieldModel();
-			// Generate fallback ID if qid is missing (some forms are built without IDs)
 			if (qid == null || qid.trim().isEmpty()) {
 				field.id = generateFallbackId(label, path, current.fields.size());
 			} else {
@@ -204,30 +193,18 @@ public class O3FormParser {
 		}
 	}
 	
-	/**
-	 * Extracts text value from a JSON node field, returning null if not found.
-	 */
 	private static String getTextOrNull(JsonNode node, String key) {
 		return node != null && node.has(key) && !node.get(key).isNull() ? node.get(key).asText() : null;
 	}
 	
-	/**
-	 * Extracts array from a JSON node field, returning null if not an array.
-	 */
 	private static ArrayNode getArrayOrNull(JsonNode node, String key) {
 		return (node != null && node.has(key) && node.get(key).isArray()) ? (ArrayNode) node.get(key) : null;
 	}
 	
-	/**
-	 * Sanitizes string for use as Excel sheet name (max 28 chars, removes invalid chars).
-	 */
 	private static String sanitizeSheetName(String name) {
 		return name.replaceAll("[\\\\/*?\\[\\]:]", "_").substring(0, Math.min(28, name.length()));
 	}
 	
-	/**
-	 * Safely parses Double from JsonNode, returning null on failure instead of throwing exception.
-	 */
 	private static Double parseDoubleOrNull(JsonNode node) {
 		if (node == null)
 			return null;
@@ -244,9 +221,6 @@ public class O3FormParser {
 		}
 	}
 	
-	/**
-	 * Safely parses Integer from JsonNode, returning null on failure instead of throwing exception.
-	 */
 	private static Integer parseIntOrNull(JsonNode node) {
 		if (node == null)
 			return null;
@@ -263,16 +237,10 @@ public class O3FormParser {
 		}
 	}
 	
-	/**
-	 * Generates a fallback ID for fields that don't have an ID in the form schema. Uses label if
-	 * available, otherwise path, otherwise a generic identifier. Ensures the ID is not a valid Excel
-	 * cell reference (e.g., "q1", "A1").
-	 */
 	private static String generateFallbackId(String label, String path, int fieldIndex) {
 		String candidate = null;
 		
 		if (label != null && !label.trim().isEmpty()) {
-			// Sanitize label to create a valid ID
 			String sanitized = label.trim().toLowerCase().replaceAll("[^a-z0-9_]", "_").replaceAll("_+", "_")
 			        .replaceAll("^_|_$", "");
 			if (!sanitized.isEmpty()) {
@@ -289,7 +257,6 @@ public class O3FormParser {
 			candidate = "field_" + fieldIndex;
 		}
 		
-		// If the candidate looks like an Excel cell reference (e.g., "q1", "a1", "B2"), modify it
 		if (isExcelCellReference(candidate)) {
 			candidate = "field_" + candidate;
 		}
@@ -297,17 +264,11 @@ public class O3FormParser {
 		return candidate;
 	}
 	
-	/**
-	 * Checks if a string looks like a valid Excel cell reference (e.g., "A1", "Q1", "AB123"). Excel
-	 * cell references are one or more letters followed by one or more digits.
-	 */
 	private static boolean isExcelCellReference(String str) {
 		if (str == null || str.isEmpty()) {
 			return false;
 		}
-		// Pattern: one or more letters, followed by one or more digits (and nothing else)
 		String lower = str.toLowerCase();
-		// Match pattern: starts with letters, then has digits, then ends
 		return lower.matches("^[a-z]+\\d+$");
 	}
 }

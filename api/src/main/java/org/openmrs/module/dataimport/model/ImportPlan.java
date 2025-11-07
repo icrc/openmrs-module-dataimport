@@ -7,17 +7,14 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.module.dataimport.api;
+package org.openmrs.module.dataimport.model;
 
 import lombok.Getter;
-import org.openmrs.module.dataimport.api.reader.RegistrationReader;
+import org.openmrs.module.dataimport.api.reader.ExcelReader;
 
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Result of a dry-run validation containing the import plan.
- */
 @Getter
 public final class ImportPlan {
 	
@@ -29,10 +26,10 @@ public final class ImportPlan {
 	
 	private final ImportStats stats;
 	
-	private final RegistrationReader.PatientIndex patientIndex;
+	private final ExcelReader.PatientIndex patientIndex;
 	
 	public ImportPlan(UUID batchId, List<RowPlan> rowsOk, List<QuarantineItem> issues, ImportStats stats,
-	    RegistrationReader.PatientIndex patientIndex) {
+	    ExcelReader.PatientIndex patientIndex) {
 		this.batchId = batchId;
 		this.rowsOk = rowsOk;
 		this.issues = issues;
@@ -54,7 +51,7 @@ public final class ImportPlan {
 		
 		private ImportStats stats;
 		
-		private RegistrationReader.PatientIndex patientIndex;
+		private ExcelReader.PatientIndex patientIndex;
 		
 		public Builder batchId(UUID batchId) {
 			this.batchId = batchId;
@@ -76,7 +73,7 @@ public final class ImportPlan {
 			return this;
 		}
 		
-		public Builder patientIndex(RegistrationReader.PatientIndex patientIndex) {
+		public Builder patientIndex(ExcelReader.PatientIndex patientIndex) {
 			this.patientIndex = patientIndex;
 			return this;
 		}

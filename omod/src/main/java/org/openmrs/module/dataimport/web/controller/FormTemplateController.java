@@ -11,9 +11,9 @@ package org.openmrs.module.dataimport.web.controller;
 
 import org.openmrs.api.APIException;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.TemplateGenerationService;
-import org.openmrs.module.dataimport.api.TemplateOptions;
-import org.openmrs.module.dataimport.api.WorkbookImportService;
+import org.openmrs.module.dataimport.api.service.TemplateGenerationService;
+import org.openmrs.module.dataimport.api.service.WorkbookImportService;
+import org.openmrs.module.dataimport.model.TemplateOptions;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
 import org.slf4j.Logger;
@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.util.List;
 import java.util.UUID;
 
 @Controller
@@ -96,5 +97,12 @@ public class FormTemplateController extends BaseRestController {
 			log.error("Failed to generate quarantine report", e);
 			throw new APIException("Failed to generate quarantine report: " + e.getMessage());
 		}
+	}
+	
+	public static class TemplateRequest {
+		
+		public List<String> formUuids;
+		
+		public TemplateOptions options;
 	}
 }

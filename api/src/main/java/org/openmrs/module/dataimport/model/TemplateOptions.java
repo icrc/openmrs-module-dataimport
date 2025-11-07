@@ -7,15 +7,18 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.module.dataimport.web.controller;
+package org.openmrs.module.dataimport.model;
 
-import org.openmrs.module.dataimport.api.TemplateOptions;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.List;
-
-public class TemplateRequest {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class TemplateOptions {
 	
-	public List<String> formUuids;
+	public boolean includePatient = true;
 	
-	public TemplateOptions options;
+	public String locationUuid = "";
 }

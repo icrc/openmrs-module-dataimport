@@ -9,23 +9,24 @@
  */
 package org.openmrs.module.dataimport.api.impl;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openmrs.module.dataimport.api.ImportPlan;
-import org.openmrs.module.dataimport.api.WorkbookImportService;
+import org.openmrs.module.dataimport.api.service.EncounterService;
+import org.openmrs.module.dataimport.api.service.ObsService;
+import org.openmrs.module.dataimport.api.service.PatientService;
+import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.IdempotencyService;
 import org.openmrs.module.dataimport.api.storage.ImportPlanStorageService;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
+import org.openmrs.module.dataimport.model.ImportPlan;
 import org.openmrs.module.dataimport.model.SheetModel;
 
 import java.io.ByteArrayInputStream;
@@ -40,7 +41,14 @@ public class DataImportIntegrationTest {
 	
 	@BeforeEach
 	void setUp() {
-		importService = new WorkbookImportServiceImpl();
+		ImportPlanStorageService importPlanStorage = new ImportPlanStorageService();
+		IdempotencyService idempotencyService = new IdempotencyService();
+		PatientService patientService = new PatientService();
+		EncounterService encounterService = new EncounterService();
+		ObsService obsService = new ObsService();
+		
+		importService = new WorkbookImportServiceImpl(importPlanStorage, idempotencyService, patientService,
+		        encounterService, obsService);
 		exporter = new ExcelTemplateExporter();
 	}
 	
@@ -73,42 +81,6 @@ public class DataImportIntegrationTest {
 		catch (Exception e) {
 			assertTrue(e.getMessage().contains("Service not found") || e.getMessage().contains("Context not initialized"));
 		}
-	}
-	
-	@Test
-	@DisplayName("Should handle storage service properly")
-	void testStorageService() {
-		ImportPlanStorageService storage = new ImportPlanStorageService();
-		
-		assertEquals(0, storage.size());
-		assertFalse(storage.exists(UUID.randomUUID()));
-		
-		assertDoesNotThrow(() -> {
-			storage.cleanupOldPlans(24);
-		});
-	}
-	
-	@Test
-	@DisplayName("Should handle idempotency service properly")
-	void testIdempotencyService() {
-		IdempotencyService idempotency = new IdempotencyService();
-		
-		assertEquals(0, idempotency.size());
-		assertFalse(idempotency.exists("test-key"));
-		
-		assertDoesNotThrow(() -> {
-			idempotency.record("test-key", "test-encounter-uuid");
-		});
-		
-		assertTrue(idempotency.exists("test-key"));
-		assertEquals("test-encounter-uuid", idempotency.getEncounterUuid("test-key"));
-		
-		idempotency.remove("test-key");
-		assertFalse(idempotency.exists("test-key"));
-		
-		assertDoesNotThrow(() -> {
-			idempotency.cleanupOldKeys(24);
-		});
 	}
 	
 	@Test

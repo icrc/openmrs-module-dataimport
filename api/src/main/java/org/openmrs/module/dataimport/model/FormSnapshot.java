@@ -12,9 +12,6 @@ package org.openmrs.module.dataimport.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Snapshot of the form model for storage in _Rules sheet.
- */
 public class FormSnapshot {
 	
 	public String formUuid;

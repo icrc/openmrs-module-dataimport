@@ -12,9 +12,9 @@ package org.openmrs.module.dataimport.api.util;
 import org.openmrs.ConceptDatatype;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
-import org.openmrs.module.dataimport.api.QuarantineItem;
 import org.openmrs.module.dataimport.model.ColumnMeta;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
+import org.openmrs.module.dataimport.model.QuarantineItem;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
 import java.time.LocalDate;
@@ -82,9 +82,6 @@ public class Validation {
 		}
 	}
 	
-	/**
-	 * Validates that the OpenMRS concept datatype matches the value type being imported.
-	 */
 	private static void validateDatatype(String sheetName, int rowIndex, ColumnMeta column, String expected,
 	        List<QuarantineItem> quarantineItems) {
 		try {
@@ -94,28 +91,15 @@ public class Validation {
 			ConceptDatatype dt = cs.getConceptByUuid(column.conceptUuid).getDatatype();
 			if (dt == null)
 				return;
-			boolean ok = false;
-			for (String token : expected.split("\\|")) {
-				String t = token.trim();
-				if ("TEXT".equals(t) && dt.isText())
-					ok = true;
-				if ("NUMERIC".equals(t) && dt.isNumeric())
-					ok = true;
-				if ("CODED".equals(t) && dt.isCoded())
-					ok = true;
-				if ("DATE".equals(t) && dt.isDate())
-					ok = true;
-				if ("DATETIME".equals(t) && dt.isDateTime())
-					ok = true;
-				if ("BOOLEAN".equals(t) && dt.isBoolean())
-					ok = true;
-			}
+			
+			boolean ok = matchesAnyDatatype(dt, expected);
 			if (!ok) {
 				String actual = describeDatatype(dt);
 				String label = safeLabel(column);
 				String concept = column.conceptUuid != null ? column.conceptUuid : "";
-				String message = "Column '" + label + "' (concept " + concept + ") datatype mismatch: expected one of ["
-				        + expected + "] but found " + actual;
+				String message = String.format(
+				    "Column '%s' (concept %s) datatype mismatch: expected one of [%s] but found %s", label, concept,
+				    expected, actual);
 				quarantineItems
 				        .add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "DATATYPE_MISMATCH", message));
 			}
@@ -123,6 +107,40 @@ public class Validation {
 		catch (Exception ignored) {
 			// In dry-run validation we avoid failing the whole process if concept lookup fails
 		}
+	}
+	
+	private static boolean matchesAnyDatatype(ConceptDatatype dt, String expectedTypes) {
+		String[] tokens = expectedTypes.split("\\|");
+		for (String token : tokens) {
+			String t = token.trim();
+			switch (t) {
+				case "TEXT":
+					if (dt.isText())
+						return true;
+					break;
+				case "NUMERIC":
+					if (dt.isNumeric())
+						return true;
+					break;
+				case "CODED":
+					if (dt.isCoded())
+						return true;
+					break;
+				case "DATE":
+					if (dt.isDate())
+						return true;
+					break;
+				case "DATETIME":
+					if (dt.isDateTime())
+						return true;
+					break;
+				case "BOOLEAN":
+					if (dt.isBoolean())
+						return true;
+					break;
+			}
+		}
+		return false;
 	}
 	
 	private static String describeDatatype(ConceptDatatype dt) {
@@ -194,7 +212,6 @@ public class Validation {
 	        String sheetName, int rowIndex) {
 		LocalDate value = ((ObsBlueprint.ObsValue.DateValue) obs.getValue()).getValue();
 		
-		// Check minimum date constraint
 		if (column.min != null) {
 			LocalDate minDate = LocalDate.ofEpochDay(column.min.longValue());
 			if (value.isBefore(minDate)) {
@@ -203,7 +220,6 @@ public class Validation {
 			}
 		}
 		
-		// Check maximum date constraint
 		if (column.max != null) {
 			LocalDate maxDate = LocalDate.ofEpochDay(column.max.longValue());
 			if (value.isAfter(maxDate)) {

@@ -13,22 +13,14 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Utility methods for working with Excel workbooks during import.
- */
 public class WorkbookUtil {
 	
-	/**
-	 * Gets all sheets except the Patient Registration sheet and hidden sheets.
-	 */
 	public static List<Sheet> nonPatientSheets(Workbook workbook, String patientSheetName) {
 		List<Sheet> sheets = new ArrayList<>();
 		for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
@@ -40,12 +32,8 @@ public class WorkbookUtil {
 		return sheets;
 	}
 	
-	/**
-	 * Finds the last row with data in a sheet.
-	 */
 	public static int lastDataRow(Sheet sheet) {
 		int lastRow = sheet.getLastRowNum();
-		// Check if the last row is actually empty
 		while (lastRow >= 0) {
 			Row row = sheet.getRow(lastRow);
 			if (row != null && !isEmptyRow(sheet, lastRow)) {
@@ -56,9 +44,6 @@ public class WorkbookUtil {
 		return lastRow;
 	}
 	
-	/**
-	 * Checks if a row is empty (all cells are blank).
-	 */
 	public static boolean isEmptyRow(Sheet sheet, int rowIndex) {
 		Row row = sheet.getRow(rowIndex);
 		if (row == null)
@@ -73,9 +58,6 @@ public class WorkbookUtil {
 		return true;
 	}
 	
-	/**
-	 * Utility methods for reading cell values.
-	 */
 	public static class Cells {
 		
 		public static boolean isBlank(Cell cell) {
@@ -88,9 +70,9 @@ public class WorkbookUtil {
 				case STRING:
 					return cell.getStringCellValue().trim().isEmpty();
 				case NUMERIC:
-					return false; // Numeric cells are never blank
+					return false;
 				case BOOLEAN:
-					return false; // Boolean cells are never blank
+					return false;
 				case FORMULA:
 					try {
 						return cell.getStringCellValue().trim().isEmpty();
@@ -111,7 +93,6 @@ public class WorkbookUtil {
 				case STRING:
 					return cell.getStringCellValue().trim();
 				case NUMERIC:
-					// Convert numeric to string
 					double numValue = cell.getNumericCellValue();
 					if (numValue == (long) numValue) {
 						return String.valueOf((long) numValue);
@@ -176,7 +157,6 @@ public class WorkbookUtil {
 			
 			switch (cell.getCellType()) {
 				case NUMERIC:
-					// Excel date serial number
 					return LocalDate.of(1900, 1, 1).plusDays((long) cell.getNumericCellValue() - 2);
 				case STRING:
 					try {
@@ -203,7 +183,6 @@ public class WorkbookUtil {
 			
 			switch (cell.getCellType()) {
 				case NUMERIC:
-					// Excel datetime serial number
 					return Instant.ofEpochMilli((long) ((cell.getNumericCellValue() - 25569) * 86400000));
 				case STRING:
 					try {

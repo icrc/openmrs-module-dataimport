@@ -17,9 +17,9 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.FieldDatatype;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
 import java.util.HashMap;
@@ -61,7 +61,7 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ObsReader.buildObs(sheet, 1, sheetMeta);
+		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
 		
 		assertEquals(3, obs.size(), "Should create one observation per selected answer");
 		
@@ -107,7 +107,7 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ObsReader.buildObs(sheet, 1, sheetMeta);
+		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
 		
 		assertEquals(2, obs.size(), "Should only create observations for known values");
 		
@@ -137,7 +137,7 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ObsReader.buildObs(sheet, 1, sheetMeta);
+		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
 		
 		assertEquals(0, obs.size(), "Should not create observations for empty values");
 		
@@ -170,7 +170,7 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ObsReader.buildObs(sheet, 1, sheetMeta);
+		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
 		
 		assertEquals(1, obs.size(), "Should create one observation for single value");
 		

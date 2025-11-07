@@ -7,16 +7,13 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.module.dataimport.api;
+package org.openmrs.module.dataimport.model;
 
 import lombok.Getter;
 
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * Blueprint for creating an observation during import.
- */
 @Getter
 public final class ObsBlueprint {
 	
@@ -60,9 +57,6 @@ public final class ObsBlueprint {
 		return new ObsBlueprint(conceptUuid, null, groupUuid);
 	}
 	
-	/**
-	 * Value wrapper for different observation types.
-	 */
 	public abstract static class ObsValue {
 		
 		@Getter

@@ -18,27 +18,26 @@ import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.Provider;
 import org.openmrs.api.AdministrationService;
-import org.openmrs.api.EncounterService;
 import org.openmrs.api.FormService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.EncounterBlueprint;
+import org.openmrs.module.dataimport.model.EncounterBlueprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 
-public class EncounterSaver {
+public class EncounterService {
 	
-	private static final Logger log = LoggerFactory.getLogger(EncounterSaver.class);
+	private static final Logger log = LoggerFactory.getLogger(EncounterService.class);
 	
 	private PatientService getPatientService() {
 		return Context.getPatientService();
 	}
 	
-	private EncounterService getEncounterService() {
+	private org.openmrs.api.EncounterService getEncounterService() {
 		return Context.getEncounterService();
 	}
 	
@@ -58,7 +57,7 @@ public class EncounterSaver {
 	        String formUuid, String providerUuid, String encounterRoleUuid) {
 		
 		PatientService patientService = getPatientService();
-		EncounterService encounterService = getEncounterService();
+		org.openmrs.api.EncounterService encounterService = getEncounterService();
 		LocationService locationService = getLocationService();
 		FormService formService = getFormService();
 		ProviderService providerService = getProviderService();
@@ -198,7 +197,7 @@ public class EncounterSaver {
 	}
 	
 	public String getDefaultEncounterRoleUuid() {
-		EncounterService es = getEncounterService();
+		org.openmrs.api.EncounterService es = getEncounterService();
 		
 		EncounterRole unknownRole = es.getEncounterRoleByName("Unknown");
 		if (unknownRole != null) {

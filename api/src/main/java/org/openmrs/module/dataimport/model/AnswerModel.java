@@ -9,9 +9,6 @@
  */
 package org.openmrs.module.dataimport.model;
 
-/**
- * Answer representation in the form model.
- */
 public class AnswerModel {
 	
 	public String label;

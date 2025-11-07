@@ -13,23 +13,22 @@ import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.Obs;
 import org.openmrs.api.ConceptService;
-import org.openmrs.api.ObsService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 
-public class ObsSaver {
+public class ObsService {
 	
-	private static final Logger log = LoggerFactory.getLogger(ObsSaver.class);
+	private static final Logger log = LoggerFactory.getLogger(ObsService.class);
 	
 	private ConceptService getConceptService() {
 		return Context.getConceptService();
 	}
 	
-	private ObsService getObsService() {
+	private org.openmrs.api.ObsService getObsService() {
 		return Context.getObsService();
 	}
 	
@@ -42,7 +41,6 @@ public class ObsSaver {
 		if (c == null) {
 			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
 		}
-		// Guard against datatype mismatch early to avoid opaque OpenMRS validation errors
 		if (c.getDatatype() != null && (c.getDatatype().isCoded() || c.getDatatype().isNumeric() || c.getDatatype().isDate()
 		        || c.getDatatype().isDateTime() || c.getDatatype().isBoolean())) {
 			throw new IllegalArgumentException("Concept '" + c.getName() + "' (" + c.getUuid()

@@ -20,22 +20,17 @@ import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
 import org.openmrs.api.AdministrationService;
 import org.openmrs.api.LocationService;
-import org.openmrs.api.PatientService;
 import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.idgen.IdentifierSource;
 import org.openmrs.module.idgen.service.IdentifierSourceService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.List;
 
-public class PatientSaver {
+public class PatientService {
 	
-	private static final Logger log = LoggerFactory.getLogger(PatientSaver.class);
-	
-	private PatientService getPatientService() {
+	private org.openmrs.api.PatientService getPatientService() {
 		return Context.getPatientService();
 	}
 	
@@ -54,7 +49,7 @@ public class PatientSaver {
 	public Patient createPatientWithGeneratedIdentifier(String givenName, String familyName, String gender, Date birthdate,
 	        String identifierTypeUuid, String locationUuid, String addressLine1, String cityVillage, String country,
 	        String phone) {
-		PatientService ps = getPatientService();
+		org.openmrs.api.PatientService ps = getPatientService();
 		LocationService ls = getLocationService();
 		
 		PatientIdentifierType idType = ps.getPatientIdentifierTypeByUuid(identifierTypeUuid);
@@ -72,7 +67,6 @@ public class PatientSaver {
 			idSourceService = Context.getService(IdentifierSourceService.class);
 		}
 		catch (Exception e) {
-			log.error("IdentifierSourceService not available. Is the idgen module installed?", e);
 			throw new IllegalStateException(
 			        "Identifier generation service not available; please install and configure idgen module");
 		}
@@ -99,7 +93,6 @@ public class PatientSaver {
 		}
 		PersonAttributeType pat = resolvePhoneAttributeType();
 		if (pat == null) {
-			log.warn("Phone PersonAttributeType not configured; skipping phone attribute");
 			return;
 		}
 		PersonAttribute attr = new PersonAttribute();
@@ -124,7 +117,7 @@ public class PatientSaver {
 	public Patient createPatient(String givenName, String familyName, String gender, Date birthdate, String identifierValue,
 	        String identifierTypeUuid, String locationUuid, String addressLine1, String cityVillage, String country,
 	        String phone) {
-		PatientService ps = getPatientService();
+		org.openmrs.api.PatientService ps = getPatientService();
 		LocationService ls = getLocationService();
 		
 		Person person = new Person();
@@ -165,12 +158,11 @@ public class PatientSaver {
 		patient.addIdentifier(pid);
 		
 		patient = ps.savePatient(patient);
-		log.info("Created patient with address and phone: {} {} [{}]", givenName, familyName, identifierValue);
 		return patient;
 	}
 	
 	public String getDefaultIdentifierTypeUuid() {
-		PatientService ps = getPatientService();
+		org.openmrs.api.PatientService ps = getPatientService();
 		PatientIdentifierType openmrsIdType = ps.getPatientIdentifierTypeByName("OpenMRS ID");
 		if (openmrsIdType != null) {
 			return openmrsIdType.getUuid();
@@ -215,7 +207,6 @@ public class PatientSaver {
 			return normalized.equals("O") ? null : normalized;
 		}
 		
-		log.warn("Unrecognized gender value '{}', setting to null", gender);
 		return null;
 	}
 }
