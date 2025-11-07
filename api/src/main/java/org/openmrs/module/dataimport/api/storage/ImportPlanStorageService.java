@@ -9,7 +9,7 @@
  */
 package org.openmrs.module.dataimport.api.storage;
 
-import org.openmrs.module.dataimport.api.ImportPlan;
+import org.openmrs.module.dataimport.model.ImportPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

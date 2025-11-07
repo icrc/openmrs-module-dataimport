@@ -10,9 +10,9 @@
 package org.openmrs.module.dataimport.web.resource;
 
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.ImportPlan;
-import org.openmrs.module.dataimport.api.ImportResult;
-import org.openmrs.module.dataimport.api.WorkbookImportService;
+import org.openmrs.module.dataimport.api.service.WorkbookImportService;
+import org.openmrs.module.dataimport.model.ImportPlan;
+import org.openmrs.module.dataimport.model.ImportResult;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;

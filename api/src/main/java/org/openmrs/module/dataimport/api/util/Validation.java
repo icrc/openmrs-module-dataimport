@@ -12,9 +12,9 @@ package org.openmrs.module.dataimport.api.util;
 import org.openmrs.ConceptDatatype;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
-import org.openmrs.module.dataimport.api.QuarantineItem;
 import org.openmrs.module.dataimport.model.ColumnMeta;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
+import org.openmrs.module.dataimport.model.QuarantineItem;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
 import java.time.LocalDate;

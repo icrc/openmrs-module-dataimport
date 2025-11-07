@@ -16,7 +16,7 @@ import org.openmrs.ConceptAnswer;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.impl.BaseOpenmrsService;
-import org.openmrs.module.dataimport.api.ConceptAnswersProvider;
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.springframework.stereotype.Component;
 
@@ -26,9 +26,9 @@ import java.util.List;
 import java.util.Locale;
 
 @Component
-public class CoreConceptAnswersProvider extends BaseOpenmrsService implements ConceptAnswersProvider {
+public class CoreConceptAnswersServiceImpl extends BaseOpenmrsService implements ConceptAnswersService {
 	
-	private static final Log log = LogFactory.getLog(CoreConceptAnswersProvider.class);
+	private static final Log log = LogFactory.getLog(CoreConceptAnswersServiceImpl.class);
 	
 	@Override
 	public List<AnswerModel> loadAnswersForConcept(String conceptUuid) {

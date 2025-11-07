@@ -23,7 +23,7 @@ import org.openmrs.api.LocationService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.EncounterBlueprint;
+import org.openmrs.module.dataimport.model.EncounterBlueprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,8 +18,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.openmrs.module.dataimport.api.ImportPlan;
-import org.openmrs.module.dataimport.api.QuarantineItem;
+import org.openmrs.module.dataimport.model.ImportPlan;
+import org.openmrs.module.dataimport.model.QuarantineItem;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

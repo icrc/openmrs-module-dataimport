@@ -15,7 +15,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openmrs.module.dataimport.api.EncounterBlueprint;
+import org.openmrs.module.dataimport.model.EncounterBlueprint;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
 @DisplayName("EncounterReader Location Tests")

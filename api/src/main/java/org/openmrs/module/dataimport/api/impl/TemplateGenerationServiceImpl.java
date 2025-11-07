@@ -10,14 +10,15 @@
 package org.openmrs.module.dataimport.api.impl;
 
 import org.openmrs.api.APIException;
-import org.openmrs.module.dataimport.api.ConceptAnswersProvider;
-import org.openmrs.module.dataimport.api.FormSchemaResolver;
-import org.openmrs.module.dataimport.api.TemplateOptions;
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
+import org.openmrs.module.dataimport.api.service.FormSchemaService;
+import org.openmrs.module.dataimport.api.service.TemplateGenerationService;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.SheetModel;
+import org.openmrs.module.dataimport.model.TemplateOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,25 +28,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimport.api.TemplateGenerationService {
+public class TemplateGenerationServiceImpl implements TemplateGenerationService {
 	
 	private static final Logger log = LoggerFactory.getLogger(TemplateGenerationServiceImpl.class);
 	
-	private final FormSchemaResolver resolver;
+	private final FormSchemaService formSchemaService;
 	
 	private final O3FormParser parser;
 	
 	private final ExcelTemplateExporter exporter;
 	
-	private final ConceptAnswersProvider conceptAnswersProvider;
+	private final ConceptAnswersService conceptAnswersService;
 	
 	@Autowired
-	public TemplateGenerationServiceImpl(FormSchemaResolver resolver, O3FormParser parser, ExcelTemplateExporter exporter,
-	    ConceptAnswersProvider conceptAnswersProvider) {
-		this.resolver = resolver;
+	public TemplateGenerationServiceImpl(FormSchemaService resolver, O3FormParser parser, ExcelTemplateExporter exporter,
+	    ConceptAnswersService conceptAnswersProvider) {
+		this.formSchemaService = resolver;
 		this.parser = parser;
 		this.exporter = exporter;
-		this.conceptAnswersProvider = conceptAnswersProvider;
+		this.conceptAnswersService = conceptAnswersProvider;
 	}
 	
 	@Override
@@ -65,11 +66,11 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 		
 		for (String uuid : formUuids) {
 			try {
-				if (!resolver.hasSchemaResource(uuid)) {
+				if (!formSchemaService.hasSchemaResource(uuid)) {
 					throw new APIException("Form " + uuid + " not found or has no JSON schema resource");
 				}
 				
-				String json = resolver.fetchSchemaJsonByUuid(uuid);
+				String json = formSchemaService.fetchSchemaJsonByUuid(uuid);
 				
 				FormModel formModel = parser.parse(json, null);
 				enrichFormWithConceptAnswers(formModel);
@@ -122,7 +123,7 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 						for (AnswerModel answer : field.answers) {
 							boolean missingLabel = (answer.label == null || answer.label.trim().isEmpty());
 							if (missingLabel && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
-								AnswerModel conceptAnswer = conceptAnswersProvider.loadSingleConcept(answer.conceptUuid);
+								AnswerModel conceptAnswer = conceptAnswersService.loadSingleConcept(answer.conceptUuid);
 								if (conceptAnswer != null && conceptAnswer.label != null) {
 									answer.label = conceptAnswer.label;
 								} else {
@@ -131,7 +132,7 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 							}
 						}
 					} else if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						List<AnswerModel> loadedAnswers = conceptAnswersProvider.loadAnswersForConcept(field.conceptUuid);
+						List<AnswerModel> loadedAnswers = conceptAnswersService.loadAnswersForConcept(field.conceptUuid);
 						if (loadedAnswers != null && !loadedAnswers.isEmpty()) {
 							field.answers.addAll(loadedAnswers);
 						} else {

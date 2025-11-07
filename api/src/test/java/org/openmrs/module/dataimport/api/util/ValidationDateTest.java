@@ -13,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
-import org.openmrs.module.dataimport.api.QuarantineItem;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.FieldDatatype;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
+import org.openmrs.module.dataimport.model.QuarantineItem;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
 import java.time.LocalDate;

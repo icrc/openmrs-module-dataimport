@@ -11,9 +11,9 @@ package org.openmrs.module.dataimport.web.controller;
 
 import org.openmrs.api.APIException;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.TemplateGenerationService;
-import org.openmrs.module.dataimport.api.TemplateOptions;
-import org.openmrs.module.dataimport.api.WorkbookImportService;
+import org.openmrs.module.dataimport.api.service.TemplateGenerationService;
+import org.openmrs.module.dataimport.api.service.WorkbookImportService;
+import org.openmrs.module.dataimport.model.TemplateOptions;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
 import org.slf4j.Logger;

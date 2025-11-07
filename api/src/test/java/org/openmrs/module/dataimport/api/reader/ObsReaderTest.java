@@ -17,9 +17,9 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.FieldDatatype;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
 import java.util.HashMap;

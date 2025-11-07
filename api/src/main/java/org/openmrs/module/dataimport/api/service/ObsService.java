@@ -14,7 +14,7 @@ import org.openmrs.Encounter;
 import org.openmrs.Obs;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

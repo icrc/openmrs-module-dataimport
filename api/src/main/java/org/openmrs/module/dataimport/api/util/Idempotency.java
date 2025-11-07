@@ -10,8 +10,8 @@
 package org.openmrs.module.dataimport.api.util;
 
 import org.apache.poi.ss.usermodel.Workbook;
-import org.openmrs.module.dataimport.api.EncounterBlueprint;
-import org.openmrs.module.dataimport.api.ObsBlueprint;
+import org.openmrs.module.dataimport.model.EncounterBlueprint;
+import org.openmrs.module.dataimport.model.ObsBlueprint;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
