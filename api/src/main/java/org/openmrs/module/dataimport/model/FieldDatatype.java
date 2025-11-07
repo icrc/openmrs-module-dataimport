@@ -9,9 +9,6 @@
  */
 package org.openmrs.module.dataimport.model;
 
-/**
- * Datatype enumeration for the form model.
- */
 public enum FieldDatatype {
 	TEXT,
 	NUMERIC,

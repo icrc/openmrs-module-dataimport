@@ -13,9 +13,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Options for template generation
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

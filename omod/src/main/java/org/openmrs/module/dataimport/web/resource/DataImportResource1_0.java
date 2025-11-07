@@ -44,7 +44,6 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 	@Override
 	public SimpleObject upload(MultipartFile file, RequestContext context) throws ResponseException {
 		if (file == null || file.isEmpty()) {
-			log.warn("Dry run request received with no file");
 			return error("No file uploaded");
 		}
 		
@@ -57,8 +56,6 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 		if (!lowerFilename.endsWith(".xlsx") && !lowerFilename.endsWith(".xls")) {
 			return error("File must be an Excel workbook (.xlsx) or (.xls)");
 		}
-		
-		log.info("Starting dry run for file: {} ({} bytes)", filename, file.getSize());
 		
 		try (InputStream inputStream = file.getInputStream()) {
 			WorkbookImportService service = getService();
@@ -78,15 +75,10 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 			response.put("okRows", importPlan.getRowsOk());
 			response.put("quarantinedRows", importPlan.getIssues());
 			response.put("message", "Dry run completed successfully");
-			
-			log.info("Dry run completed: {} OK rows, {} quarantined rows", importPlan.getRowsOk().size(),
-			    importPlan.getIssues().size());
-			
 			return response;
 		}
 		catch (Exception e) {
 			log.error("Dry run failed for file: {}", filename, e);
-			// Extract the most meaningful error message
 			String errorMessage = extractErrorMessage(e);
 			return error("Dry run failed: " + errorMessage);
 		}

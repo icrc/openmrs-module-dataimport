@@ -14,9 +14,6 @@ import lombok.Getter;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * Blueprint for creating an observation during import.
- */
 @Getter
 public final class ObsBlueprint {
 	
@@ -60,9 +57,6 @@ public final class ObsBlueprint {
 		return new ObsBlueprint(conceptUuid, null, groupUuid);
 	}
 	
-	/**
-	 * Value wrapper for different observation types.
-	 */
 	public abstract static class ObsValue {
 		
 		@Getter

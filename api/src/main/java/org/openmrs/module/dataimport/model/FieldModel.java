@@ -12,9 +12,6 @@ package org.openmrs.module.dataimport.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Field representation in the form model.
- */
 public class FieldModel {
 	
 	public String id;

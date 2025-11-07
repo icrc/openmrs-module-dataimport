@@ -9,12 +9,11 @@
  */
 package org.openmrs.module.dataimport.model;
 
+import org.openmrs.module.dataimport.api.util.DataImportConstants;
+
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Metadata about a column in the Excel template.
- */
 public class ColumnMeta {
 	
 	public int colIndex;
@@ -39,33 +38,24 @@ public class ColumnMeta {
 	
 	public Double min, max;
 	
-	public Map<String, String> answers = new HashMap<>(); // label -> conceptUuid mapping
+	public Map<String, String> answers = new HashMap<>();
 	
 	public boolean isPatientRef() {
-		return "Patient Ref".equals(label);
+		return DataImportConstants.PATIENT_REF_HEADER.equals(label);
 	}
 	
 	public String getAnswerConceptUuid(String label) {
 		if (answers == null)
 			return null;
-		// First try exact match (for legacy templates that stored raw labels)
 		String direct = answers.get(label);
 		if (direct != null)
 			return direct;
-		// Then try normalized key match
-		String target = normalizeLabel(label);
+		String target = DataImportConstants.normalizeLabel(label);
 		for (Map.Entry<String, String> e : answers.entrySet()) {
-			if (normalizeLabel(e.getKey()).equals(target)) {
+			if (DataImportConstants.normalizeLabel(e.getKey()).equals(target)) {
 				return e.getValue();
 			}
 		}
 		return null;
-	}
-	
-	private String normalizeLabel(String label) {
-		if (label == null)
-			return null;
-		// Normalize case and spaces for matching
-		return label.trim().toLowerCase().replaceAll("\\s+", " ");
 	}
 }

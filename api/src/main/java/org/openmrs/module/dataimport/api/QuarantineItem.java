@@ -11,9 +11,6 @@ package org.openmrs.module.dataimport.api;
 
 import lombok.Getter;
 
-/**
- * Represents a validation issue that quarantines a row from import.
- */
 @Getter
 public final class QuarantineItem {
 	

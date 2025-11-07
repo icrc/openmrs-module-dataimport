@@ -32,13 +32,11 @@ class EncounterReaderLocationTest {
 		sheetMeta.encounterTypeUuid = "test-encounter-type-uuid";
 		
 		String templateDefaultLocationUuid = "template-default-location-uuid";
-		
-		EncounterBlueprint encounter = EncounterReader.buildEncounter(sheet, 1, sheetMeta, templateDefaultLocationUuid);
+		EncounterBlueprint encounter = ExcelReader.buildEncounter(sheetMeta, templateDefaultLocationUuid);
 		
 		assertNotNull(encounter);
 		assertEquals("test-encounter-type-uuid", encounter.getEncounterTypeUuid());
 		assertEquals("template-default-location-uuid", encounter.getLocationUuid());
-		
 		workbook.close();
 	}
 	
@@ -54,8 +52,7 @@ class EncounterReaderLocationTest {
 		sheetMeta.locationUuid = "sheet-specific-location-uuid";
 		
 		String templateDefaultLocationUuid = "template-default-location-uuid";
-		
-		EncounterBlueprint encounter = EncounterReader.buildEncounter(sheet, 1, sheetMeta, templateDefaultLocationUuid);
+		EncounterBlueprint encounter = ExcelReader.buildEncounter(sheetMeta, templateDefaultLocationUuid);
 		
 		assertNotNull(encounter);
 		assertEquals("test-encounter-type-uuid", encounter.getEncounterTypeUuid());
@@ -68,20 +65,14 @@ class EncounterReaderLocationTest {
 	@DisplayName("Should handle null template default location gracefully")
 	void testNullTemplateDefaultLocation() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
-		Sheet sheet = workbook.createSheet("Test Sheet");
-		
 		SheetMeta sheetMeta = new SheetMeta();
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.encounterTypeUuid = "test-encounter-type-uuid";
-		// No locationUuid set on sheet
-		
-		String templateDefaultLocationUuid = null;
-		
-		EncounterBlueprint encounter = EncounterReader.buildEncounter(sheet, 1, sheetMeta, templateDefaultLocationUuid);
+		EncounterBlueprint encounter = ExcelReader.buildEncounter(sheetMeta, null);
 		
 		assertNotNull(encounter);
 		assertEquals("test-encounter-type-uuid", encounter.getEncounterTypeUuid());
-		assertNull(encounter.getLocationUuid()); // Should be null when no location is provided
+		assertNull(encounter.getLocationUuid());
 		
 		workbook.close();
 	}

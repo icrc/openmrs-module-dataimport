@@ -113,7 +113,7 @@ public class MetaReaderTest {
 		columnRow2.createCell(7).setCellValue(false);
 		columnRow2.createCell(8).setCellValue("{}");
 		
-		TemplateMeta meta = MetaReader.read(workbook);
+		TemplateMeta meta = ExcelReader.read(workbook);
 		
 		assertNotNull(meta);
 		assertEquals(1, meta.templateVersion);
@@ -200,7 +200,7 @@ public class MetaReaderTest {
 		columnRow.createCell(7).setCellValue(false);
 		columnRow.createCell(8).setCellValue("{}");
 		
-		TemplateMeta meta = MetaReader.read(workbook);
+		TemplateMeta meta = ExcelReader.read(workbook);
 		
 		assertNotNull(meta);
 		assertEquals(1, meta.templateVersion);
@@ -250,7 +250,7 @@ public class MetaReaderTest {
 		invalidRow.createCell(8).setCellValue("{}");
 		
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-			MetaReader.read(workbook);
+			ExcelReader.read(workbook);
 		});
 		
 		assertTrue(exception.getMessage().contains("missing datatype"));
@@ -292,7 +292,7 @@ public class MetaReaderTest {
 		
 		// Should not throw - columns without conceptUuid are allowed
 		// They will be skipped during obs creation
-		TemplateMeta meta = MetaReader.read(workbook);
+		TemplateMeta meta = ExcelReader.read(workbook);
 		assertNotNull(meta);
 		assertEquals(1, meta.sheets.size());
 		
@@ -331,7 +331,7 @@ public class MetaReaderTest {
 		invalidRow.createCell(7).setCellValue(false);
 		
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-			MetaReader.read(workbook);
+			ExcelReader.read(workbook);
 		});
 		
 		assertTrue(exception.getMessage().contains("missing coded answers mapping"));
@@ -372,7 +372,7 @@ public class MetaReaderTest {
 		patientRefRow.createCell(8).setCellValue("{}");
 		
 		assertDoesNotThrow(() -> {
-			TemplateMeta meta = MetaReader.read(workbook);
+			TemplateMeta meta = ExcelReader.read(workbook);
 			assertNotNull(meta);
 			assertEquals(1, meta.sheets.size());
 			assertEquals(1, meta.getSheetMeta("Test Sheet").columns.size());
@@ -424,7 +424,7 @@ public class MetaReaderTest {
 		codedRow.createCell(8).setCellValue("{\"Fever\":\"fever-uuid\",\"Headache\":\"headache-uuid\"}");
 		
 		assertDoesNotThrow(() -> {
-			TemplateMeta meta = MetaReader.read(workbook);
+			TemplateMeta meta = ExcelReader.read(workbook);
 			assertNotNull(meta);
 			assertEquals(1, meta.sheets.size());
 			assertEquals(2, meta.getSheetMeta("Test Sheet").columns.size());

@@ -29,6 +29,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openmrs.Concept;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.dataimport.api.util.DataImportConstants;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
@@ -47,23 +48,7 @@ public class ExcelTemplateExporter {
 	
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
 	
-	private static final String LIST_SHEET = "__lists";
-	
-	private static final String META_SHEET = "__meta";
-	
-	private static final String CONCEPTS_SHEET = "__concepts";
-	
-	private static final String PATIENT_SHEET_NAME = "Patient Registration";
-	
-	private static final String REG_SHEET = PATIENT_SHEET_NAME;
-	
-	private static final String PATIENT_REF_HEADER = "Patient Ref";
-	
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
-	
-	private static final int FIRST_DATA_ROW = 1;
-	
-	private static final int LAST_DATA_ROW = 1000;
 	
 	private static final int STANDARD_COLUMN_WIDTH = 20 * 256;
 	
@@ -96,7 +81,7 @@ public class ExcelTemplateExporter {
 				int columnIndex = 0;
 				
 				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
-				patientRefHeaderCell.setCellValue(PATIENT_REF_HEADER);
+				patientRefHeaderCell.setCellValue(DataImportConstants.PATIENT_REF_HEADER);
 				patientRefHeaderCell.setCellStyle(headerStyle);
 				sheet.setColumnWidth(columnIndex, 60 * 256);
 				columnIndex++;
@@ -107,12 +92,12 @@ public class ExcelTemplateExporter {
 					headerCell.setCellStyle(headerStyle);
 					
 					if (field.datatype == FieldDatatype.DATE) {
-						for (int rowIndex = 1; rowIndex <= 1000; rowIndex++) {
+						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
 							cell.setCellStyle(dateStyle);
 						}
 					} else if (field.datatype == FieldDatatype.DATETIME) {
-						for (int rowIndex = 1; rowIndex <= 1000; rowIndex++) {
+						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
 							cell.setCellStyle(dateTimeStyle);
 						}
@@ -130,18 +115,13 @@ public class ExcelTemplateExporter {
 			ensurePatientRefsNamedRange(workbook);
 			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
 				XSSFSheet s = workbook.getSheetAt(i);
-				if (!PATIENT_SHEET_NAME.equals(s.getSheetName())) {
-					applyPatientRefDropdown(s, 0, FIRST_DATA_ROW, LAST_DATA_ROW);
+				if (!DataImportConstants.PATIENT_SHEET_NAME.equals(s.getSheetName())) {
+					applyPatientRefDropdown(s, 0, DataImportConstants.FIRST_DATA_ROW, DataImportConstants.LAST_DATA_ROW);
 				}
 			}
 			
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			workbook.write(outputStream);
-			int totalSheets = workbook.getNumberOfSheets();
-			int namedRanges = workbook.getNumberOfNames();
-			log.info("EXCEL EXPORT COMPLETE: {} sheets, {} named ranges, {} bytes", totalSheets, namedRanges,
-			    outputStream.size());
-			
 			return outputStream.toByteArray();
 		}
 		catch (IOException e) {
@@ -154,11 +134,11 @@ public class ExcelTemplateExporter {
 	
 	private static void createPatientSheet(Workbook workbook) {
 		XSSFWorkbook wb = (XSSFWorkbook) workbook;
-		XSSFSheet sheet = wb.createSheet(PATIENT_SHEET_NAME);
+		XSSFSheet sheet = wb.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
 		CellStyle headerStyle = createHeaderStyle(wb);
 		DataFormat dataFormat = wb.createDataFormat();
 		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
-		        "City/Village", "Country", "Phone", PATIENT_REF_HEADER };
+		        "City/Village", "Country", "Phone", DataImportConstants.PATIENT_REF_HEADER };
 		Row headerRow = sheet.createRow(0);
 		for (int columnIndex = 0; columnIndex < columnHeaders.length; columnIndex++) {
 			Cell headerCell = headerRow.createCell(columnIndex);
@@ -181,7 +161,7 @@ public class ExcelTemplateExporter {
 		
 		createGenderDropdown(wb, sheet);
 		
-		for (int r = FIRST_DATA_ROW; r <= LAST_DATA_ROW; r++) {
+		for (int r = DataImportConstants.FIRST_DATA_ROW; r <= DataImportConstants.LAST_DATA_ROW; r++) {
 			Row dataRow = sheet.getRow(r);
 			if (dataRow == null)
 				dataRow = sheet.createRow(r);
@@ -213,9 +193,9 @@ public class ExcelTemplateExporter {
 	}
 	
 	private static void createGenderDropdown(XSSFWorkbook workbook, XSSFSheet sheet) {
-		XSSFSheet listSheet = workbook.getSheet(LIST_SHEET);
+		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
 		if (listSheet == null) {
-			listSheet = workbook.createSheet(LIST_SHEET);
+			listSheet = workbook.createSheet(DataImportConstants.LIST_SHEET);
 			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
 		}
 		
@@ -240,13 +220,14 @@ public class ExcelTemplateExporter {
 		Name namedRange = workbook.createName();
 		namedRange.setNameName("GenderOptions");
 		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
-		String reference = "'" + LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
+		String reference = "'" + DataImportConstants.LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
 		        + (genderOptions.length + 1);
 		namedRange.setRefersToFormula(reference);
 		
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint("GenderOptions");
-		CellRangeAddressList region = new CellRangeAddressList(FIRST_DATA_ROW, LAST_DATA_ROW, 2, 2);
+		CellRangeAddressList region = new CellRangeAddressList(DataImportConstants.FIRST_DATA_ROW,
+		        DataImportConstants.LAST_DATA_ROW, 2, 2);
 		DataValidation validation = helper.createValidation(constraint, region);
 		sheet.addValidationData(validation);
 	}
@@ -269,23 +250,14 @@ public class ExcelTemplateExporter {
 	}
 	
 	private XSSFSheet getOrCreateListSheet(XSSFWorkbook workbook) {
-		XSSFSheet listSheet = workbook.getSheet(LIST_SHEET);
+		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
 		if (listSheet == null) {
-			listSheet = workbook.createSheet(LIST_SHEET);
+			listSheet = workbook.createSheet(DataImportConstants.LIST_SHEET);
 			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
 		}
 		return listSheet;
 	}
 	
-	/**
-	 * Generates a unique sheet name by checking if the name already exists in the workbook. If it
-	 * exists, appends a counter suffix (e.g., "_1", "_2") until a unique name is found. Excel sheet
-	 * names are limited to 31 characters, so the name is truncated if necessary.
-	 * 
-	 * @param workbook The workbook to check for existing sheet names
-	 * @param baseName The base sheet name to make unique
-	 * @return A unique sheet name that doesn't exist in the workbook
-	 */
 	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
 		if (baseName == null || baseName.trim().isEmpty()) {
 			baseName = "Sheet";
@@ -314,7 +286,6 @@ public class ExcelTemplateExporter {
 			counter++;
 			
 			if (counter > 1000) {
-				log.warn("Generated many unique sheet names, using timestamp suffix");
 				candidate = base + "_" + System.currentTimeMillis();
 				if (candidate.length() > MAX_SHEET_NAME_LENGTH) {
 					candidate = candidate.substring(0, MAX_SHEET_NAME_LENGTH);
@@ -350,10 +321,6 @@ public class ExcelTemplateExporter {
 		return safeName;
 	}
 	
-	/**
-	 * Checks if a string is a valid Excel cell reference (e.g., "A1", "Q1", "AB123"). Excel cell
-	 * references are one or more letters followed by one or more digits.
-	 */
 	private boolean isExcelCellReference(String str) {
 		if (str == null || str.isEmpty()) {
 			return false;
@@ -380,16 +347,11 @@ public class ExcelTemplateExporter {
 	}
 	
 	private void handleCodedField(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
-		log.debug("Creating dropdown for CODED field: '{}' with {} answers", field.label, field.answers.size());
-		
 		if (field.answers.isEmpty()) {
-			log.warn("CODED field '{}' has no answers - creating text column without dropdown", field.label);
 			return;
 		}
 		
 		createSimpleDropdown(workbook, sheet, field, columnIndex);
-		
-		log.debug("Dropdown created for CODED field: '{}' with {} options", field.label, field.answers.size());
 	}
 	
 	private void createSimpleDropdown(XSSFWorkbook workbook, XSSFSheet sheet, FieldModel field, int columnIndex) {
@@ -424,35 +386,31 @@ public class ExcelTemplateExporter {
 		Name namedRange = workbook.createName();
 		namedRange.setNameName(fieldName);
 		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
-		String reference = "'" + LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
+		String reference = "'" + DataImportConstants.LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
 		        + (field.answers.size() + 1);
 		namedRange.setRefersToFormula(reference);
 		
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint(fieldName);
-		CellRangeAddressList region = new CellRangeAddressList(1, 1000, columnIndex, columnIndex);
+		CellRangeAddressList region = new CellRangeAddressList(DataImportConstants.FIRST_DATA_ROW,
+		        DataImportConstants.LAST_DATA_ROW, columnIndex, columnIndex);
 		DataValidation validation = helper.createValidation(constraint, region);
 		
 		sheet.addValidationData(validation);
-		
-		log.debug("Simple dropdown created for '{}' with {} options using proven approach", fieldName, field.answers.size());
 	}
 	
 	private void ensurePatientRefsNamedRange(XSSFWorkbook workbook) {
-		String formula = "IF(COUNTA('" + REG_SHEET + "'!$I:$I)<=1," + "'" + REG_SHEET + "'!$I$2," + "OFFSET('" + REG_SHEET
-		        + "'!$I$2,0,0,COUNTA('" + REG_SHEET + "'!$I:$I)-1,1))";
+		String regSheet = DataImportConstants.PATIENT_SHEET_NAME;
+		String formula = "IF(COUNTA('" + regSheet + "'!$I:$I)<=1," + "'" + regSheet + "'!$I$2," + "OFFSET('" + regSheet
+		        + "'!$I$2,0,0,COUNTA('" + regSheet + "'!$I:$I)-1,1))";
 		Name name = workbook.getName(PATIENT_REFS_RANGE);
 		if (name == null) {
 			name = workbook.createName();
 			name.setNameName(PATIENT_REFS_RANGE);
 		}
 		name.setRefersToFormula(formula);
-		log.debug("Patient Refs named range '{}' -> {}", PATIENT_REFS_RANGE, formula);
 	}
 	
-	/**
-	 * Apply validation to force selecting Patient Ref from the named range on a given sheet/column.
-	 */
 	private void applyPatientRefDropdown(XSSFSheet sheet, int targetColumnIndex, int firstDataRow, int lastDataRow) {
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint(PATIENT_REFS_RANGE);
@@ -473,7 +431,7 @@ public class ExcelTemplateExporter {
 	}
 	
 	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid) {
-		XSSFSheet metaSheet = workbook.createSheet(META_SHEET);
+		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
 		
 		CellStyle headerStyle = createHeaderStyle(workbook);
@@ -538,12 +496,12 @@ public class ExcelTemplateExporter {
 			cell.setCellStyle(headerStyle);
 		}
 		
-		if (workbook.getSheet(PATIENT_SHEET_NAME) != null) {
+		if (workbook.getSheet(DataImportConstants.PATIENT_SHEET_NAME) != null) {
 			String[] patientHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
-			        "City/Village", "Country", "Phone", "Patient Ref" };
+			        "City/Village", "Country", "Phone", DataImportConstants.PATIENT_REF_HEADER };
 			for (int colIndex = 0; colIndex < patientHeaders.length; colIndex++) {
 				Row row = metaSheet.createRow(rowIndex++);
-				row.createCell(0).setCellValue(PATIENT_SHEET_NAME);
+				row.createCell(0).setCellValue(DataImportConstants.PATIENT_SHEET_NAME);
 				row.createCell(1).setCellValue(colIndex);
 				row.createCell(2).setCellValue(""); // fieldId
 				row.createCell(3).setCellValue(patientHeaders[colIndex]);
@@ -562,7 +520,7 @@ public class ExcelTemplateExporter {
 			row.createCell(0).setCellValue(sheetModel.sheetName);
 			row.createCell(1).setCellValue(colIndex++);
 			row.createCell(2).setCellValue(""); // fieldId
-			row.createCell(3).setCellValue("Patient Ref");
+			row.createCell(3).setCellValue(DataImportConstants.PATIENT_REF_HEADER);
 			row.createCell(4).setCellValue(""); // conceptUuid
 			row.createCell(5).setCellValue("TEXT"); // datatype
 			row.createCell(6).setCellValue(false); // isRepeat
@@ -585,7 +543,7 @@ public class ExcelTemplateExporter {
 					Map<String, String> answersMap = new HashMap<>();
 					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
 						if (answer.label != null && answer.conceptUuid != null) {
-							answersMap.put(normalizeLabel(answer.label), answer.conceptUuid);
+							answersMap.put(DataImportConstants.normalizeLabel(answer.label), answer.conceptUuid);
 						}
 					}
 					row.createCell(8).setCellValue(mapToJson(answersMap));
@@ -598,12 +556,10 @@ public class ExcelTemplateExporter {
 		for (int i = 0; i < columnHeaders.length; i++) {
 			metaSheet.autoSizeColumn(i);
 		}
-		
-		log.debug("Created metadata sheet with {} rows", rowIndex);
 	}
 	
 	private void createConceptsSheet(XSSFWorkbook workbook, FormModel form) {
-		XSSFSheet conceptsSheet = workbook.createSheet(CONCEPTS_SHEET);
+		XSSFSheet conceptsSheet = workbook.createSheet(DataImportConstants.CONCEPTS_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(conceptsSheet), true);
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		Row header = conceptsSheet.createRow(0);
@@ -619,9 +575,7 @@ public class ExcelTemplateExporter {
 		try {
 			conceptService = Context.getConceptService();
 		}
-		catch (Exception ignore) {
-			// Running outside OpenMRS context (tests), concept details will be left blank
-		}
+		catch (Exception ignore) {}
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
@@ -631,7 +585,6 @@ public class ExcelTemplateExporter {
 						r.createCell(1).setCellValue(field.id != null ? field.id : "");
 						r.createCell(2).setCellValue(field.label != null ? field.label : "");
 						r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
-						// question concept metadata via ConceptService if available
 						String qDatatype = "";
 						String qClass = "";
 						if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
@@ -646,7 +599,6 @@ public class ExcelTemplateExporter {
 						r.createCell(6).setCellValue(field.isMulti);
 						r.createCell(7).setCellValue(answer.label != null ? answer.label : "");
 						r.createCell(8).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
-						// answer concept metadata via ConceptService if available
 						String aDatatype = "";
 						String aClass = "";
 						if (conceptService != null && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
@@ -704,12 +656,6 @@ public class ExcelTemplateExporter {
 		}
 		json.append("}");
 		return json.toString();
-	}
-	
-	private String normalizeLabel(String label) {
-		if (label == null)
-			return null;
-		return label.trim().toLowerCase().replaceAll("\\s+", " ");
 	}
 	
 }

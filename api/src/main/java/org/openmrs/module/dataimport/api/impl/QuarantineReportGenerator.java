@@ -20,8 +20,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openmrs.module.dataimport.api.ImportPlan;
 import org.openmrs.module.dataimport.api.QuarantineItem;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -29,36 +27,18 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Generates a color-coded Excel report highlighting rows with validation errors.
- */
 public class QuarantineReportGenerator {
 	
-	private static final Logger log = LoggerFactory.getLogger(QuarantineReportGenerator.class);
-	
-	/**
-	 * Generates a color-coded Excel report from the original workbook and import plan. Rows with errors
-	 * are highlighted in red (light red background).
-	 * 
-	 * @param originalWorkbook The original workbook as an InputStream
-	 * @param importPlan The import plan containing quarantine items
-	 * @return Excel file as byte array
-	 */
 	public byte[] generateReport(InputStream originalWorkbook, ImportPlan importPlan) {
 		if (originalWorkbook == null || importPlan == null) {
 			throw new IllegalArgumentException("Original workbook and import plan are required");
 		}
 		
 		try (XSSFWorkbook sourceWb = new XSSFWorkbook(originalWorkbook); XSSFWorkbook reportWb = new XSSFWorkbook()) {
-			
-			// Create a map of sheet -> row -> error info for quick lookup
 			Map<String, Map<Integer, QuarantineItem>> errorMap = buildErrorMap(importPlan.getIssues());
-			
-			// Copy each sheet and apply highlighting
 			for (Sheet sourceSheet : sourceWb) {
 				String sheetName = sourceSheet.getSheetName();
 				
-				// Skip hidden metadata sheets
 				if (sheetName.startsWith("__")) {
 					continue;
 				}
@@ -69,17 +49,12 @@ public class QuarantineReportGenerator {
 				copySheetWithHighlighting(sourceSheet, reportSheet, sheetErrors);
 			}
 			
-			// Write to byte array
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			reportWb.write(baos);
 			reportWb.close();
-			
-			log.info("Generated quarantine report with {} highlighted rows", importPlan.getIssues().size());
-			
 			return baos.toByteArray();
 		}
 		catch (IOException e) {
-			log.error("Failed to generate quarantine report", e);
 			throw new RuntimeException("Failed to generate quarantine report: " + e.getMessage(), e);
 		}
 	}
@@ -95,12 +70,10 @@ public class QuarantineReportGenerator {
 	}
 	
 	private void copySheetWithHighlighting(Sheet sourceSheet, Sheet targetSheet, Map<Integer, QuarantineItem> errors) {
-		// Create styles
 		Workbook workbook = targetSheet.getWorkbook();
 		CellStyle errorStyle = createErrorStyle(workbook);
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		
-		// Copy data rows
 		int maxRowNum = sourceSheet.getLastRowNum();
 		for (int rowNum = 0; rowNum <= maxRowNum; rowNum++) {
 			Row sourceRow = sourceSheet.getRow(rowNum);
@@ -110,7 +83,6 @@ public class QuarantineReportGenerator {
 			
 			Row targetRow = targetSheet.createRow(rowNum);
 			
-			// Determine if this row has errors (header row is row 0, data starts at row 1)
 			boolean hasError = errors != null && errors.containsKey(rowNum);
 			CellStyle rowStyle = rowNum == 0 ? headerStyle : (hasError ? errorStyle : null);
 			
@@ -123,18 +95,14 @@ public class QuarantineReportGenerator {
 				}
 				
 				Cell targetCell = targetRow.createCell(cellNum);
-				
-				// Copy cell value
 				copyCellValue(sourceCell, targetCell);
 				
-				// Apply style
 				if (rowStyle != null) {
 					targetCell.setCellStyle(rowStyle);
 				}
 			}
 		}
 		
-		// Copy column widths
 		for (int i = 0; i <= sourceSheet.getRow(0).getLastCellNum(); i++) {
 			int width = sourceSheet.getColumnWidth(i);
 			if (width > 0) {
@@ -142,7 +110,6 @@ public class QuarantineReportGenerator {
 			}
 		}
 		
-		// Copy freeze pane if present
 		if (sourceSheet.getPaneInformation() != null) {
 			targetSheet.createFreezePane(sourceSheet.getPaneInformation().getVerticalSplitPosition(),
 			    sourceSheet.getPaneInformation().getHorizontalSplitPosition());

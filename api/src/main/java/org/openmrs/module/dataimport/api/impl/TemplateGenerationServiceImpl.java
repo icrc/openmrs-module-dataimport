@@ -100,7 +100,6 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 				throw e;
 			}
 			catch (Exception e) {
-				log.error("Unexpected error processing form {}: {}", uuid, e.getMessage(), e);
 				throw new APIException("Error processing form " + uuid + ": " + e.getMessage(), e);
 			}
 		}
@@ -115,61 +114,26 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 		}
 	}
 	
-	/**
-	 * Enrich coded fields with concept answers loaded from ConceptService. This is critical for radio
-	 * buttons and selects that don't have inline answers in the form JSON but instead reference a
-	 * concept's answers.
-	 * <p>
-	 * This method ensures all CODED fields have their answers populated before Excel export. It also
-	 * enriches inline answers that have concept UUIDs but no labels by looking up the concept names
-	 * from OpenMRS.
-	 * 
-	 * @param form The form to enrich
-	 */
 	private void enrichFormWithConceptAnswers(FormModel form) {
-		log.info("Enriching form with concept answers for CODED fields");
-		
-		int totalCodedFields = 0;
-		int fieldsWithInlineAnswers = 0;
-		int fieldsLoadedFromConcepts = 0;
-		int answersEnriched = 0;
-		
 		for (SheetModel sheet : form.sheets) {
 			for (FieldModel field : sheet.fields) {
 				if (field.datatype == FieldDatatype.CODED) {
-					totalCodedFields++;
-					log.info("CODED field: '{}', conceptUuid='{}', inline answers={}", field.label, field.conceptUuid,
-					    field.answers.size());
-					
 					if (!field.answers.isEmpty()) {
-						fieldsWithInlineAnswers++;
-						log.info("Field '{}' already has {} inline answers", field.label, field.answers.size());
-						
 						for (AnswerModel answer : field.answers) {
 							boolean missingLabel = (answer.label == null || answer.label.trim().isEmpty());
 							if (missingLabel && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
-								log.info("Enriching answer with concept UUID '{}' - looking up concept name",
-								    answer.conceptUuid);
 								AnswerModel conceptAnswer = conceptAnswersProvider.loadSingleConcept(answer.conceptUuid);
 								if (conceptAnswer != null && conceptAnswer.label != null) {
 									answer.label = conceptAnswer.label;
-									answersEnriched++;
-									log.info("Enriched answer: concept '{}' -> label '{}'", answer.conceptUuid,
-									    answer.label);
 								} else {
 									answer.label = answer.conceptUuid;
-									log.warn("Could not load concept name for UUID '{}', using UUID as label",
-									    answer.conceptUuid);
 								}
 							}
 						}
 					} else if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						log.info("Loading concept answers for '{}' from concept {}", field.label, field.conceptUuid);
 						List<AnswerModel> loadedAnswers = conceptAnswersProvider.loadAnswersForConcept(field.conceptUuid);
 						if (loadedAnswers != null && !loadedAnswers.isEmpty()) {
 							field.answers.addAll(loadedAnswers);
-							fieldsLoadedFromConcepts++;
-							log.info("Loaded {} answers for field '{}' from concept", loadedAnswers.size(), field.label);
 						} else {
 							log.warn("No answers found for coded field '{}' with concept {}", field.label,
 							    field.conceptUuid);
@@ -180,19 +144,8 @@ public class TemplateGenerationServiceImpl implements org.openmrs.module.dataimp
 				}
 			}
 		}
-		
-		log.info(
-		    "CONCEPT ENRICHMENT SUMMARY: {} CODED fields, {} with inline answers, {} loaded from concepts, {} answers enriched with labels",
-		    totalCodedFields, fieldsWithInlineAnswers, fieldsLoadedFromConcepts, answersEnriched);
 	}
 	
-	/**
-	 * Creates a composite version string from individual form versions. For single form: returns the
-	 * form version as-is For multiple forms: returns comma-separated versions (e.g., "1.0,2.1,1.5")
-	 * 
-	 * @param formVersions List of individual form versions
-	 * @return Composite version string
-	 */
 	private String createCompositeVersion(List<String> formVersions) {
 		if (formVersions.isEmpty()) {
 			return "1.0";

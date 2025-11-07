@@ -14,9 +14,6 @@ import org.openmrs.module.dataimport.model.AnswerModel;
 
 import java.util.List;
 
-/**
- * Service for loading concept answers from OpenMRS concepts
- */
 public interface ConceptAnswersProvider extends OpenmrsService {
 	
 	/**

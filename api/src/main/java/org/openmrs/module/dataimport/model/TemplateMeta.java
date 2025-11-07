@@ -15,9 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Metadata about a generated Excel template for import purposes.
- */
 public class TemplateMeta {
 	
 	public int templateVersion = 1;
@@ -26,16 +23,14 @@ public class TemplateMeta {
 	
 	public String locale = "en";
 	
-	public String templateName; // Generic name for multi-form templates
+	public String templateName;
 	
 	public String defaultLocationUuid;
 	
 	public int formCount;
 	
-	// List of forms included in this template
 	public final List<FormInfo> forms = new ArrayList<>();
 	
-	// Map of sheet name to sheet metadata
 	public final Map<String, SheetMeta> sheets = new HashMap<>();
 	
 	public SheetMeta getSheetMeta(String sheetName) {

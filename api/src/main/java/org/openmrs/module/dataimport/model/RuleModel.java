@@ -9,16 +9,13 @@
  */
 package org.openmrs.module.dataimport.model;
 
-/**
- * Rule representation in the form model.
- */
 public class RuleModel {
 	
 	public String fieldId;
 	
-	public String type; // "required-if", "relevance", "constraint"
+	public String type;
 	
-	public String expr; // expression as string (from schema), evaluated server-side on import
+	public String expr;
 	
 	public String message;
 }

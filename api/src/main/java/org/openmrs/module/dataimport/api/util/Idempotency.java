@@ -12,37 +12,24 @@ package org.openmrs.module.dataimport.api.util;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.openmrs.module.dataimport.api.EncounterBlueprint;
 import org.openmrs.module.dataimport.api.ObsBlueprint;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-/**
- * Generates idempotency keys to prevent duplicate imports.
- */
 public class Idempotency {
 	
-	private static final Logger log = LoggerFactory.getLogger(Idempotency.class);
-	
-	/**
-	 * Generates an idempotency key for a row to prevent duplicate imports.
-	 */
 	public static String key(Workbook workbook, String sheetName, int rowIndex, EncounterBlueprint encounter,
 	        List<ObsBlueprint> obs) {
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 			
-			// Include workbook checksum (simplified - in practice you'd want a more robust checksum)
 			String workbookHash = String.valueOf(workbook.hashCode());
 			digest.update(workbookHash.getBytes());
 			
-			// Include sheet and row information
 			digest.update(sheetName.getBytes());
 			digest.update(String.valueOf(rowIndex).getBytes());
 			
-			// Include encounter data
 			if (encounter.getEncounterTypeUuid() != null) {
 				digest.update(encounter.getEncounterTypeUuid().getBytes());
 			}
@@ -59,7 +46,6 @@ public class Idempotency {
 				digest.update(encounter.getFormUuid().getBytes());
 			}
 			
-			// Include observation data
 			for (ObsBlueprint obsBlueprint : obs) {
 				digest.update(obsBlueprint.getConceptUuid().getBytes());
 				
@@ -76,8 +62,6 @@ public class Idempotency {
 			
 		}
 		catch (NoSuchAlgorithmException e) {
-			log.error("SHA-256 algorithm not available", e);
-			// Fallback to a simple hash
 			String workbookHash = String.valueOf(workbook.hashCode());
 			return String.valueOf((workbookHash + sheetName + rowIndex + encounter + obs).hashCode());
 		}

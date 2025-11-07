@@ -13,9 +13,6 @@ import lombok.Getter;
 
 import java.util.List;
 
-/**
- * Plan for importing a single row of data.
- */
 @Getter
 public final class RowPlan {
 	

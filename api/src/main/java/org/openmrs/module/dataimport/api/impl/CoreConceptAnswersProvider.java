@@ -25,9 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Implementation of ConceptAnswersProvider that loads answers from OpenMRS ConceptService
- */
 @Component
 public class CoreConceptAnswersProvider extends BaseOpenmrsService implements ConceptAnswersProvider {
 	
@@ -44,7 +41,6 @@ public class CoreConceptAnswersProvider extends BaseOpenmrsService implements Co
 			Concept concept = cs.getConceptByUuid(conceptUuid);
 			
 			if (concept == null) {
-				log.warn("Concept not found for UUID: " + conceptUuid);
 				return Collections.emptyList();
 			}
 			
@@ -89,17 +85,14 @@ public class CoreConceptAnswersProvider extends BaseOpenmrsService implements Co
 		try {
 			ConceptService cs = Context.getConceptService();
 			if (cs == null) {
-				log.error("ConceptService is not available - cannot lookup concept " + conceptUuid);
 				return null;
 			}
 			
 			Concept concept = cs.getConceptByUuid(conceptUuid);
 			
 			if (concept == null) {
-				// Try to get more diagnostic info
 				log.warn("Concept not found for UUID: " + conceptUuid
 				        + " (ConceptService is available, but concept doesn't exist in database)");
-				// Check if it might be a concept ID instead of UUID
 				try {
 					int conceptId = Integer.parseInt(conceptUuid);
 					Concept byId = cs.getConcept(conceptId);
@@ -113,7 +106,6 @@ public class CoreConceptAnswersProvider extends BaseOpenmrsService implements Co
 				return null;
 			}
 			
-			// Check if concept is retired
 			if (concept.getRetired() != null && concept.getRetired()) {
 				log.warn("Concept " + conceptUuid + " is retired, but using it anyway");
 			}

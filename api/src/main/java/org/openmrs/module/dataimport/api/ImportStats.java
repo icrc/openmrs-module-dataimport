@@ -11,9 +11,6 @@ package org.openmrs.module.dataimport.api;
 
 import lombok.Getter;
 
-/**
- * Statistics about an import operation.
- */
 @Getter
 public final class ImportStats {
 	

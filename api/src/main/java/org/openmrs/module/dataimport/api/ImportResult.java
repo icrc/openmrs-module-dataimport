@@ -14,9 +14,6 @@ import lombok.Getter;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Result of committing an import plan to the database.
- */
 @Getter
 public final class ImportResult {
 	

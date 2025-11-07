@@ -101,10 +101,6 @@ public class CoreFormSchemaResolver implements FormSchemaResolver {
 			}
 		}
 		
-		log.warn("No schema resource found by heuristics. Available resources for form {}: {}", form.getUuid(),
-		    resources.stream().map(r -> String.format("%s | datatype=%s | ref=%s", r.getName(),
-		        safeClass(r.getDatatypeClassname()), r.getValueReference())).collect(Collectors.toList()));
-		
 		return null;
 	}
 	

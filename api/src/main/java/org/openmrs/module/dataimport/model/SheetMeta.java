@@ -10,24 +10,19 @@
 package org.openmrs.module.dataimport.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-/**
- * Metadata about a sheet in the Excel template.
- */
 public class SheetMeta {
 	
 	public String sheetName;
 	
-	public String formUuid; // NEW: Which form this sheet belongs to
+	public String formUuid;
 	
-	public String formName; // NEW: Form display name
+	public String formName;
 	
 	public String encounterTypeUuid;
 	
-	public String locationUuid; // Per-sheet location override
+	public String locationUuid;
 	
 	public final List<ColumnMeta> columns = new ArrayList<>();
 	
