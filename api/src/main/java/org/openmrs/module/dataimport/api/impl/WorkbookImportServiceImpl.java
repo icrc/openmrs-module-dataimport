@@ -14,11 +14,13 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openmrs.Encounter;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
+import org.openmrs.Visit;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.reader.ExcelReader;
 import org.openmrs.module.dataimport.api.service.EncounterService;
 import org.openmrs.module.dataimport.api.service.ObsService;
 import org.openmrs.module.dataimport.api.service.PatientService;
+import org.openmrs.module.dataimport.api.service.VisitImportService;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.IdempotencyService;
 import org.openmrs.module.dataimport.api.storage.ImportPlanStorageService;
@@ -65,14 +67,18 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	
 	private final ObsService obsService;
 	
+	private final VisitImportService visitImportService;
+	
 	@Autowired
 	public WorkbookImportServiceImpl(ImportPlanStorageService importPlanStorage, IdempotencyService idempotencyService,
-	    PatientService patientService, EncounterService encounterService, ObsService obsService) {
+	    PatientService patientService, EncounterService encounterService, ObsService obsService,
+	    VisitImportService visitImportService) {
 		this.importPlanStorage = importPlanStorage;
 		this.idempotencyService = idempotencyService;
 		this.patientService = patientService;
 		this.encounterService = encounterService;
 		this.obsService = obsService;
+		this.visitImportService = visitImportService;
 	}
 	
 	@Override
@@ -125,6 +131,10 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				    "No patients were created from registration sheet; proceeding to process encounters for resolvable patients only");
 			}
 			
+			// Map to cache visits: visitKey -> visitUuid
+			// Visit key format: patientRef + "|" + locationUuid + "|" + dateKey
+			Map<String, String> visitCache = new HashMap<>();
+			
 			List<String> createdEncounterUuids = new ArrayList<>();
 			List<String> commitErrors = new ArrayList<>(creationOutcome.errors);
 			
@@ -143,7 +153,8 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 					continue;
 				}
 				
-				Encounter enc = createEncounterForRow(patient, rp, createdEncounterUuids, commitErrors);
+				Visit visit = resolveOrCreateVisitForRow(patient, rp, visitCache, commitErrors);
+				Encounter enc = createEncounterForRow(patient, rp, visit, createdEncounterUuids, commitErrors);
 				if (enc == null) {
 					failedEncounters++;
 					continue;
@@ -395,10 +406,68 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		return Context.getPatientService().getPatientByUuid(patientUuid);
 	}
 	
-	private Encounter createEncounterForRow(Patient patient, RowPlan rp, List<String> createdEncounterUuids,
+	private Visit resolveOrCreateVisitForRow(Patient patient, RowPlan rp, Map<String, String> visitCache,
 	        List<String> commitErrors) {
 		try {
-			Encounter enc = encounterService.createEncounterFromBlueprint(patient, rp.getEncounter());
+			String visitKey = generateVisitKey(rp);
+			String cachedVisitUuid = visitCache.get(visitKey);
+			if (cachedVisitUuid != null) {
+				org.openmrs.api.VisitService vs = Context.getVisitService();
+				Visit cachedVisit = vs.getVisitByUuid(cachedVisitUuid);
+				if (cachedVisit != null) {
+					return cachedVisit;
+				}
+				visitCache.remove(visitKey);
+			}
+			
+			java.time.Instant encounterInstant = rp.getEncounter().getEncounterDatetime();
+			Date encounterDate = encounterInstant != null ? Date.from(encounterInstant) : new Date();
+			
+			String locationUuid = rp.getEncounter().getLocationUuid();
+			if (locationUuid == null || locationUuid.trim().isEmpty()) {
+				locationUuid = encounterService.getDefaultLocationUuid();
+			}
+			
+			Visit visit = visitImportService.findReusableOpenVisit(patient.getUuid(), locationUuid, encounterDate);
+			if (visit == null) {
+				visit = visitImportService.createVisit(patient.getUuid(), null, locationUuid, encounterDate);
+			}
+			
+			visitCache.put(visitKey, visit.getUuid());
+			
+			return visit;
+		}
+		catch (Exception e) {
+			commitErrors.add(String.format("Row %d (sheet %s): Visit creation failed: %s", rp.getRowIndex(),
+			    rp.getSheetName(), e.getMessage()));
+			return null;
+		}
+	}
+	
+	private String generateVisitKey(RowPlan rp) {
+		String patientRef = rp.getPatientRef();
+		String locationUuid = rp.getEncounter().getLocationUuid();
+		if (locationUuid == null || locationUuid.trim().isEmpty()) {
+			locationUuid = "default";
+		}
+		
+		java.time.Instant encounterInstant = rp.getEncounter().getEncounterDatetime();
+		String dateKey;
+		if (encounterInstant != null) {
+			java.time.LocalDate date = java.time.LocalDateTime.ofInstant(encounterInstant, java.time.ZoneId.systemDefault())
+			        .toLocalDate();
+			dateKey = date.toString();
+		} else {
+			dateKey = "today";
+		}
+		
+		return patientRef + "|" + locationUuid + "|" + dateKey;
+	}
+	
+	private Encounter createEncounterForRow(Patient patient, RowPlan rp, Visit visit, List<String> createdEncounterUuids,
+	        List<String> commitErrors) {
+		try {
+			Encounter enc = encounterService.createEncounterFromBlueprint(patient, rp.getEncounter(), visit);
 			createdEncounterUuids.add(enc.getUuid());
 			return enc;
 		}

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.openmrs.module.dataimport.api.service.EncounterService;
 import org.openmrs.module.dataimport.api.service.ObsService;
 import org.openmrs.module.dataimport.api.service.PatientService;
+import org.openmrs.module.dataimport.api.service.VisitImportService;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.IdempotencyService;
 import org.openmrs.module.dataimport.api.storage.ImportPlanStorageService;
@@ -46,9 +47,10 @@ public class DataImportIntegrationTest {
 		PatientService patientService = new PatientService();
 		EncounterService encounterService = new EncounterService();
 		ObsService obsService = new ObsService();
+		VisitImportService visitImportService = new VisitImportService();
 		
 		importService = new WorkbookImportServiceImpl(importPlanStorage, idempotencyService, patientService,
-		        encounterService, obsService);
+		        encounterService, obsService, visitImportService);
 		exporter = new ExcelTemplateExporter();
 	}
 	

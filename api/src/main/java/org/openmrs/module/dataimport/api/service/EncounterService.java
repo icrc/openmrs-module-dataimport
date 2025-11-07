@@ -17,6 +17,7 @@ import org.openmrs.Form;
 import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.Provider;
+import org.openmrs.Visit;
 import org.openmrs.api.AdministrationService;
 import org.openmrs.api.FormService;
 import org.openmrs.api.LocationService;
@@ -55,6 +56,12 @@ public class EncounterService {
 	
 	public Encounter createEncounter(String patientUuid, String encounterTypeUuid, Date when, String locationUuid,
 	        String formUuid, String providerUuid, String encounterRoleUuid) {
+		return createEncounter(patientUuid, encounterTypeUuid, when, locationUuid, formUuid, providerUuid, encounterRoleUuid,
+		    null);
+	}
+	
+	public Encounter createEncounter(String patientUuid, String encounterTypeUuid, Date when, String locationUuid,
+	        String formUuid, String providerUuid, String encounterRoleUuid, Visit visit) {
 		
 		PatientService patientService = getPatientService();
 		org.openmrs.api.EncounterService encounterService = getEncounterService();
@@ -82,6 +89,10 @@ public class EncounterService {
 		enc.setEncounterDatetime(when != null ? when : new Date());
 		enc.setLocation(location);
 		enc.setEncounterType(encType);
+		
+		if (visit != null) {
+			enc.setVisit(visit);
+		}
 		
 		if (formUuid != null && !formUuid.trim().isEmpty()) {
 			Form form = formService.getFormByUuid(formUuid);
@@ -111,12 +122,17 @@ public class EncounterService {
 		}
 		
 		enc = encounterService.saveEncounter(enc);
-		log.info("Created encounter for patient: {} at location: {}", patientUuid, location.getName());
+		log.info("Created encounter for patient: {} at location: {} {}", patientUuid, location.getName(),
+		    visit != null ? "(with visit: " + visit.getUuid() + ")" : "");
 		
 		return enc;
 	}
 	
 	public Encounter createEncounterFromBlueprint(Patient patient, EncounterBlueprint blueprint) {
+		return createEncounterFromBlueprint(patient, blueprint, null);
+	}
+	
+	public Encounter createEncounterFromBlueprint(Patient patient, EncounterBlueprint blueprint, Visit visit) {
 		if (patient == null) {
 			throw new IllegalArgumentException("Patient cannot be null");
 		}
@@ -169,7 +185,7 @@ public class EncounterService {
 			}
 		}
 		return createEncounter(patient.getUuid(), encounterTypeUuid, encounterDate, locationUuid, blueprint.getFormUuid(),
-		    providerUuid, encounterRoleUuid);
+		    providerUuid, encounterRoleUuid, visit);
 	}
 	
 	public String getDefaultLocationUuid() {

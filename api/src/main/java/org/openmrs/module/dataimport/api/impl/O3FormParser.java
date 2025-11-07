@@ -15,7 +15,6 @@ import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.RuleModel;
 import org.openmrs.module.dataimport.model.SheetModel;
-import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -23,7 +22,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.util.Locale;
 
-@Component
 public class O3FormParser {
 	
 	private final ObjectMapper mapper = new ObjectMapper();

@@ -18,7 +18,12 @@
 		    http://www.springframework.org/schema/util/spring-util-3.0.xsd">
 
 	<bean id="coreFormSchemaResolver" class="org.openmrs.module.dataimport.api.impl.FormSchemaServiceImpl" />
-	<bean id="templateGenerationService" class="org.openmrs.module.dataimport.api.impl.TemplateGenerationServiceImpl" />
+	<bean id="templateGenerationService" class="org.openmrs.module.dataimport.api.impl.TemplateGenerationServiceImpl">
+		<constructor-arg ref="coreFormSchemaResolver" />
+		<constructor-arg ref="o3FormParser" />
+		<constructor-arg ref="excelTemplateExporter" />
+		<constructor-arg ref="coreConceptAnswersProvider" />
+	</bean>
 	<bean id="o3FormParser" class="org.openmrs.module.dataimport.api.impl.O3FormParser" />
 	<bean id="excelTemplateExporter" class="org.openmrs.module.dataimport.api.impl.ExcelTemplateExporter" />
 	<bean id="coreConceptAnswersProvider" class="org.openmrs.module.dataimport.api.impl.CoreConceptAnswersServiceImpl" />
@@ -27,12 +32,14 @@
 	<bean id="patientSaver" class="org.openmrs.module.dataimport.api.service.PatientService" />
 	<bean id="encounterSaver" class="org.openmrs.module.dataimport.api.service.EncounterService" />
 	<bean id="obsSaver" class="org.openmrs.module.dataimport.api.service.ObsService" />
+	<bean id="visitImportService" class="org.openmrs.module.dataimport.api.service.VisitImportService" />
 	<bean id="workbookImportService" class="org.openmrs.module.dataimport.api.impl.WorkbookImportServiceImpl">
 		<constructor-arg ref="importPlanStorageService" />
 		<constructor-arg ref="idempotencyService" />
 		<constructor-arg ref="patientSaver" />
 		<constructor-arg ref="encounterSaver" />
 		<constructor-arg ref="obsSaver" />
+		<constructor-arg ref="visitImportService" />
 	</bean>
     <bean id="validation" class="org.openmrs.module.dataimport.api.util.Validation"/>
 </beans>
