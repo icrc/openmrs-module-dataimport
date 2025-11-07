@@ -19,13 +19,11 @@ import org.openmrs.api.db.ClobDatatypeStorage;
 import org.openmrs.module.dataimport.api.service.FormSchemaService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-@Component
 @Transactional(readOnly = true)
 public class FormSchemaServiceImpl implements FormSchemaService {
 	

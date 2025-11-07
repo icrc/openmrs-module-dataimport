@@ -28,6 +28,12 @@ public final class DataImportConstants {
 	
 	public static final int LAST_DATA_ROW = 1000;
 	
+	public static final String DATA_IMPORT_VISIT_TYPE_UUID = "0f631b77-4f1a-4c51-9e31-3d8b8f39ccbd";
+	
+	public static final String DATA_IMPORT_VISIT_TYPE_NAME = "Data Import Visit";
+	
+	public static final String DATA_IMPORT_VISIT_TYPE_DESCRIPTION = "Visit type automatically created by the Data Import module to group imported encounters";
+	
 	/**
 	 * Normalizes a label string by trimming, converting to lowercase, and normalizing whitespace. Used
 	 * for case-insensitive and whitespace-tolerant matching of labels.

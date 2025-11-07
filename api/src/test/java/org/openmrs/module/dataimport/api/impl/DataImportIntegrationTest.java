@@ -16,9 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openmrs.module.dataimport.api.service.EncounterService;
-import org.openmrs.module.dataimport.api.service.ObsService;
-import org.openmrs.module.dataimport.api.service.PatientService;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.IdempotencyService;
 import org.openmrs.module.dataimport.api.storage.ImportPlanStorageService;
@@ -43,12 +40,13 @@ public class DataImportIntegrationTest {
 	void setUp() {
 		ImportPlanStorageService importPlanStorage = new ImportPlanStorageService();
 		IdempotencyService idempotencyService = new IdempotencyService();
-		PatientService patientService = new PatientService();
-		EncounterService encounterService = new EncounterService();
-		ObsService obsService = new ObsService();
+		PatientServiceImpl patientService = new PatientServiceImpl();
+		EncounterServiceImpl encounterService = new EncounterServiceImpl();
+		ObservationServiceImpl obsService = new ObservationServiceImpl();
+		VisitImportServiceImpl visitImportService = new VisitImportServiceImpl();
 		
 		importService = new WorkbookImportServiceImpl(importPlanStorage, idempotencyService, patientService,
-		        encounterService, obsService);
+		        encounterService, obsService, visitImportService);
 		exporter = new ExcelTemplateExporter();
 	}
 	
