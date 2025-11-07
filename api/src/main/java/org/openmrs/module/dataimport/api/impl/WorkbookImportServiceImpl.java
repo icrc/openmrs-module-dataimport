@@ -17,10 +17,6 @@ import org.openmrs.Patient;
 import org.openmrs.Visit;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.reader.ExcelReader;
-import org.openmrs.module.dataimport.api.service.EncounterService;
-import org.openmrs.module.dataimport.api.service.ObsService;
-import org.openmrs.module.dataimport.api.service.PatientService;
-import org.openmrs.module.dataimport.api.service.VisitImportService;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.IdempotencyService;
 import org.openmrs.module.dataimport.api.storage.ImportPlanStorageService;
@@ -61,18 +57,18 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	
 	private final IdempotencyService idempotencyService;
 	
-	private final PatientService patientService;
+	private final PatientServiceImpl patientService;
 	
-	private final EncounterService encounterService;
+	private final EncounterServiceImpl encounterService;
 	
-	private final ObsService obsService;
+	private final ObservationServiceImpl obsService;
 	
-	private final VisitImportService visitImportService;
+	private final VisitImportServiceImpl visitImportService;
 	
 	@Autowired
 	public WorkbookImportServiceImpl(ImportPlanStorageService importPlanStorage, IdempotencyService idempotencyService,
-	    PatientService patientService, EncounterService encounterService, ObsService obsService,
-	    VisitImportService visitImportService) {
+	    PatientServiceImpl patientService, EncounterServiceImpl encounterService, ObservationServiceImpl obsService,
+	    VisitImportServiceImpl visitImportService) {
 		this.importPlanStorage = importPlanStorage;
 		this.idempotencyService = idempotencyService;
 		this.patientService = patientService;

@@ -29,10 +29,10 @@
 	<bean id="coreConceptAnswersProvider" class="org.openmrs.module.dataimport.api.impl.CoreConceptAnswersServiceImpl" />
 	<bean id="importPlanStorageService" class="org.openmrs.module.dataimport.api.storage.ImportPlanStorageService" />
 	<bean id="idempotencyService" class="org.openmrs.module.dataimport.api.storage.IdempotencyService" />
-	<bean id="patientSaver" class="org.openmrs.module.dataimport.api.service.PatientService" />
-	<bean id="encounterSaver" class="org.openmrs.module.dataimport.api.service.EncounterService" />
-	<bean id="obsSaver" class="org.openmrs.module.dataimport.api.service.ObsService" />
-	<bean id="visitImportService" class="org.openmrs.module.dataimport.api.service.VisitImportService" />
+	<bean id="patientSaver" class="org.openmrs.module.dataimport.api.impl.PatientServiceImpl" />
+	<bean id="encounterSaver" class="org.openmrs.module.dataimport.api.impl.EncounterServiceImpl" />
+	<bean id="obsSaver" class="org.openmrs.module.dataimport.api.impl.ObservationServiceImpl" />
+	<bean id="visitImportService" class="org.openmrs.module.dataimport.api.impl.VisitImportServiceImpl" />
 	<bean id="workbookImportService" class="org.openmrs.module.dataimport.api.impl.WorkbookImportServiceImpl">
 		<constructor-arg ref="importPlanStorageService" />
 		<constructor-arg ref="idempotencyService" />

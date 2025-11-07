@@ -86,7 +86,6 @@ public class QuarantineReportGenerator {
 			boolean hasError = errors != null && errors.containsKey(rowNum);
 			CellStyle rowStyle = rowNum == 0 ? headerStyle : (hasError ? errorStyle : null);
 			
-			// Copy cells
 			int maxCellNum = sourceRow.getLastCellNum();
 			for (int cellNum = 0; cellNum < maxCellNum; cellNum++) {
 				Cell sourceCell = sourceRow.getCell(cellNum);

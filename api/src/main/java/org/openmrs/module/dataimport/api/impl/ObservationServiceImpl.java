@@ -7,22 +7,24 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.module.dataimport.api.service;
+package org.openmrs.module.dataimport.api.impl;
 
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.Obs;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
+import org.openmrs.api.impl.BaseOpenmrsService;
+import org.openmrs.module.dataimport.api.service.ObservationService;
 import org.openmrs.module.dataimport.model.ObsBlueprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 
-public class ObsService {
+public class ObservationServiceImpl extends BaseOpenmrsService implements ObservationService {
 	
-	private static final Logger log = LoggerFactory.getLogger(ObsService.class);
+	private static final Logger log = LoggerFactory.getLogger(ObservationServiceImpl.class);
 	
 	private ConceptService getConceptService() {
 		return Context.getConceptService();
@@ -151,6 +153,7 @@ public class ObsService {
 		return addCodedObs(enc, conceptUuid, answerConceptUuid);
 	}
 	
+	@Override
 	public Obs createObsFromBlueprint(Encounter enc, ObsBlueprint blueprint) {
 		if (enc == null) {
 			throw new IllegalArgumentException("Encounter cannot be null");
@@ -195,7 +198,6 @@ public class ObsService {
 			return addBooleanObs(enc, blueprint.getConceptUuid(), booleanValue, trueConceptUuid, falseConceptUuid);
 		}
 		
-		log.warn("Unknown observation value type: {}", value.getClass().getSimpleName());
 		return null;
 	}
 	
@@ -210,18 +212,15 @@ public class ObsService {
 	}
 	
 	private String getBooleanTrueConceptUuid() {
-		// This is a placeholder - in production you'd configure this
 		Concept trueConcept = getConceptService().getConceptByName("YES");
 		if (trueConcept != null) {
 			return trueConcept.getUuid();
 		}
 		
-		// Fallback - this would need to be configured properly
 		throw new IllegalStateException("Boolean true concept not configured");
 	}
 	
 	private String getBooleanFalseConceptUuid() {
-		// This is a placeholder - in production you'd configure this
 		Concept falseConcept = getConceptService().getConceptByName("NO");
 		if (falseConcept != null) {
 			return falseConcept.getUuid();
