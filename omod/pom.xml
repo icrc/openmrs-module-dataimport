@@ -34,6 +34,17 @@
 			<artifactId>legacyui-omod</artifactId>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-inline</artifactId>
+			<version>${mockitoVersion}</version>
+			<scope>test</scope>
+		</dependency>
 		
 		<!-- Apache POI for Excel file generation - version managed by parent -->
 		<dependency>
