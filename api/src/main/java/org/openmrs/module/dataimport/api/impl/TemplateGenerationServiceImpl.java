@@ -9,7 +9,14 @@
  */
 package org.openmrs.module.dataimport.api.impl;
 
+import org.openmrs.EncounterRole;
+import org.openmrs.Location;
+import org.openmrs.Provider;
 import org.openmrs.api.APIException;
+import org.openmrs.api.EncounterService;
+import org.openmrs.api.LocationService;
+import org.openmrs.api.ProviderService;
+import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
 import org.openmrs.module.dataimport.api.service.FormSchemaService;
 import org.openmrs.module.dataimport.api.service.TemplateGenerationService;
@@ -24,7 +31,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 public class TemplateGenerationServiceImpl implements TemplateGenerationService {
 	
@@ -117,7 +126,23 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 		for (SheetModel sheet : form.sheets) {
 			for (FieldModel field : sheet.fields) {
 				if (field.datatype == FieldDatatype.CODED) {
-					if (!field.answers.isEmpty()) {
+					if (field.answers.isEmpty() && field.uiSelectSourceType != null
+					        && !field.uiSelectSourceType.trim().isEmpty()) {
+						populateUiSelectExtendedAnswers(field);
+					}
+					
+					if (field.answers.isEmpty() && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()
+					        && field.uiSelectSourceType == null) {
+						List<AnswerModel> loadedAnswers = conceptAnswersService.loadAnswersForConcept(field.conceptUuid);
+						if (loadedAnswers != null && !loadedAnswers.isEmpty()) {
+							field.answers.addAll(loadedAnswers);
+						} else {
+							log.warn("No answers found for coded field '{}' with concept {}", field.label,
+							    field.conceptUuid);
+						}
+					}
+					
+					if (field.answers.isEmpty()) {} else if (field.uiSelectSourceType == null) {
 						for (AnswerModel answer : field.answers) {
 							boolean missingLabel = (answer.label == null || answer.label.trim().isEmpty());
 							if (missingLabel && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
@@ -129,20 +154,196 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 								}
 							}
 						}
-					} else if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						List<AnswerModel> loadedAnswers = conceptAnswersService.loadAnswersForConcept(field.conceptUuid);
-						if (loadedAnswers != null && !loadedAnswers.isEmpty()) {
-							field.answers.addAll(loadedAnswers);
-						} else {
-							log.warn("No answers found for coded field '{}' with concept {}", field.label,
-							    field.conceptUuid);
-						}
-					} else {
-						log.warn("CODED field '{}' has no inline answers and no concept UUID", field.label);
 					}
 				}
 			}
 		}
+	}
+	
+	private void populateUiSelectExtendedAnswers(FieldModel field) {
+		String sourceType = field.uiSelectSourceType != null ? field.uiSelectSourceType.trim() : "";
+		String datasourceName = field.uiSelectDatasourceName != null ? field.uiSelectDatasourceName.trim() : "";
+		boolean handled = false;
+		
+		try {
+			if (!sourceType.isEmpty()) {
+				handled = handleUiSelectSourceType(field, sourceType);
+			}
+			
+			if (!handled && !datasourceName.isEmpty()) {
+				handled = handleUiSelectDatasource(field, datasourceName);
+			}
+			
+			if (!handled) {
+				log.warn("Unsupported ui-select-extended source '{}' / datasource '{}' for field '{}'", sourceType,
+				    datasourceName, field.label);
+			}
+		}
+		catch (Exception e) {
+			log.warn("Failed to populate ui-select-extended answers for field '{}' (type='{}', datasource='{}'): {}",
+			    field.label, sourceType, datasourceName, e.getMessage(), e);
+		}
+	}
+	
+	private boolean handleUiSelectSourceType(FieldModel field, String sourceType) {
+		String normalized = sourceType.trim().toLowerCase(Locale.ROOT);
+		switch (normalized) {
+			case "encounterrole":
+				loadEncounterRoleAnswers(field);
+				return true;
+			case "encounterprovider":
+				loadEncounterProviderAnswers(field);
+				return true;
+			case "encounterlocation":
+				loadEncounterLocationAnswers(field, null);
+				return true;
+			default:
+				return false;
+		}
+	}
+	
+	private boolean handleUiSelectDatasource(FieldModel field, String datasourceName) {
+		String normalized = datasourceName.trim().toLowerCase(Locale.ROOT);
+		if (normalized.equals("location_datasource")) {
+			String tagName = field.uiSelectDatasourceConfig.get("tag");
+			loadEncounterLocationAnswers(field, tagName);
+			return true;
+		}
+		return false;
+	}
+	
+	protected EncounterService fetchEncounterService() {
+		try {
+			return Context.getEncounterService();
+		}
+		catch (Exception e) {
+			return null;
+		}
+	}
+	
+	private void loadEncounterRoleAnswers(FieldModel field) {
+		EncounterService encounterService = fetchEncounterService();
+		if (encounterService == null) {
+			return;
+		}
+		
+		List<EncounterRole> roles = encounterService.getAllEncounterRoles(false);
+		if (roles == null || roles.isEmpty()) {
+			return;
+		}
+		
+		if (!field.answers.isEmpty()) {
+			field.answers.clear();
+		}
+		
+		roles.stream().sorted(Comparator.comparing(role -> {
+			String name = role.getName();
+			return name != null ? name : role.getUuid();
+		})).forEach(role -> {
+			String name = role.getName() != null ? role.getName() : role.getUuid();
+			field.answers.add(new AnswerModel(name, role.getUuid(), role.getUuid()));
+		});
+	}
+	
+	private void loadEncounterProviderAnswers(FieldModel field) {
+		ProviderService providerService = fetchProviderService();
+		if (providerService == null) {
+			return;
+		}
+		
+		List<Provider> providers = providerService.getAllProviders(false);
+		if (providers == null || providers.isEmpty()) {
+			return;
+		}
+		
+		if (!field.answers.isEmpty()) {
+			field.answers.clear();
+		}
+		
+		providers.stream().sorted(Comparator.comparing(this::providerDisplayName, String.CASE_INSENSITIVE_ORDER))
+		        .forEach(provider -> {
+			        String label = providerDisplayName(provider);
+			        field.answers.add(new AnswerModel(label, provider.getUuid(), provider.getUuid()));
+		        });
+	}
+	
+	private void loadEncounterLocationAnswers(FieldModel field, String requiredTagName) {
+		LocationService locationService = fetchLocationService();
+		if (locationService == null) {
+			return;
+		}
+		
+		List<Location> locations = locationService.getAllLocations(false);
+		if (locations == null || locations.isEmpty()) {
+			return;
+		}
+		
+		final String tagFilter = requiredTagName != null ? requiredTagName.trim() : "";
+		
+		if (!field.answers.isEmpty()) {
+			field.answers.clear();
+		}
+		
+		locations.stream().filter(location -> tagFilter.isEmpty() || locationHasTag(location, tagFilter))
+		        .sorted(Comparator.comparing(this::locationDisplayName, String.CASE_INSENSITIVE_ORDER)).forEach(location -> {
+			        String label = locationDisplayName(location);
+			        field.answers.add(new AnswerModel(label, location.getUuid(), location.getUuid()));
+		        });
+	}
+	
+	private String providerDisplayName(Provider provider) {
+		if (provider == null) {
+			return "";
+		}
+		String name = provider.getName();
+		if (name != null && !name.trim().isEmpty()) {
+			return name.trim();
+		}
+		if (provider.getPerson() != null && provider.getPerson().getPersonName() != null) {
+			String fullName = provider.getPerson().getPersonName().getFullName();
+			if (fullName != null && !fullName.trim().isEmpty()) {
+				return fullName.trim();
+			}
+		}
+		return provider.getUuid();
+	}
+	
+	protected ProviderService fetchProviderService() {
+		try {
+			return Context.getProviderService();
+		}
+		catch (Exception e) {
+			return null;
+		}
+	}
+	
+	protected LocationService fetchLocationService() {
+		try {
+			return Context.getLocationService();
+		}
+		catch (Exception e) {
+			return null;
+		}
+	}
+	
+	private String locationDisplayName(Location location) {
+		if (location == null) {
+			return "";
+		}
+		String name = location.getName();
+		return (name != null && !name.trim().isEmpty()) ? name.trim() : location.getUuid();
+	}
+	
+	private boolean locationHasTag(Location location, String tagName) {
+		if (location == null || tagName == null || tagName.trim().isEmpty()) {
+			return false;
+		}
+		String desired = tagName.trim().toLowerCase(Locale.ROOT);
+		if (location.getTags() == null || location.getTags().isEmpty()) {
+			return false;
+		}
+		return location.getTags().stream().filter(tag -> tag != null && tag.getName() != null)
+		        .anyMatch(tag -> tag.getName().trim().toLowerCase(Locale.ROOT).equals(desired));
 	}
 	
 	private String createCompositeVersion(List<String> formVersions) {

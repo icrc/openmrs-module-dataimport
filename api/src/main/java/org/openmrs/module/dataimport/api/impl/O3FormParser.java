@@ -71,6 +71,7 @@ public class O3FormParser {
 			String rendering = getTextOrNull(questionOptions, "rendering");
 			boolean isGroup = "group".equalsIgnoreCase(getTextOrNull(q, "type")) || q.has("questions");
 			String hideExpr = getTextOrNull(q.path("hide"), "hideWhenExpression");
+			String questionType = getTextOrNull(q, "type");
 			
 			if ("markdown".equals(rendering)) {
 				continue;
@@ -96,7 +97,7 @@ public class O3FormParser {
 			field.conceptUuid = getTextOrNull(questionOptions, "concept");
 			field.hideExpr = hideExpr;
 			
-			inferDatatypeAndAnswers(field, questionOptions);
+			inferDatatypeAndAnswers(field, questionOptions, questionType);
 			
 			JsonNode req = q.get("required");
 			if (req != null) {
@@ -149,7 +150,7 @@ public class O3FormParser {
 		}
 	}
 	
-	private void inferDatatypeAndAnswers(FieldModel field, JsonNode questionOptions) {
+	private void inferDatatypeAndAnswers(FieldModel field, JsonNode questionOptions, String questionType) {
 		String rendering = questionOptions != null ? getTextOrNull(questionOptions, "rendering") : null;
 		if ("date".equals(rendering))
 			field.datatype = FieldDatatype.DATE;
@@ -162,7 +163,24 @@ public class O3FormParser {
 		else if ("radio".equals(rendering) || "select".equals(rendering) || "checkbox".equals(rendering)
 		        || "multiCheckbox".equals(rendering))
 			field.datatype = FieldDatatype.CODED;
-		else
+		else if ("ui-select-extended".equals(rendering)) {
+			field.datatype = FieldDatatype.CODED;
+			field.uiSelectSourceType = questionOptions != null ? getTextOrNull(questionOptions, "type") : null;
+			if ((field.uiSelectSourceType == null || field.uiSelectSourceType.trim().isEmpty()) && questionType != null
+			        && !questionType.trim().isEmpty()) {
+				field.uiSelectSourceType = questionType;
+			}
+			if (questionOptions != null && questionOptions.has("datasource")) {
+				JsonNode datasource = questionOptions.get("datasource");
+				if (datasource != null && datasource.isObject()) {
+					field.uiSelectDatasourceName = getTextOrNull(datasource, "name");
+					JsonNode configNode = datasource.get("config");
+					if (configNode != null && configNode.isObject()) {
+						copyObjectNodeToMap(configNode, field.uiSelectDatasourceConfig);
+					}
+				}
+			}
+		} else
 			field.datatype = FieldDatatype.TEXT;
 		
 		if ("multiCheckbox".equals(rendering)) {
@@ -189,6 +207,24 @@ public class O3FormParser {
 				}
 			}
 		}
+	}
+	
+	private static void copyObjectNodeToMap(JsonNode node, java.util.Map<String, String> target) {
+		if (node == null || target == null || !node.isObject()) {
+			return;
+		}
+		node.fields().forEachRemaining(entry -> {
+			JsonNode valueNode = entry.getValue();
+			String value;
+			if (valueNode == null || valueNode.isNull()) {
+				value = null;
+			} else if (valueNode.isValueNode()) {
+				value = valueNode.asText();
+			} else {
+				value = valueNode.toString();
+			}
+			target.put(entry.getKey(), value);
+		});
 	}
 	
 	private static String getTextOrNull(JsonNode node, String key) {
