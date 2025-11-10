@@ -53,7 +53,10 @@ public class FormTemplateController extends BaseRestController {
 		
 		byte[] bytes = templateGenerationService.generateFromFormUuids(request.formUuids, options);
 		
-		String filename = "o3_form_template.xlsx";
+		String filename = options.getFilename();
+		if (filename == null || filename.trim().isEmpty()) {
+			filename = "o3_form_template.xlsx";
+		}
 		return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
 		        .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
 		        .contentLength(bytes.length).body(bytes);
