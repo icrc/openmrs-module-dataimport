@@ -10,7 +10,9 @@
 package org.openmrs.module.dataimport.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FieldModel {
 	
@@ -36,6 +38,12 @@ public class FieldModel {
 	
 	public boolean isMulti = false;
 	
+	public String uiSelectSourceType;
+	
+	public String uiSelectDatasourceName;
+	
+	public final Map<String, String> uiSelectDatasourceConfig = new HashMap<>();
+	
 	FieldModel copyHeaderOnly() {
 		FieldModel f = new FieldModel();
 		f.id = id;
@@ -43,6 +51,9 @@ public class FieldModel {
 		f.conceptUuid = conceptUuid;
 		f.datatype = datatype;
 		f.answers.addAll(answers);
+		f.uiSelectSourceType = uiSelectSourceType;
+		f.uiSelectDatasourceName = uiSelectDatasourceName;
+		f.uiSelectDatasourceConfig.putAll(uiSelectDatasourceConfig);
 		return f;
 	}
 }

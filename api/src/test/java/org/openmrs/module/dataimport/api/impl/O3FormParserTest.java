@@ -96,6 +96,74 @@ class O3FormParserTest {
 	}
 	
 	@Test
+	@DisplayName("Should mark ui-select-extended fields as coded with source type")
+	void testParseUiSelectExtendedField() throws Exception {
+		String json = "{\n" + "    \"uuid\": \"encounter-role-form\",\n" + "    \"name\": \"Encounter Role Form\",\n"
+		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
+		        + "                    \"questions\": [\n" + "                        {\n"
+		        + "                            \"id\": \"role\",\n" + "                            \"label\": \"Role:\",\n"
+		        + "                            \"questionOptions\": {\n"
+		        + "                                \"rendering\": \"ui-select-extended\",\n"
+		        + "                                \"type\": \"encounterRole\"\n" + "                            }\n"
+		        + "                        }\n" + "                    ]\n" + "                }\n" + "            ]\n"
+		        + "        }\n" + "    ]\n" + "}";
+		
+		FormModel form = parser.parse(json, Locale.ENGLISH);
+		SheetModel sheet = form.sheets.get(0);
+		FieldModel roleField = sheet.fields.get(0);
+		
+		assertEquals(FieldDatatype.CODED, roleField.datatype);
+		assertEquals("encounterRole", roleField.uiSelectSourceType);
+		assertTrue(roleField.answers.isEmpty());
+	}
+	
+	@Test
+	@DisplayName("Should infer ui-select source type from question type when not specified")
+	void testUiSelectExtendedFieldUsingQuestionType() throws Exception {
+		String json = "{\n" + "    \"uuid\": \"encounter-provider-form\",\n" + "    \"name\": \"Encounter Provider Form\",\n"
+		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
+		        + "                    \"questions\": [\n" + "                        {\n"
+		        + "                            \"id\": \"provider\",\n"
+		        + "                            \"type\": \"encounterProvider\",\n"
+		        + "                            \"label\": \"Encounter Provider:\",\n"
+		        + "                            \"questionOptions\": {\n"
+		        + "                                \"rendering\": \"ui-select-extended\"\n"
+		        + "                            }\n" + "                        }\n" + "                    ]\n"
+		        + "                }\n" + "            ]\n" + "        }\n" + "    ]\n" + "}";
+		
+		FormModel form = parser.parse(json, Locale.ENGLISH);
+		FieldModel providerField = form.sheets.get(0).fields.get(0);
+		
+		assertEquals(FieldDatatype.CODED, providerField.datatype);
+		assertEquals("encounterProvider", providerField.uiSelectSourceType);
+	}
+	
+	@Test
+	@DisplayName("Should capture datasource configuration for ui-select-extended fields")
+	void testUiSelectExtendedFieldDatasourceConfig() throws Exception {
+		String json = "{\n" + "    \"uuid\": \"location-form\",\n" + "    \"name\": \"Location Form\",\n"
+		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
+		        + "                    \"questions\": [\n" + "                        {\n"
+		        + "                            \"id\": \"admitToLocation\",\n"
+		        + "                            \"type\": \"obs\",\n" + "                            \"questionOptions\": {\n"
+		        + "                                \"rendering\": \"ui-select-extended\",\n"
+		        + "                                \"datasource\": {\n"
+		        + "                                    \"name\": \"location_datasource\",\n"
+		        + "                                    \"config\": {\n"
+		        + "                                        \"tag\": \"Admission Location\"\n"
+		        + "                                    }\n" + "                                }\n"
+		        + "                            }\n" + "                        }\n" + "                    ]\n"
+		        + "                }\n" + "            ]\n" + "        }\n" + "    ]\n" + "}";
+		
+		FormModel form = parser.parse(json, Locale.ENGLISH);
+		FieldModel locationField = form.sheets.get(0).fields.get(0);
+		
+		assertEquals(FieldDatatype.CODED, locationField.datatype);
+		assertEquals("location_datasource", locationField.uiSelectDatasourceName);
+		assertEquals("Admission Location", locationField.uiSelectDatasourceConfig.get("tag"));
+	}
+	
+	@Test
 	@DisplayName("Should correctly infer datatypes for all field types")
 	void testInferDatatypes() throws Exception {
 		String json = TestDataLoader.loadMixedFieldsForm();
