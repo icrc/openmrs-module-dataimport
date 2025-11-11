@@ -18,14 +18,23 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openmrs.module.dataimport.api.util.DataImportConstants;
+import org.openmrs.module.dataimport.api.util.WorkbookUtil;
 import org.openmrs.module.dataimport.model.ImportPlan;
 import org.openmrs.module.dataimport.model.QuarantineItem;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class QuarantineReportGenerator {
 	
@@ -35,7 +44,9 @@ public class QuarantineReportGenerator {
 		}
 		
 		try (XSSFWorkbook sourceWb = new XSSFWorkbook(originalWorkbook); XSSFWorkbook reportWb = new XSSFWorkbook()) {
-			Map<String, Map<Integer, QuarantineItem>> errorMap = buildErrorMap(importPlan.getIssues());
+			Map<String, Set<Integer>> errorRowMap = buildErrorRowMap(importPlan.getIssues());
+			Set<String> patientRefsWithIssues = new HashSet<>();
+			
 			for (Sheet sourceSheet : sourceWb) {
 				String sheetName = sourceSheet.getSheetName();
 				
@@ -43,10 +54,44 @@ public class QuarantineReportGenerator {
 					continue;
 				}
 				
-				Sheet reportSheet = reportWb.createSheet(sheetName);
-				Map<Integer, QuarantineItem> sheetErrors = errorMap.get(sheetName);
+				if (DataImportConstants.PATIENT_SHEET_NAME.equals(sheetName)) {
+					continue;
+				}
 				
-				copySheetWithHighlighting(sourceSheet, reportSheet, sheetErrors);
+				Set<Integer> sheetErrorRows = errorRowMap.get(sheetName);
+				if (sheetErrorRows == null || sheetErrorRows.isEmpty()) {
+					continue;
+				}
+				
+				patientRefsWithIssues.addAll(resolvePatientRefsForRows(sourceSheet, sheetErrorRows));
+				
+				Sheet reportSheet = reportWb.createSheet(sheetName);
+				copyEntireSheetWithHighlighting(sourceSheet, reportSheet, sheetErrorRows);
+			}
+			
+			Sheet patientSource = sourceWb.getSheet(DataImportConstants.PATIENT_SHEET_NAME);
+			if (patientSource != null) {
+				Set<Integer> patientSheetErrors = errorRowMap.getOrDefault(DataImportConstants.PATIENT_SHEET_NAME,
+				    Collections.emptySet());
+				Set<Integer> patientRowsToInclude = new TreeSet<>(patientSheetErrors);
+				
+				if (!patientRefsWithIssues.isEmpty()) {
+					Map<String, Integer> patientRowIndex = indexPatientRows(patientSource);
+					for (String ref : patientRefsWithIssues) {
+						Integer rowIndex = patientRowIndex.get(ref);
+						if (rowIndex != null) {
+							patientRowsToInclude.add(rowIndex);
+						}
+					}
+				}
+				
+				if (!patientRowsToInclude.isEmpty()) {
+					patientRowsToInclude.add(0);
+					
+					Sheet patientReportSheet = reportWb.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
+					copySelectedRowsWithHighlighting(patientSource, patientReportSheet, patientRowsToInclude,
+					    patientSheetErrors);
+				}
 			}
 			
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -59,32 +104,109 @@ public class QuarantineReportGenerator {
 		}
 	}
 	
-	private Map<String, Map<Integer, QuarantineItem>> buildErrorMap(java.util.List<QuarantineItem> issues) {
-		Map<String, Map<Integer, QuarantineItem>> errorMap = new HashMap<>();
+	private Map<String, Set<Integer>> buildErrorRowMap(List<QuarantineItem> issues) {
+		Map<String, Set<Integer>> errorMap = new HashMap<>();
 		
 		for (QuarantineItem issue : issues) {
-			errorMap.computeIfAbsent(issue.getSheet(), k -> new HashMap<>()).put(issue.getRow(), issue);
+			errorMap.computeIfAbsent(issue.getSheet(), k -> new LinkedHashSet<>()).add(issue.getRow());
 		}
 		
 		return errorMap;
 	}
 	
-	private void copySheetWithHighlighting(Sheet sourceSheet, Sheet targetSheet, Map<Integer, QuarantineItem> errors) {
+	private Set<String> resolvePatientRefsForRows(Sheet sourceSheet, Set<Integer> rowIndexes) {
+		if (rowIndexes == null || rowIndexes.isEmpty()) {
+			return Collections.emptySet();
+		}
+		
+		Set<String> refs = new HashSet<>();
+		for (Integer rowIndex : rowIndexes) {
+			if (rowIndex == null || rowIndex == 0) {
+				continue;
+			}
+			String patientRef = WorkbookUtil.Cells.getString(sourceSheet, rowIndex, 0);
+			if (patientRef != null && !patientRef.trim().isEmpty()) {
+				refs.add(patientRef.trim());
+			}
+		}
+		return refs;
+	}
+	
+	private Map<String, Integer> indexPatientRows(Sheet patientSheet) {
+		Map<String, Integer> index = new HashMap<>();
+		Row headerRow = patientSheet.getRow(0);
+		if (headerRow == null) {
+			return index;
+		}
+		
+		int patientRefColumn = findColumnIndex(headerRow, DataImportConstants.PATIENT_REF_HEADER);
+		if (patientRefColumn < 0) {
+			return index;
+		}
+		
+		for (int rowNum = 1; rowNum <= patientSheet.getLastRowNum(); rowNum++) {
+			String ref = WorkbookUtil.Cells.getString(patientSheet, rowNum, patientRefColumn);
+			if (ref != null && !ref.trim().isEmpty()) {
+				index.put(ref.trim(), rowNum);
+			}
+		}
+		
+		return index;
+	}
+	
+	private int findColumnIndex(Row headerRow, String headerLabel) {
+		if (headerRow == null || headerLabel == null) {
+			return -1;
+		}
+		
+		int lastCellNum = headerRow.getLastCellNum();
+		for (int cellNum = 0; cellNum < lastCellNum; cellNum++) {
+			String value = WorkbookUtil.Cells.getString(headerRow.getCell(cellNum));
+			if (headerLabel.equalsIgnoreCase(value != null ? value.trim() : null)) {
+				return cellNum;
+			}
+		}
+		return -1;
+	}
+	
+	private void copyEntireSheetWithHighlighting(Sheet sourceSheet, Sheet targetSheet, Set<Integer> errorRows) {
+		List<Integer> rowsToCopy = new ArrayList<>();
+		for (int rowNum = 0; rowNum <= sourceSheet.getLastRowNum(); rowNum++) {
+			rowsToCopy.add(rowNum);
+		}
+		copyRows(sourceSheet, targetSheet, rowsToCopy, errorRows, true);
+	}
+	
+	private void copySelectedRowsWithHighlighting(Sheet sourceSheet, Sheet targetSheet, Set<Integer> sourceRowIndexes,
+	        Set<Integer> errorRows) {
+		List<Integer> rowsToCopy = new ArrayList<>(sourceRowIndexes);
+		Collections.sort(rowsToCopy);
+		copyRows(sourceSheet, targetSheet, rowsToCopy, errorRows, false);
+	}
+	
+	private void copyRows(Sheet sourceSheet, Sheet targetSheet, List<Integer> sourceRows, Set<Integer> errorRows,
+	        boolean preserveRowIndices) {
 		Workbook workbook = targetSheet.getWorkbook();
 		CellStyle errorStyle = createErrorStyle(workbook);
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		
-		int maxRowNum = sourceSheet.getLastRowNum();
-		for (int rowNum = 0; rowNum <= maxRowNum; rowNum++) {
-			Row sourceRow = sourceSheet.getRow(rowNum);
+		int targetRowPointer = 0;
+		
+		for (Integer sourceRowIndex : sourceRows) {
+			if (sourceRowIndex == null) {
+				continue;
+			}
+			
+			Row sourceRow = sourceSheet.getRow(sourceRowIndex);
 			if (sourceRow == null) {
 				continue;
 			}
 			
-			Row targetRow = targetSheet.createRow(rowNum);
+			int targetRowIndex = preserveRowIndices ? sourceRowIndex : targetRowPointer++;
+			Row targetRow = targetSheet.createRow(targetRowIndex);
 			
-			boolean hasError = errors != null && errors.containsKey(rowNum);
-			CellStyle rowStyle = rowNum == 0 ? headerStyle : (hasError ? errorStyle : null);
+			boolean hasError = errorRows != null && errorRows.contains(sourceRowIndex);
+			CellStyle rowStyle = sourceRowIndex == 0 ? headerStyle : (hasError ? errorStyle : null);
 			
 			int maxCellNum = sourceRow.getLastCellNum();
 			for (int cellNum = 0; cellNum < maxCellNum; cellNum++) {
@@ -102,10 +224,13 @@ public class QuarantineReportGenerator {
 			}
 		}
 		
-		for (int i = 0; i <= sourceSheet.getRow(0).getLastCellNum(); i++) {
-			int width = sourceSheet.getColumnWidth(i);
-			if (width > 0) {
-				targetSheet.setColumnWidth(i, width);
+		Row headerRow = sourceSheet.getRow(0);
+		if (headerRow != null) {
+			for (int i = 0; i <= headerRow.getLastCellNum(); i++) {
+				int width = sourceSheet.getColumnWidth(i);
+				if (width > 0) {
+					targetSheet.setColumnWidth(i, width);
+				}
 			}
 		}
 		
