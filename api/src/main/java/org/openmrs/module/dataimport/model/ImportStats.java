@@ -11,6 +11,8 @@ package org.openmrs.module.dataimport.model;
 
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 public final class ImportStats {
 	
@@ -22,27 +24,67 @@ public final class ImportStats {
 	
 	private final int patientsToCreate;
 	
+	private final int existingPatientsReferenced;
+	
+	private final int blockedPatients;
+	
 	private final int encountersToCreate;
 	
 	private final int obsToCreate;
 	
-	public ImportStats(int totalRows, int okRows, int quarantinedRows, int patientsToCreate, int encountersToCreate,
-	    int obsToCreate) {
+	private final List<SheetStats> sheetSummaries;
+	
+	public ImportStats(int totalRows, int okRows, int quarantinedRows, int patientsToCreate, int existingPatientsReferenced,
+	    int blockedPatients, int encountersToCreate, int obsToCreate, List<SheetStats> sheetSummaries) {
 		this.totalRows = totalRows;
 		this.okRows = okRows;
 		this.quarantinedRows = quarantinedRows;
 		this.patientsToCreate = patientsToCreate;
+		this.existingPatientsReferenced = existingPatientsReferenced;
+		this.blockedPatients = blockedPatients;
 		this.encountersToCreate = encountersToCreate;
 		this.obsToCreate = obsToCreate;
+		this.sheetSummaries = sheetSummaries;
 	}
 	
-	public static ImportStats of(java.util.List<RowPlan> okRows, java.util.List<QuarantineItem> issues) {
+	public static ImportStats of(List<RowPlan> okRows, List<QuarantineItem> issues,
+	        java.util.Set<String> blockedPatientRefs) {
 		int totalRows = okRows.size() + issues.size();
 		int encountersToCreate = okRows.size();
 		int obsToCreate = okRows.stream().mapToInt(r -> r.getObs().size()).sum();
-		// TODO: Calculate patientsToCreate based on patient resolution
-		int patientsToCreate = 0;
 		
-		return new ImportStats(totalRows, okRows.size(), issues.size(), patientsToCreate, encountersToCreate, obsToCreate);
+		java.util.Set<String> newPatientRefs = new java.util.HashSet<>();
+		java.util.Set<String> existingPatientUuids = new java.util.HashSet<>();
+		for (RowPlan row : okRows) {
+			String ref = row.getPatientRef();
+			if (ref == null || ref.trim().isEmpty()) {
+				continue;
+			}
+			String uuid = row.getPatientUuid();
+			if (uuid == null || uuid.trim().isEmpty()) {
+				newPatientRefs.add(ref);
+			} else {
+				existingPatientUuids.add(uuid);
+			}
+		}
+		
+		java.util.Map<String, SheetStats.Builder> sheetMap = new java.util.LinkedHashMap<>();
+		for (RowPlan row : okRows) {
+			sheetMap.computeIfAbsent(row.getSheetName(), SheetStats.Builder::new).incrementOk();
+		}
+		for (QuarantineItem issue : issues) {
+			sheetMap.computeIfAbsent(issue.getSheet(), SheetStats.Builder::new).incrementQuarantined();
+		}
+		List<SheetStats> sheetSummaries = sheetMap.values().stream().map(SheetStats.Builder::build)
+		        .sorted(java.util.Comparator.comparing(SheetStats::getSheetName))
+		        .collect(java.util.stream.Collectors.toList());
+		
+		int blockedPatients = blockedPatientRefs != null ? blockedPatientRefs.size() : 0;
+		
+		int patientsToCreate = newPatientRefs.size();
+		int existingPatientsReferenced = existingPatientUuids.size();
+		
+		return new ImportStats(totalRows, okRows.size(), issues.size(), patientsToCreate, existingPatientsReferenced,
+		        blockedPatients, encountersToCreate, obsToCreate, sheetSummaries);
 	}
 }

@@ -13,6 +13,8 @@ import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.model.ImportPlan;
 import org.openmrs.module.dataimport.model.ImportResult;
+import org.openmrs.module.dataimport.model.ImportStats;
+import org.openmrs.module.dataimport.model.SheetStats;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
@@ -28,7 +30,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Resource(name = RestConstants.VERSION_1 + "/dataimport", supportedClass = SimpleObject.class, supportedOpenmrsVersions = {
         "2.*" })
@@ -74,6 +78,7 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 			response.put("stats", importPlan.getStats());
 			response.put("okRows", importPlan.getRowsOk());
 			response.put("quarantinedRows", importPlan.getIssues());
+			response.put("preview", buildPreview(importPlan));
 			response.put("message", "Dry run completed successfully");
 			return response;
 		}
@@ -198,5 +203,45 @@ public class DataImportResource1_0 extends DelegatingCrudResource<SimpleObject> 
 		}
 		
 		return message;
+	}
+	
+	private SimpleObject buildPreview(ImportPlan importPlan) {
+		SimpleObject preview = new SimpleObject();
+		ImportStats stats = importPlan.getStats();
+		if (stats == null) {
+			return preview;
+		}
+		
+		SimpleObject totals = new SimpleObject();
+		totals.put("totalRows", stats.getTotalRows());
+		totals.put("okRows", stats.getOkRows());
+		totals.put("quarantinedRows", stats.getQuarantinedRows());
+		preview.put("totals", totals);
+		
+		SimpleObject patients = new SimpleObject();
+		patients.put("new", stats.getPatientsToCreate());
+		patients.put("existing", stats.getExistingPatientsReferenced());
+		patients.put("blocked", stats.getBlockedPatients());
+		patients.put("blockedRefs", importPlan.getBlockedPatientRefs());
+		preview.put("patients", patients);
+		
+		SimpleObject encounters = new SimpleObject();
+		encounters.put("encountersToCreate", stats.getEncountersToCreate());
+		encounters.put("obsToCreate", stats.getObsToCreate());
+		preview.put("encounters", encounters);
+		
+		List<SimpleObject> sheetSummaries = stats.getSheetSummaries().stream().map(this::toSimpleObject)
+		        .collect(Collectors.toList());
+		preview.put("sheets", sheetSummaries);
+		
+		return preview;
+	}
+	
+	private SimpleObject toSimpleObject(SheetStats sheet) {
+		SimpleObject obj = new SimpleObject();
+		obj.put("sheetName", sheet.getSheetName());
+		obj.put("okRows", sheet.getOkRows());
+		obj.put("quarantinedRows", sheet.getQuarantinedRows());
+		return obj;
 	}
 }
