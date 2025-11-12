@@ -89,33 +89,47 @@ public class WorkbookUtil {
 			if (cell == null)
 				return null;
 			
+			String value;
 			switch (cell.getCellType()) {
 				case STRING:
-					return cell.getStringCellValue().trim();
+					value = cell.getStringCellValue().trim();
+					break;
 				case NUMERIC:
 					double numValue = cell.getNumericCellValue();
 					if (numValue == (long) numValue) {
-						return String.valueOf((long) numValue);
+						value = String.valueOf((long) numValue);
 					} else {
-						return String.valueOf(numValue);
+						value = String.valueOf(numValue);
 					}
+					break;
 				case BOOLEAN:
-					return String.valueOf(cell.getBooleanCellValue());
+					value = String.valueOf(cell.getBooleanCellValue());
+					break;
 				case FORMULA:
 					try {
-						return cell.getStringCellValue().trim();
+						value = cell.getStringCellValue().trim();
 					}
 					catch (Exception e) {
 						try {
-							return String.valueOf(cell.getNumericCellValue());
+							value = String.valueOf(cell.getNumericCellValue());
 						}
 						catch (Exception e2) {
-							return String.valueOf(cell.getBooleanCellValue());
+							value = String.valueOf(cell.getBooleanCellValue());
 						}
 					}
+					break;
 				default:
-					return null;
+					value = null;
 			}
+			
+			if (value == null) {
+				return null;
+			}
+			
+			if (cell.getSheet() != null && cell.getSheet().getWorkbook() != null) {
+				return LongStringSupport.resolve(cell.getSheet().getWorkbook(), value);
+			}
+			return value;
 		}
 		
 		public static String getString(Sheet sheet, int rowIndex, int colIndex) {

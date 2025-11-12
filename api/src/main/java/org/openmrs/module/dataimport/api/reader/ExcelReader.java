@@ -318,11 +318,31 @@ public class ExcelReader {
 	}
 	
 	public static List<ObsBlueprint> buildObs(Sheet sheet, int rowIndex, SheetMeta sheetMeta) {
+		ObsBuildOutcome outcome = buildObsDetailed(sheet, rowIndex, sheetMeta);
+		if (!outcome.getIssues().isEmpty()) {
+			for (ObsBuildIssue issue : outcome.getIssues()) {
+				ColumnMeta column = issue.getColumn();
+				String columnLabel = describeColumn(column);
+				String rawValue = issue.getRawValue();
+				if (rawValue != null && !rawValue.trim().isEmpty()) {
+					log.warn("Skipping value '{}' for column '{}' on sheet '{}' row {}: {}", rawValue, columnLabel,
+					    sheet.getSheetName(), rowIndex, issue.getMessage());
+				} else {
+					log.warn("Skipping column '{}' on sheet '{}' row {}: {}", columnLabel, sheet.getSheetName(), rowIndex,
+					    issue.getMessage());
+				}
+			}
+		}
+		return outcome.getObs();
+	}
+	
+	public static ObsBuildOutcome buildObsDetailed(Sheet sheet, int rowIndex, SheetMeta sheetMeta) {
 		List<ObsBlueprint> obs = new ArrayList<>();
+		List<ObsBuildIssue> issues = new ArrayList<>();
 		Row row = sheet.getRow(rowIndex);
 		
 		if (row == null) {
-			return obs;
+			return new ObsBuildOutcome(obs, issues);
 		}
 		
 		for (ColumnMeta column : sheetMeta.columns) {
@@ -341,14 +361,20 @@ public class ExcelReader {
 					continue;
 				}
 				String[] labels = raw.split("\\|");
+				List<String> unknownValues = new ArrayList<>();
 				for (String singleLabel : labels) {
-					String mapped = column.getAnswerConceptUuid(singleLabel.trim());
+					String trimmed = singleLabel.trim();
+					String mapped = column.getAnswerConceptUuid(trimmed);
 					if (mapped != null && !mapped.isEmpty()) {
 						obs.add(ObsBlueprint.coded(column.conceptUuid, mapped));
 					} else {
-						log.warn("Unknown coded multi-select value '{}' for concept {} on sheet {} row {}", singleLabel,
-						    column.conceptUuid, sheet.getSheetName(), rowIndex);
+						unknownValues.add(trimmed);
 					}
+				}
+				if (!unknownValues.isEmpty()) {
+					String message = String.format("Unknown coded values %s for concept %s", unknownValues,
+					    column.conceptUuid);
+					issues.add(new ObsBuildIssue(column, raw, message, null));
 				}
 				continue;
 			}
@@ -360,11 +386,15 @@ public class ExcelReader {
 				}
 			}
 			catch (Exception e) {
-				log.warn("Failed to build obs for column {} in row {}: {}", column.label, rowIndex, e.getMessage());
+				String rawValue = WorkbookUtil.Cells.getString(cell);
+				String baseMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+				String message = String.format("Failed to parse value for column '%s': %s", describeColumn(column),
+				    baseMessage);
+				issues.add(new ObsBuildIssue(column, rawValue, message, e));
 			}
 		}
 		
-		return obs;
+		return new ObsBuildOutcome(obs, issues);
 	}
 	
 	private static ObsBlueprint buildObsFromCell(Cell cell, ColumnMeta column) {
@@ -414,7 +444,11 @@ public class ExcelReader {
 	private static ObsBlueprint buildNumericObs(Cell cell, ColumnMeta column) {
 		Double value = WorkbookUtil.Cells.getDouble(cell);
 		if (value == null) {
-			return null;
+			String raw = WorkbookUtil.Cells.getString(cell);
+			if (raw == null && cell != null) {
+				raw = cell.toString();
+			}
+			throw new IllegalArgumentException("Expected numeric value but found '" + (raw != null ? raw : "") + "'");
 		}
 		return ObsBlueprint.numeric(column.conceptUuid, value);
 	}
@@ -422,7 +456,12 @@ public class ExcelReader {
 	private static ObsBlueprint buildDateObs(Cell cell, ColumnMeta column) {
 		LocalDate value = WorkbookUtil.Cells.getLocalDate(cell);
 		if (value == null) {
-			return null;
+			String raw = WorkbookUtil.Cells.getString(cell);
+			if (raw == null && cell != null) {
+				raw = cell.toString();
+			}
+			throw new IllegalArgumentException(
+			        "Expected date value (YYYY-MM-DD) but found '" + (raw != null ? raw : "") + "'");
 		}
 		return ObsBlueprint.date(column.conceptUuid, value);
 	}
@@ -430,7 +469,12 @@ public class ExcelReader {
 	private static ObsBlueprint buildDateTimeObs(Cell cell, ColumnMeta column) {
 		Instant value = WorkbookUtil.Cells.getInstant(cell);
 		if (value == null) {
-			return null;
+			String raw = WorkbookUtil.Cells.getString(cell);
+			if (raw == null && cell != null) {
+				raw = cell.toString();
+			}
+			throw new IllegalArgumentException(
+			        "Expected datetime value (ISO-8601) but found '" + (raw != null ? raw : "") + "'");
 		}
 		return ObsBlueprint.datetime(column.conceptUuid, value);
 	}
@@ -438,7 +482,12 @@ public class ExcelReader {
 	private static ObsBlueprint buildBooleanObs(Cell cell, ColumnMeta column) {
 		Boolean value = WorkbookUtil.Cells.getBoolean(cell);
 		if (value == null) {
-			return null;
+			String raw = WorkbookUtil.Cells.getString(cell);
+			if (raw == null && cell != null) {
+				raw = cell.toString();
+			}
+			throw new IllegalArgumentException(
+			        "Expected boolean value (true/false/yes/no/1/0) but found '" + (raw != null ? raw : "") + "'");
 		}
 		return ObsBlueprint.bool(column.conceptUuid, value);
 	}
@@ -520,6 +569,22 @@ public class ExcelReader {
 		public String answerDatatype;
 		
 		public String answerClass;
+	}
+	
+	public static String describeColumn(ColumnMeta column) {
+		if (column == null) {
+			return "unknown column";
+		}
+		if (column.label != null && !column.label.trim().isEmpty()) {
+			return column.label;
+		}
+		if (column.fieldId != null && !column.fieldId.trim().isEmpty()) {
+			return column.fieldId;
+		}
+		if (column.conceptUuid != null && !column.conceptUuid.trim().isEmpty()) {
+			return column.conceptUuid;
+		}
+		return "col " + column.colIndex;
 	}
 	
 	public static class PatientRow {
@@ -626,6 +691,38 @@ public class ExcelReader {
 		
 		public boolean needsCreation() {
 			return resolved && patientUuid == null && patientRow != null;
+		}
+	}
+	
+	@Getter
+	public static class ObsBuildOutcome {
+		
+		private final List<ObsBlueprint> obs;
+		
+		private final List<ObsBuildIssue> issues;
+		
+		public ObsBuildOutcome(List<ObsBlueprint> obs, List<ObsBuildIssue> issues) {
+			this.obs = obs;
+			this.issues = issues;
+		}
+	}
+	
+	@Getter
+	public static class ObsBuildIssue {
+		
+		private final ColumnMeta column;
+		
+		private final String rawValue;
+		
+		private final String message;
+		
+		private final Throwable cause;
+		
+		public ObsBuildIssue(ColumnMeta column, String rawValue, String message, Throwable cause) {
+			this.column = column;
+			this.rawValue = rawValue;
+			this.message = message;
+			this.cause = cause;
 		}
 	}
 }

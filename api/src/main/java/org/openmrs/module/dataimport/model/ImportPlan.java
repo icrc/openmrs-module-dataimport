@@ -12,7 +12,9 @@ package org.openmrs.module.dataimport.model;
 import lombok.Getter;
 import org.openmrs.module.dataimport.api.reader.ExcelReader;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -28,13 +30,16 @@ public final class ImportPlan {
 	
 	private final ExcelReader.PatientIndex patientIndex;
 	
+	private final Set<String> blockedPatientRefs;
+	
 	public ImportPlan(UUID batchId, List<RowPlan> rowsOk, List<QuarantineItem> issues, ImportStats stats,
-	    ExcelReader.PatientIndex patientIndex) {
+	    ExcelReader.PatientIndex patientIndex, Set<String> blockedPatientRefs) {
 		this.batchId = batchId;
 		this.rowsOk = rowsOk;
 		this.issues = issues;
 		this.stats = stats;
 		this.patientIndex = patientIndex;
+		this.blockedPatientRefs = blockedPatientRefs != null ? blockedPatientRefs : Collections.emptySet();
 	}
 	
 	public static Builder builder() {
@@ -52,6 +57,8 @@ public final class ImportPlan {
 		private ImportStats stats;
 		
 		private ExcelReader.PatientIndex patientIndex;
+		
+		private Set<String> blockedPatientRefs;
 		
 		public Builder batchId(UUID batchId) {
 			this.batchId = batchId;
@@ -78,8 +85,13 @@ public final class ImportPlan {
 			return this;
 		}
 		
+		public Builder blockedPatientRefs(Set<String> blockedPatientRefs) {
+			this.blockedPatientRefs = blockedPatientRefs;
+			return this;
+		}
+		
 		public ImportPlan build() {
-			return new ImportPlan(batchId, rowsOk, issues, stats, patientIndex);
+			return new ImportPlan(batchId, rowsOk, issues, stats, patientIndex, blockedPatientRefs);
 		}
 	}
 }

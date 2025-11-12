@@ -24,6 +24,12 @@ public final class DataImportConstants {
 	
 	public static final String LIST_SHEET = "__lists";
 	
+	public static final String LONG_STRING_SHEET = "__strings";
+	
+	public static final String LONG_STRING_PREFIX = "__LONGSTR__:";
+	
+	public static final int MAX_CELL_TEXT_LENGTH = 32767;
+	
 	public static final int FIRST_DATA_ROW = 1;
 	
 	public static final int LAST_DATA_ROW = 1000;
@@ -34,13 +40,6 @@ public final class DataImportConstants {
 	
 	public static final String DATA_IMPORT_VISIT_TYPE_DESCRIPTION = "Visit type automatically created by the Data Import module to group imported encounters";
 	
-	/**
-	 * Normalizes a label string by trimming, converting to lowercase, and normalizing whitespace. Used
-	 * for case-insensitive and whitespace-tolerant matching of labels.
-	 * 
-	 * @param label the label to normalize
-	 * @return normalized label, or null if input is null
-	 */
 	public static String normalizeLabel(String label) {
 		if (label == null) {
 			return null;

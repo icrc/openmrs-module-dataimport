@@ -60,6 +60,7 @@ public class ExcelTemplateExporter {
 	
 	public byte[] export(FormModel form, boolean includePatient, String locationUuid) {
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+			LongStringRegistry longStrings = new LongStringRegistry();
 			DataFormat dataFormat = workbook.createDataFormat();
 			CellStyle dateStyle = workbook.createCellStyle();
 			dateStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd"));
@@ -110,8 +111,11 @@ public class ExcelTemplateExporter {
 				sheet.createFreezePane(0, 1);
 			}
 			
-			createMetaSheet(workbook, form, locationUuid);
+			createMetaSheet(workbook, form, locationUuid, longStrings);
 			createConceptsSheet(workbook, form);
+			if (longStrings.hasEntries()) {
+				longStrings.writeSheet(workbook);
+			}
 			ensurePatientRefsNamedRange(workbook);
 			for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
 				XSSFSheet s = workbook.getSheetAt(i);
@@ -430,7 +434,8 @@ public class ExcelTemplateExporter {
 		return style;
 	}
 	
-	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid) {
+	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid,
+	        LongStringRegistry longStrings) {
 		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
 		
@@ -546,9 +551,9 @@ public class ExcelTemplateExporter {
 							answersMap.put(DataImportConstants.normalizeLabel(answer.label), answer.conceptUuid);
 						}
 					}
-					row.createCell(8).setCellValue(mapToJson(answersMap));
+					setString(row.createCell(8), mapToJson(answersMap), longStrings);
 				} else {
-					row.createCell(8).setCellValue("{}");
+					setString(row.createCell(8), "{}", longStrings);
 				}
 			}
 		}
@@ -656,6 +661,15 @@ public class ExcelTemplateExporter {
 		}
 		json.append("}");
 		return json.toString();
+	}
+	
+	private void setString(Cell cell, String value, LongStringRegistry longStrings) {
+		if (value == null) {
+			cell.setCellValue("");
+			return;
+		}
+		String registered = longStrings.register(value);
+		cell.setCellValue(registered != null ? registered : "");
 	}
 	
 }

@@ -17,6 +17,8 @@ import org.openmrs.Patient;
 import org.openmrs.Visit;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.reader.ExcelReader;
+import org.openmrs.module.dataimport.api.reader.ExcelReader.ObsBuildIssue;
+import org.openmrs.module.dataimport.api.reader.ExcelReader.ObsBuildOutcome;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.IdempotencyService;
 import org.openmrs.module.dataimport.api.storage.ImportPlanStorageService;
@@ -24,6 +26,7 @@ import org.openmrs.module.dataimport.api.util.DataImportConstants;
 import org.openmrs.module.dataimport.api.util.Idempotency;
 import org.openmrs.module.dataimport.api.util.Validation;
 import org.openmrs.module.dataimport.api.util.WorkbookUtil;
+import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.EncounterBlueprint;
 import org.openmrs.module.dataimport.model.ImportPlan;
 import org.openmrs.module.dataimport.model.ImportResult;
@@ -43,10 +46,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Service
 public class WorkbookImportServiceImpl implements WorkbookImportService {
@@ -89,14 +97,15 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			ExcelReader.PatientIndex patientIndex = ExcelReader.indexPatients(workbook);
 			List<RowPlan> okRows = new ArrayList<>();
 			List<QuarantineItem> quarantineItems = new ArrayList<>();
-			List<Sheet> sheets = WorkbookUtil.nonPatientSheets(workbook, DataImportConstants.PATIENT_SHEET_NAME);
-			for (Sheet sheet : sheets) {
-				processSheet(sheet, meta, patientIndex, okRows, quarantineItems);
-			}
+			Set<String> blockedPatientRefs = new HashSet<>();
 			
-			ImportStats stats = ImportStats.of(okRows, quarantineItems);
+			List<Sheet> sheets = WorkbookUtil.nonPatientSheets(workbook, DataImportConstants.PATIENT_SHEET_NAME);
+			runParallelProcessing(sheets, meta, patientIndex, okRows, quarantineItems, blockedPatientRefs);
+			
+			ImportStats stats = ImportStats.of(okRows, quarantineItems, blockedPatientRefs);
 			ImportPlan plan = ImportPlan.builder().batchId(batchId).rowsOk(okRows).issues(quarantineItems).stats(stats)
-			        .patientIndex(patientIndex).build();
+			        .patientIndex(patientIndex)
+			        .blockedPatientRefs(Collections.unmodifiableSet(new HashSet<>(blockedPatientRefs))).build();
 			importPlanStorage.storePlan(plan);
 			return plan;
 			
@@ -104,6 +113,94 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		catch (Exception e) {
 			throw new RuntimeException("Failed to perform dry run: " + e.getMessage(), e);
 		}
+	}
+	
+	private void runParallelProcessing(List<Sheet> sheets, TemplateMeta meta, ExcelReader.PatientIndex patientIndex,
+	        List<RowPlan> okRows, List<QuarantineItem> quarantineItems, Set<String> blockedPatientRefs) {
+		if (sheets == null || sheets.isEmpty()) {
+			return;
+		}
+		
+		int available = Runtime.getRuntime().availableProcessors();
+		int threadCount = Math.min(Math.max(available, 1), sheets.size());
+		List<SheetProcessingResult> sheetResults = new ArrayList<>(sheets.size());
+		
+		if (threadCount <= 1) {
+			for (Sheet sheet : sheets) {
+				sheetResults.add(processSheet(sheet, meta, patientIndex, meta.defaultLocationUuid));
+			}
+		} else {
+			ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+			try {
+				List<Future<SheetProcessingResult>> futures = new ArrayList<>();
+				for (Sheet sheet : sheets) {
+					futures.add(executor.submit(() -> processSheet(sheet, meta, patientIndex, meta.defaultLocationUuid)));
+				}
+				for (Future<SheetProcessingResult> future : futures) {
+					sheetResults.add(future.get());
+				}
+			}
+			catch (InterruptedException ie) {
+				Thread.currentThread().interrupt();
+				throw new RuntimeException("Dry run interrupted", ie);
+			}
+			catch (ExecutionException ee) {
+				throw new RuntimeException("Dry run failed: " + ee.getCause().getMessage(), ee.getCause());
+			}
+			finally {
+				executor.shutdownNow();
+			}
+		}
+		
+		Set<String> globalBlocked = new HashSet<>();
+		for (SheetProcessingResult result : sheetResults) {
+			globalBlocked.addAll(result.blockedPatientRefs);
+			quarantineItems.addAll(result.quarantineItems);
+		}
+		
+		for (SheetProcessingResult result : sheetResults) {
+			for (RowPlan rowPlan : result.okRows) {
+				String patientRef = rowPlan.getPatientRef();
+				if (patientRef != null && globalBlocked.contains(patientRef)) {
+					quarantineItems.add(createPatientBlockedIssue(rowPlan));
+				} else {
+					okRows.add(rowPlan);
+				}
+			}
+		}
+		
+		blockedPatientRefs.addAll(globalBlocked);
+	}
+	
+	private SheetProcessingResult processSheet(Sheet sheet, TemplateMeta meta, ExcelReader.PatientIndex patientIndex,
+	        String templateDefaultLocationUuid) {
+		SheetProcessingResult result = new SheetProcessingResult();
+		String sheetName = sheet.getSheetName();
+		SheetMeta sheetMeta = meta.getSheetMeta(sheetName);
+		
+		if (sheetMeta == null) {
+			return result;
+		}
+		
+		int lastRow = WorkbookUtil.lastDataRow(sheet);
+		if (lastRow < 1) {
+			return result;
+		}
+		
+		for (int rowIndex = 1; rowIndex <= lastRow; rowIndex++) {
+			if (WorkbookUtil.isEmptyRow(sheet, rowIndex)) {
+				continue;
+			}
+			try {
+				processRow(sheet, rowIndex, sheetMeta, patientIndex, result, templateDefaultLocationUuid);
+			}
+			catch (Exception e) {
+				result.quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, 0, "PROCESSING_ERROR",
+				    "Failed to process row: " + e.getMessage()));
+			}
+		}
+		
+		return result;
 	}
 	
 	@Override
@@ -162,7 +259,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			
 			importPlanStorage.removePlan(batchId);
 			
-			ImportStats finalStats = ImportStats.of(plan.getRowsOk(), plan.getIssues());
+			ImportStats finalStats = ImportStats.of(plan.getRowsOk(), plan.getIssues(), plan.getBlockedPatientRefs());
 			String summary = buildImportSummary(refToPatientUuid.size(), createdEncounterUuids.size(), failedEncounters,
 			    failedObs, skippedRows, creationOutcome.errors);
 			
@@ -204,9 +301,18 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		PatientCreationOutcome outcome = new PatientCreationOutcome();
 		String defaultIdentifierTypeUuid = patientService.getDefaultIdentifierTypeUuid();
 		String defaultLocationUuid = patientService.getDefaultLocationUuid();
+		Set<String> blockedRefs = plan.getBlockedPatientRefs() != null ? plan.getBlockedPatientRefs()
+		        : Collections.emptySet();
 		
 		Map<String, ExcelReader.PatientRow> patientsToCreate = extractPatientsToCreate(plan);
 		for (ExcelReader.PatientRow patientRow : patientsToCreate.values()) {
+			if (blockedRefs.contains(patientRow.patientRef())) {
+				String errorMsg = "Skipped creation for patient '" + patientRow.patientRef()
+				        + "' because related rows were quarantined";
+				outcome.failedPatientRefs.add(patientRow.patientRef());
+				outcome.errors.add(errorMsg);
+				continue;
+			}
 			try {
 				Date birthdate = null;
 				if (patientRow.birthdate != null) {
@@ -231,10 +337,12 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	
 	private Map<String, ExcelReader.PatientRow> extractPatientsToCreate(ImportPlan plan) {
 		Map<String, ExcelReader.PatientRow> patientsToCreate = new HashMap<>();
+		Set<String> blockedRefs = plan.getBlockedPatientRefs() != null ? plan.getBlockedPatientRefs()
+		        : Collections.emptySet();
 		
 		for (RowPlan rowPlan : plan.getRowsOk()) {
 			String patientRef = rowPlan.getPatientRef();
-			if (patientRef != null && !patientsToCreate.containsKey(patientRef)) {
+			if (patientRef != null && !blockedRefs.contains(patientRef) && !patientsToCreate.containsKey(patientRef)) {
 				ExcelReader.PatientRow patientRow = getPatientFromRegistrationSheet(patientRef, plan);
 				if (patientRow != null) {
 					patientsToCreate.put(patientRef, patientRow);
@@ -258,65 +366,68 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		return null;
 	}
 	
-	private void processSheet(Sheet sheet, TemplateMeta meta, ExcelReader.PatientIndex patientIndex, List<RowPlan> okRows,
-	        List<QuarantineItem> quarantineItems) {
-		
-		String sheetName = sheet.getSheetName();
-		SheetMeta sheetMeta = meta.getSheetMeta(sheetName);
-		
-		if (sheetMeta == null) {
-			return;
-		}
-		
-		int lastRow = WorkbookUtil.lastDataRow(sheet);
-		if (lastRow < 1) {
-			return;
-		}
-		
-		for (int rowIndex = 1; rowIndex <= lastRow; rowIndex++) {
-			if (WorkbookUtil.isEmptyRow(sheet, rowIndex))
-				continue;
-			
-			try {
-				processRow(sheet, rowIndex, sheetMeta, patientIndex, okRows, quarantineItems, meta.defaultLocationUuid);
-			}
-			catch (Exception e) {
-				quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, 0, "PROCESSING_ERROR",
-				    "Failed to process row: " + e.getMessage()));
-			}
-		}
-	}
-	
 	private void processRow(Sheet sheet, int rowIndex, SheetMeta sheetMeta, ExcelReader.PatientIndex patientIndex,
-	        List<RowPlan> okRows, List<QuarantineItem> quarantineItems, String templateDefaultLocationUuid) {
-		
+	        SheetProcessingResult result, String templateDefaultLocationUuid) {
 		String sheetName = sheet.getSheetName();
 		
 		String patientRef = WorkbookUtil.Cells.getString(sheet, rowIndex, 0);
 		if (patientRef == null || patientRef.trim().isEmpty()) {
-			quarantineItems
+			result.quarantineItems
 			        .add(QuarantineItem.error(sheetName, rowIndex, 0, "MISSING_PATIENT_REF", "Patient Ref is required"));
 			return;
 		}
 		
 		ExcelReader.PatientResolution patientResolution = patientIndex.resolve(patientRef);
 		if (!patientResolution.isResolved()) {
-			quarantineItems.add(
+			result.blockedPatientRefs.add(patientRef);
+			result.quarantineItems.add(
 			    QuarantineItem.error(sheetName, rowIndex, 0, "UNKNOWN_PATIENT_REF", patientResolution.getErrorMessage()));
 			return;
 		}
 		
-		EncounterBlueprint encounter = ExcelReader.buildEncounter(sheetMeta, templateDefaultLocationUuid);
-		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, rowIndex, sheetMeta);
-		Validation.checkRow(obs, sheetMeta, quarantineItems, sheetName, rowIndex);
+		int issuesBefore = result.quarantineItems.size();
 		
-		if (!Validation.hasBlocking(quarantineItems, sheetName, rowIndex)) {
-			String idempotencyKey = Idempotency.key(sheet.getWorkbook(), sheetName, rowIndex, encounter, obs);
-			
-			RowPlan rowPlan = new RowPlan(sheetName, rowIndex, patientRef, patientResolution.getPatientUuid(), encounter,
-			        obs, idempotencyKey);
-			okRows.add(rowPlan);
+		EncounterBlueprint encounter = ExcelReader.buildEncounter(sheetMeta, templateDefaultLocationUuid);
+		ObsBuildOutcome obsOutcome = ExcelReader.buildObsDetailed(sheet, rowIndex, sheetMeta);
+		for (ObsBuildIssue issue : obsOutcome.getIssues()) {
+			ColumnMeta column = issue.getColumn();
+			int colIndex = column != null ? column.colIndex : 0;
+			String message = issue.getMessage() != null ? issue.getMessage()
+			        : ("Failed to parse value for column '" + ExcelReader.describeColumn(column) + "'");
+			String rawValue = issue.getRawValue();
+			if (rawValue != null && !rawValue.trim().isEmpty()) {
+				message = message + " (value: '" + rawValue + "')";
+			}
+			result.quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, colIndex, "OBS_PARSE_ERROR", message));
 		}
+		
+		List<ObsBlueprint> obs = obsOutcome.getObs();
+		Validation.checkRow(obs, sheetMeta, result.quarantineItems, sheetName, rowIndex);
+		
+		boolean rowHasIssues = result.quarantineItems.size() > issuesBefore;
+		if (rowHasIssues) {
+			result.blockedPatientRefs.add(patientRef);
+			return;
+		}
+		
+		String idempotencyKey = Idempotency.key(sheet.getWorkbook(), sheetName, rowIndex, encounter, obs);
+		RowPlan rowPlan = new RowPlan(sheetName, rowIndex, patientRef, patientResolution.getPatientUuid(), encounter, obs,
+		        idempotencyKey);
+		result.okRows.add(rowPlan);
+	}
+	
+	private QuarantineItem createPatientBlockedIssue(RowPlan rowPlan) {
+		return QuarantineItem.error(rowPlan.getSheetName(), rowPlan.getRowIndex(), 0, "PATIENT_BLOCKED",
+		    "Patient '" + rowPlan.getPatientRef() + "' has other rows with issues; skipping row");
+	}
+	
+	private static class SheetProcessingResult {
+		
+		private final List<RowPlan> okRows = new ArrayList<>();
+		
+		private final List<QuarantineItem> quarantineItems = new ArrayList<>();
+		
+		private final Set<String> blockedPatientRefs = new HashSet<>();
 	}
 	
 	private void validateConceptsSheet(TemplateMeta meta, List<ExcelReader.RowData> concepts) {

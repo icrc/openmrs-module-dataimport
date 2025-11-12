@@ -61,7 +61,8 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
+		List<ObsBlueprint> obs = outcome.getObs();
 		
 		assertEquals(3, obs.size(), "Should create one observation per selected answer");
 		
@@ -81,7 +82,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle unknown values in multi-select gracefully")
+	@DisplayName("Should report unknown values in multi-select as errors")
 	void testMultiSelectWithUnknownValues() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
@@ -107,9 +108,138 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
 		
-		assertEquals(2, obs.size(), "Should only create observations for known values");
+		assertEquals(2, outcome.getObs().size(), "Should still capture known coded values");
+		assertEquals(1, outcome.getIssues().size(), "Should report unknown coded values");
+		assertTrue(outcome.getIssues().get(0).getMessage().contains("Unknown coded values"));
+		assertEquals("Fever|UnknownSymptom|Headache", outcome.getIssues().get(0).getRawValue());
+		
+		workbook.close();
+	}
+	
+	@Test
+	@DisplayName("Should record issue for unknown coded value")
+	void testUnknownCodedValueRecordsIssue() throws Exception {
+		XSSFWorkbook workbook = new XSSFWorkbook();
+		Sheet sheet = workbook.createSheet("Test Sheet");
+		
+		Row dataRow = sheet.createRow(1);
+		dataRow.createCell(1).setCellValue("UnknownSymptom");
+		
+		ColumnMeta symptomsColumn = new ColumnMeta();
+		symptomsColumn.sheetName = "Test Sheet";
+		symptomsColumn.colIndex = 1;
+		symptomsColumn.fieldId = "symptoms";
+		symptomsColumn.label = "Symptoms";
+		symptomsColumn.conceptUuid = "symptoms-concept-uuid";
+		symptomsColumn.datatype = FieldDatatype.CODED;
+		symptomsColumn.answers = new HashMap<>();
+		symptomsColumn.answers.put("fever", "fever-concept-uuid");
+		
+		SheetMeta sheetMeta = new SheetMeta();
+		sheetMeta.sheetName = "Test Sheet";
+		sheetMeta.columns.add(symptomsColumn);
+		
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
+		assertEquals(0, outcome.getObs().size(), "Should not create observation for unknown coded value");
+		assertEquals(1, outcome.getIssues().size(), "Should record a single issue");
+		ExcelReader.ObsBuildIssue issue = outcome.getIssues().get(0);
+		assertTrue(issue.getMessage().contains("Unknown coded value"), "Issue message should mention unknown value");
+		assertEquals("UnknownSymptom", issue.getRawValue());
+		
+		workbook.close();
+	}
+	
+	@Test
+	@DisplayName("Should record issue for invalid numeric value")
+	void testInvalidNumericValueRecordsIssue() throws Exception {
+		XSSFWorkbook workbook = new XSSFWorkbook();
+		Sheet sheet = workbook.createSheet("Vitals");
+		
+		Row dataRow = sheet.createRow(1);
+		dataRow.createCell(1).setCellValue("NotANumber");
+		
+		ColumnMeta weightColumn = new ColumnMeta();
+		weightColumn.sheetName = "Vitals";
+		weightColumn.colIndex = 1;
+		weightColumn.fieldId = "weight";
+		weightColumn.label = "Weight";
+		weightColumn.conceptUuid = "weight-concept-uuid";
+		weightColumn.datatype = FieldDatatype.NUMERIC;
+		
+		SheetMeta sheetMeta = new SheetMeta();
+		sheetMeta.sheetName = "Vitals";
+		sheetMeta.columns.add(weightColumn);
+		
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
+		
+		assertEquals(0, outcome.getObs().size(), "Should not create obs for invalid numeric value");
+		assertEquals(1, outcome.getIssues().size(), "Should record numeric validation issue");
+		assertTrue(outcome.getIssues().get(0).getMessage().contains("Expected numeric value"));
+		assertEquals("NotANumber", outcome.getIssues().get(0).getRawValue());
+		
+		workbook.close();
+	}
+	
+	@Test
+	@DisplayName("Should record issue for invalid date value")
+	void testInvalidDateValueRecordsIssue() throws Exception {
+		XSSFWorkbook workbook = new XSSFWorkbook();
+		Sheet sheet = workbook.createSheet("Vitals");
+		
+		Row dataRow = sheet.createRow(1);
+		dataRow.createCell(1).setCellValue("2025-02-30");
+		
+		ColumnMeta visitDateColumn = new ColumnMeta();
+		visitDateColumn.sheetName = "Vitals";
+		visitDateColumn.colIndex = 1;
+		visitDateColumn.fieldId = "visitDate";
+		visitDateColumn.label = "Visit Date";
+		visitDateColumn.conceptUuid = "visit-date-concept-uuid";
+		visitDateColumn.datatype = FieldDatatype.DATE;
+		
+		SheetMeta sheetMeta = new SheetMeta();
+		sheetMeta.sheetName = "Vitals";
+		sheetMeta.columns.add(visitDateColumn);
+		
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
+		
+		assertEquals(0, outcome.getObs().size(), "Should not create obs for invalid date value");
+		assertEquals(1, outcome.getIssues().size(), "Should record date validation issue");
+		assertTrue(outcome.getIssues().get(0).getMessage().contains("Expected date value"));
+		assertEquals("2025-02-30", outcome.getIssues().get(0).getRawValue());
+		
+		workbook.close();
+	}
+	
+	@Test
+	@DisplayName("Should record issue for invalid boolean value")
+	void testInvalidBooleanValueRecordsIssue() throws Exception {
+		XSSFWorkbook workbook = new XSSFWorkbook();
+		Sheet sheet = workbook.createSheet("Vitals");
+		
+		Row dataRow = sheet.createRow(1);
+		dataRow.createCell(1).setCellValue("maybe");
+		
+		ColumnMeta pregnantColumn = new ColumnMeta();
+		pregnantColumn.sheetName = "Vitals";
+		pregnantColumn.colIndex = 1;
+		pregnantColumn.fieldId = "pregnant";
+		pregnantColumn.label = "Pregnant";
+		pregnantColumn.conceptUuid = "pregnant-concept-uuid";
+		pregnantColumn.datatype = FieldDatatype.BOOLEAN;
+		
+		SheetMeta sheetMeta = new SheetMeta();
+		sheetMeta.sheetName = "Vitals";
+		sheetMeta.columns.add(pregnantColumn);
+		
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
+		
+		assertEquals(0, outcome.getObs().size(), "Should not create obs for invalid boolean value");
+		assertEquals(1, outcome.getIssues().size(), "Should record boolean validation issue");
+		assertTrue(outcome.getIssues().get(0).getMessage().contains("Expected boolean value"));
+		assertEquals("maybe", outcome.getIssues().get(0).getRawValue());
 		
 		workbook.close();
 	}
@@ -137,7 +267,8 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
+		List<ObsBlueprint> obs = outcome.getObs();
 		
 		assertEquals(0, obs.size(), "Should not create observations for empty values");
 		
@@ -170,7 +301,8 @@ public class ObsReaderTest {
 		sheetMeta.sheetName = "Test Sheet";
 		sheetMeta.columns.add(symptomsColumn);
 		
-		List<ObsBlueprint> obs = ExcelReader.buildObs(sheet, 1, sheetMeta);
+		ExcelReader.ObsBuildOutcome outcome = ExcelReader.buildObsDetailed(sheet, 1, sheetMeta);
+		List<ObsBlueprint> obs = outcome.getObs();
 		
 		assertEquals(1, obs.size(), "Should create one observation for single value");
 		
