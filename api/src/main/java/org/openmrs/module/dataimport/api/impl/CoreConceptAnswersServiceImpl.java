@@ -91,7 +91,7 @@ public class CoreConceptAnswersServiceImpl extends BaseOpenmrsService implements
 			Concept concept = cs.getConceptByUuid(conceptUuid);
 			
 			if (concept == null) {
-				log.warn("Concept not found for UUID: " + conceptUuid
+				log.debug("Concept not found for UUID: " + conceptUuid
 				        + " (ConceptService is available, but concept doesn't exist in database)");
 				try {
 					int conceptId = Integer.parseInt(conceptUuid);
