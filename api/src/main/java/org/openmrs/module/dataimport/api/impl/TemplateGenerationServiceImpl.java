@@ -137,7 +137,7 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 						if (loadedAnswers != null && !loadedAnswers.isEmpty()) {
 							field.answers.addAll(loadedAnswers);
 						} else {
-							log.warn("No answers found for coded field '{}' with concept {}", field.label,
+							log.debug("No answers found for coded field '{}' with concept {}", field.label,
 							    field.conceptUuid);
 						}
 					}
