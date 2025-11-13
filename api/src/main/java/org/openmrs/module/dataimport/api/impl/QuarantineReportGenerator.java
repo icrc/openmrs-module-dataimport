@@ -11,6 +11,7 @@ package org.openmrs.module.dataimport.api.impl;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
@@ -46,8 +47,6 @@ public class QuarantineReportGenerator {
 			Set<String> blockedPatientRefs = importPlan.getBlockedPatientRefs() != null ? importPlan.getBlockedPatientRefs()
 			        : Collections.emptySet();
 			
-			copyMetaSheet(sourceWb, reportWb);
-			
 			if (!blockedPatientRefs.isEmpty()) {
 				Sheet patientSheet = sourceWb.getSheet(DataImportConstants.PATIENT_SHEET_NAME);
 				Map<String, Integer> patientRowIndex = indexPatientSheet(patientSheet);
@@ -66,11 +65,24 @@ public class QuarantineReportGenerator {
 				}
 			}
 			
+			Map<Integer, QuarantineItem> patientSheetErrors = errorMap.get(DataImportConstants.PATIENT_SHEET_NAME);
+			if (patientSheetErrors != null && !patientSheetErrors.isEmpty()) {
+				Sheet sourcePatientSheet = sourceWb.getSheet(DataImportConstants.PATIENT_SHEET_NAME);
+				if (sourcePatientSheet != null) {
+					Sheet reportPatientSheet = reportWb.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
+					copySheetWithHighlighting(sourcePatientSheet, reportPatientSheet, patientSheetErrors);
+				}
+			}
+			
 			for (Map.Entry<String, Map<Integer, QuarantineItem>> entry : errorMap.entrySet()) {
 				String sheetName = entry.getKey();
 				Map<Integer, QuarantineItem> sheetErrors = entry.getValue();
 				
 				if (sheetErrors == null || sheetErrors.isEmpty() || sheetName == null || sheetName.startsWith("__")) {
+					continue;
+				}
+				
+				if (DataImportConstants.PATIENT_SHEET_NAME.equals(sheetName)) {
 					continue;
 				}
 				
@@ -81,6 +93,28 @@ public class QuarantineReportGenerator {
 				
 				Sheet reportSheet = reportWb.createSheet(sheetName);
 				copySheetWithHighlighting(sourceSheet, reportSheet, sheetErrors);
+			}
+			
+			copyMetaSheet(sourceWb, reportWb);
+			reorderSheets(reportWb);
+			
+			Sheet metaSheet = reportWb.getSheet(DataImportConstants.META_SHEET);
+			if (metaSheet != null) {
+				int metaIndex = reportWb.getSheetIndex(metaSheet);
+				if (reportWb.getActiveSheetIndex() == metaIndex && reportWb.getNumberOfSheets() > 1) {
+					Sheet patientSheet = reportWb.getSheet(DataImportConstants.PATIENT_SHEET_NAME);
+					if (patientSheet != null) {
+						reportWb.setActiveSheet(reportWb.getSheetIndex(patientSheet));
+					} else {
+						for (int i = 0; i < reportWb.getNumberOfSheets(); i++) {
+							if (i != metaIndex) {
+								reportWb.setActiveSheet(i);
+								break;
+							}
+						}
+					}
+				}
+				reportWb.setSheetVisibility(metaIndex, SheetVisibility.HIDDEN);
 			}
 			
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -114,10 +148,34 @@ public class QuarantineReportGenerator {
 		
 		Sheet metaCopy = reportWb.createSheet(DataImportConstants.META_SHEET);
 		copyEntireSheet(metaSheet, metaCopy);
-		int sourceIndex = sourceWb.getSheetIndex(metaSheet);
-		int targetIndex = reportWb.getSheetIndex(metaCopy);
-		SheetVisibility visibility = sourceWb.getSheetVisibility(sourceIndex);
-		reportWb.setSheetVisibility(targetIndex, visibility);
+	}
+	
+	private void reorderSheets(XSSFWorkbook workbook) {
+		if (workbook == null) {
+			return;
+		}
+		
+		int numSheets = workbook.getNumberOfSheets();
+		if (numSheets == 0) {
+			return;
+		}
+		
+		Sheet metaSheet = workbook.getSheet(DataImportConstants.META_SHEET);
+		if (metaSheet != null) {
+			int currentMetaIndex = workbook.getSheetIndex(metaSheet);
+			int lastPosition = numSheets - 1;
+			if (currentMetaIndex != lastPosition) {
+				workbook.setSheetOrder(DataImportConstants.META_SHEET, lastPosition);
+			}
+		}
+		
+		Sheet patientSheet = workbook.getSheet(DataImportConstants.PATIENT_SHEET_NAME);
+		if (patientSheet != null) {
+			int currentPatientIndex = workbook.getSheetIndex(patientSheet);
+			if (currentPatientIndex != 0) {
+				workbook.setSheetOrder(DataImportConstants.PATIENT_SHEET_NAME, 0);
+			}
+		}
 	}
 	
 	private void copySheetWithHighlighting(Sheet sourceSheet, Sheet targetSheet, Map<Integer, QuarantineItem> errors) {
@@ -200,7 +258,13 @@ public class QuarantineReportGenerator {
 	}
 	
 	private void copyCellValue(Cell sourceCell, Cell targetCell) {
-		switch (sourceCell.getCellType()) {
+		CellType cellType = sourceCell.getCellType();
+		if (cellType == CellType.FORMULA) {
+			copyFormulaValue(sourceCell, targetCell);
+			return;
+		}
+		
+		switch (cellType) {
 			case STRING:
 				targetCell.setCellValue(sourceCell.getStringCellValue());
 				break;
@@ -214,16 +278,41 @@ public class QuarantineReportGenerator {
 			case BOOLEAN:
 				targetCell.setCellValue(sourceCell.getBooleanCellValue());
 				break;
-			case FORMULA:
-				targetCell.setCellFormula(sourceCell.getCellFormula());
-				break;
 			case BLANK:
 				targetCell.setBlank();
 				break;
 			case ERROR:
 				targetCell.setCellErrorValue(sourceCell.getErrorCellValue());
 				break;
+			case _NONE:
 			default:
+				break;
+		}
+	}
+	
+	private void copyFormulaValue(Cell sourceCell, Cell targetCell) {
+		CellType cachedType = sourceCell.getCachedFormulaResultType();
+		switch (cachedType) {
+			case STRING:
+				targetCell.setCellValue(sourceCell.getRichStringCellValue().getString());
+				break;
+			case NUMERIC:
+				if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(sourceCell)) {
+					targetCell.setCellValue(sourceCell.getDateCellValue());
+				} else {
+					targetCell.setCellValue(sourceCell.getNumericCellValue());
+				}
+				break;
+			case BOOLEAN:
+				targetCell.setCellValue(sourceCell.getBooleanCellValue());
+				break;
+			case ERROR:
+				targetCell.setCellErrorValue(sourceCell.getErrorCellValue());
+				break;
+			case BLANK:
+			case _NONE:
+			default:
+				targetCell.setBlank();
 				break;
 		}
 	}
