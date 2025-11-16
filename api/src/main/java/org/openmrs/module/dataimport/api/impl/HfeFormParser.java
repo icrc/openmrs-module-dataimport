@@ -189,7 +189,6 @@ public class HfeFormParser {
 	 * @throws IllegalArgumentException if hfeXml is null/empty, form is null, or XML parsing fails
 	 */
 	public FormModel parse(String hfeXml, org.openmrs.Form form, Locale locale) {
-		// Validate inputs
 		if (hfeXml == null || hfeXml.trim().isEmpty()) {
 			throw new IllegalArgumentException(ERROR_NULL_XML);
 		}
@@ -198,11 +197,9 @@ public class HfeFormParser {
 			throw new IllegalArgumentException(ERROR_NULL_FORM);
 		}
 		
-		// Clear concept cache for this parse operation
 		conceptCache.clear();
 		
 		try {
-			// Configure secure XML parsing (prevent XXE attacks)
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			factory.setNamespaceAware(false);
 			factory.setValidating(false);
@@ -210,11 +207,9 @@ public class HfeFormParser {
 			factory.setFeature(FEATURE_EXTERNAL_GENERAL_ENTITIES, false);
 			factory.setFeature(FEATURE_EXTERNAL_PARAMETER_ENTITIES, false);
 			
-			// Parse XML
 			DocumentBuilder builder = factory.newDocumentBuilder();
 			Document doc = builder.parse(new ByteArrayInputStream(hfeXml.getBytes(StandardCharsets.UTF_8)));
 			
-			// Build FormModel with metadata
 			FormModel formModel = new FormModel();
 			formModel.formUuid = form.getUuid();
 			formModel.name = form.getName();
@@ -222,7 +217,6 @@ public class HfeFormParser {
 			formModel.encounterTypeUuid = form.getEncounterType() != null ? form.getEncounterType().getUuid() : null;
 			formModel.formType = FormType.HFE_XML;
 			
-			// Create main sheet
 			SheetModel sheet = new SheetModel();
 			sheet.sheetName = sanitizeSheetName(formModel.name);
 			sheet.formUuid = formModel.formUuid;
@@ -232,7 +226,6 @@ public class HfeFormParser {
 			
 			formModel.sheets.add(sheet);
 			
-			// Walk DOM and extract fields
 			Locale effectiveLocale = locale != null ? locale : Context.getLocale();
 			Element root = doc.getDocumentElement();
 			walkHfeElements(root, sheet, formModel, effectiveLocale, "");
@@ -244,7 +237,6 @@ public class HfeFormParser {
 			
 		}
 		catch (IllegalArgumentException e) {
-			// Re-throw validation errors
 			throw e;
 		}
 		catch (Exception e) {
@@ -630,7 +622,6 @@ public class HfeFormParser {
 			Element child = (Element) node;
 			String tagName = child.getTagName().toLowerCase();
 			
-			// Create a substituted clone for this iteration
 			Element substituted = substituteElement(child, tuple);
 			
 			switch (tagName) {
@@ -650,7 +641,6 @@ public class HfeFormParser {
 					handleEncounterProvider(substituted, sheet, form, locale);
 					break;
 				case "repeat":
-					// Nested repeats - process normally
 					handleRepeat(substituted, sheet, form, locale, path);
 					break;
 				default:
@@ -759,14 +749,11 @@ public class HfeFormParser {
 		
 		try {
 			ConceptService cs = Context.getConceptService();
-			
-			// Try as UUID first
 			Concept concept = cs.getConceptByUuid(normalized);
 			if (concept != null) {
 				resolvedUuid = concept.getUuid();
 			}
 			
-			// Try as numeric ID
 			if (resolvedUuid == null) {
 				try {
 					int id = Integer.parseInt(normalized);
@@ -780,7 +767,6 @@ public class HfeFormParser {
 				}
 			}
 			
-			// Try as mapping (e.g., "CIEL:5089")
 			if (resolvedUuid == null && normalized.contains(CONCEPT_MAPPING_SEPARATOR)) {
 				String[] parts = normalized.split(CONCEPT_MAPPING_SEPARATOR, 2);
 				if (parts.length == 2) {
@@ -798,7 +784,6 @@ public class HfeFormParser {
 			log.warn(ERROR_CONCEPT_RESOLVE, conceptId, e.getMessage());
 		}
 		
-		// Cache result (even if null to avoid repeated failed lookups)
 		conceptCache.put(normalized, resolvedUuid);
 		
 		return resolvedUuid;
@@ -809,19 +794,16 @@ public class HfeFormParser {
 	 * concept preferred name
 	 */
 	private String resolveLabelText(String labelText, String labelCode, String conceptUuid, Locale locale) {
-		// Priority 1: Explicit labelText
 		if (labelText != null && !labelText.trim().isEmpty()) {
 			return labelText.trim();
 		}
 		
-		// Priority 2: labelCode (message code lookup)
 		// TODO: Implement message source lookup when available
 		if (labelCode != null && !labelCode.trim().isEmpty()) {
 			log.debug("labelCode '{}' found but message source lookup not implemented - using as fallback", labelCode);
 			return labelCode;
 		}
 		
-		// Priority 3: Concept preferred name
 		if (conceptUuid != null) {
 			try {
 				ConceptService cs = Context.getConceptService();
@@ -835,7 +817,7 @@ public class HfeFormParser {
 			}
 		}
 		
-		return "Field"; // Ultimate fallback
+		return "Field";
 	}
 	
 	/**
@@ -852,13 +834,11 @@ public class HfeFormParser {
 	private FieldDatatype inferDatatypeAndRendering(Element obsElement, String conceptUuid, String style,
 	        String answerConceptIds, String answerConceptId) {
 		
-		// Priority 1: Check HTML widget structure (most reliable)
 		FieldDatatype widgetType = inferFromWidgetStructure(obsElement);
 		if (widgetType != null) {
 			return widgetType;
 		}
 		
-		// Priority 2: Check style attribute
 		if (style != null) {
 			String s = style.toLowerCase();
 			if (s.contains("date")) {
@@ -872,13 +852,11 @@ public class HfeFormParser {
 			}
 		}
 		
-		// Priority 3: Check if answers are provided → CODED
 		if ((answerConceptIds != null && !answerConceptIds.trim().isEmpty())
 		        || (answerConceptId != null && !answerConceptId.trim().isEmpty())) {
 			return FieldDatatype.CODED;
 		}
 		
-		// Priority 4: Infer from concept datatype (including drug concepts)
 		try {
 			ConceptService cs = Context.getConceptService();
 			Concept concept = cs.getConceptByUuid(conceptUuid);
@@ -891,7 +869,6 @@ public class HfeFormParser {
 					}
 				}
 				
-				// Check standard concept datatype
 				ConceptDatatype dt = concept.getDatatype();
 				if (dt != null) {
 					String dtName = dt.getHl7Abbreviation();
@@ -929,12 +906,10 @@ public class HfeFormParser {
 	 * @return The inferred datatype, or null if cannot determine
 	 */
 	private FieldDatatype inferFromWidgetStructure(Element obsElement) {
-		// Check for select elements (dropdown)
 		if (hasChildElement(obsElement, "select")) {
 			return FieldDatatype.CODED;
 		}
 		
-		// Check for input elements by type
 		int checkboxCount = countInputsByType(obsElement, "checkbox");
 		if (checkboxCount > 1) {
 			return FieldDatatype.CODED; // Multi-select
@@ -942,27 +917,22 @@ public class HfeFormParser {
 			return FieldDatatype.CODED; // Single checkbox (boolean-style coded)
 		}
 		
-		// Check for radio buttons
 		if (countInputsByType(obsElement, "radio") > 0) {
 			return FieldDatatype.CODED;
 		}
 		
-		// Check for date input
 		if (countInputsByType(obsElement, "date") > 0) {
 			return FieldDatatype.DATE;
 		}
 		
-		// Check for number input
 		if (countInputsByType(obsElement, "number") > 0) {
 			return FieldDatatype.NUMERIC;
 		}
 		
-		// Check for textarea (usually text/long text)
 		if (hasChildElement(obsElement, "textarea")) {
 			return FieldDatatype.TEXT;
 		}
 		
-		// Cannot determine from structure
 		return null;
 	}
 	

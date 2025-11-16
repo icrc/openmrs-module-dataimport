@@ -64,7 +64,6 @@ public class O3JsonFormResolver implements FormResolver {
 		FormModel model = parser.parse(json, locale);
 		model.formType = FormType.O3_JSON;
 		
-		// Ensure basic metadata is set from the form object if not in schema
 		if (model.formUuid == null || model.formUuid.trim().isEmpty()) {
 			model.formUuid = formUuid;
 		}
@@ -146,7 +145,6 @@ public class O3JsonFormResolver implements FormResolver {
 	}
 	
 	private FormResource findSchemaResourceDirect(Collection<FormResource> resources, Form form) {
-		// Try exact matches first
 		for (String schemaName : ALTERNATIVE_SCHEMA_NAMES) {
 			for (FormResource fr : resources) {
 				if (schemaName.equalsIgnoreCase(fr.getName())) {
@@ -158,7 +156,6 @@ public class O3JsonFormResolver implements FormResolver {
 			}
 		}
 		
-		// Try partial match: "json" and "schema"
 		for (FormResource fr : resources) {
 			String name = fr.getName() == null ? "" : fr.getName().toLowerCase();
 			if (name.contains("json") && name.contains("schema")) {
@@ -169,7 +166,6 @@ public class O3JsonFormResolver implements FormResolver {
 			}
 		}
 		
-		// Try any resource with "schema" in name
 		for (FormResource fr : resources) {
 			String name = fr.getName() == null ? "" : fr.getName().toLowerCase();
 			if (name.contains("schema")) {
