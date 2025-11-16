@@ -17,8 +17,9 @@ import org.openmrs.api.EncounterService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.dataimport.api.resolver.FormResolver;
+import org.openmrs.module.dataimport.api.resolver.FormResolverRegistry;
 import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
-import org.openmrs.module.dataimport.api.service.FormSchemaService;
 import org.openmrs.module.dataimport.api.service.TemplateGenerationService;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
@@ -39,19 +40,16 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 	
 	private static final Logger log = LoggerFactory.getLogger(TemplateGenerationServiceImpl.class);
 	
-	private final FormSchemaService formSchemaService;
-	
-	private final O3FormParser parser;
+	private final FormResolverRegistry resolverRegistry;
 	
 	private final ExcelTemplateExporter exporter;
 	
 	private final ConceptAnswersService conceptAnswersService;
 	
 	@Autowired
-	public TemplateGenerationServiceImpl(FormSchemaService resolver, O3FormParser parser, ExcelTemplateExporter exporter,
+	public TemplateGenerationServiceImpl(FormResolverRegistry resolverRegistry, ExcelTemplateExporter exporter,
 	    ConceptAnswersService conceptAnswersProvider) {
-		this.formSchemaService = resolver;
-		this.parser = parser;
+		this.resolverRegistry = resolverRegistry;
 		this.exporter = exporter;
 		this.conceptAnswersService = conceptAnswersProvider;
 	}
@@ -73,13 +71,15 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 		
 		for (String uuid : formUuids) {
 			try {
-				if (!formSchemaService.hasSchemaResource(uuid)) {
-					throw new APIException("Form " + uuid + " not found or has no JSON schema resource");
+				FormResolver resolver = resolverRegistry.findResolver(uuid);
+				if (resolver == null) {
+					throw new APIException("No compatible form resolver found for form " + uuid
+					        + ". Ensure the form has either a JSON schema (O3) or htmlform resource (HFE).");
 				}
 				
-				String json = formSchemaService.fetchSchemaJsonByUuid(uuid);
+				log.debug("Using {} resolver for form {}", resolver.getFormType().getCode(), uuid);
 				
-				FormModel formModel = parser.parse(json, null);
+				FormModel formModel = resolver.resolve(uuid, null);
 				enrichFormWithConceptAnswers(formModel);
 				
 				String formVersion = formModel.version != null ? formModel.version : "1.0";
@@ -89,6 +89,7 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 					sheet.formUuid = formModel.formUuid;
 					sheet.formVersion = formVersion;
 					sheet.encounterTypeUuid = formModel.encounterTypeUuid;
+					sheet.formType = formModel.formType;
 				}
 				
 				if (merged.encounterTypeUuid == null) {

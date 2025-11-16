@@ -22,6 +22,8 @@ public class FormModel {
 	
 	public String encounterTypeUuid;
 	
+	public FormType formType = FormType.O3_JSON;
+	
 	public final List<SheetModel> sheets = new ArrayList<>();
 	
 	public final List<RuleModel> rules = new ArrayList<>();

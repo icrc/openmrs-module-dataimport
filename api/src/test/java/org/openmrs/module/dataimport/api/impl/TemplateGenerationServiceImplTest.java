@@ -36,7 +36,7 @@ public class TemplateGenerationServiceImplTest {
 	@Test
 	@DisplayName("Should create composite version for multiple forms")
 	void testCompositeVersionMultipleForms() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -51,7 +51,7 @@ public class TemplateGenerationServiceImplTest {
 	@Test
 	@DisplayName("Should return single version for single form")
 	void testSingleFormVersion() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -66,7 +66,7 @@ public class TemplateGenerationServiceImplTest {
 	@Test
 	@DisplayName("Should return default version for empty list")
 	void testEmptyFormVersions() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -81,7 +81,7 @@ public class TemplateGenerationServiceImplTest {
 	@Test
 	@DisplayName("Should handle null versions gracefully")
 	void testNullVersions() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -102,7 +102,7 @@ public class TemplateGenerationServiceImplTest {
 		private LocationService locationService;
 		
 		TestableTemplateGenerationServiceImpl() {
-			super(null, null, null, null);
+			super(null, null, null);
 		}
 		
 		void setEncounterService(EncounterService encounterService) {

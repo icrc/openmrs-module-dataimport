@@ -1,15 +1,17 @@
 # OpenMRS Excel Import and Export Module
 
-A focused OpenMRS module that converts O3 forms to Excel templates using a clean model-based approach.
+A focused OpenMRS module that converts both O3 and OpenMRS 2 (HFE) forms to Excel templates using a clean model-based approach.
 
 ## What It Does
 
-Converts OpenMRS 3 forms into Excel templates for offline data collection, then processes completed Excel files back into OpenMRS using a robust model-based system.
+Converts OpenMRS forms (both O3 JSON schemas and HTML Form Entry XML) into Excel templates for offline data collection, then processes completed Excel files back into OpenMRS using a robust model-based system.
 
 ## Key Features
 
-- **O3 Form Parsing** - Converts O3 JSON forms to structured model objects
+- **Dual Form Support** - Converts both O3 JSON forms and HTML Form Entry (HFE) forms
+- **Pluggable Architecture** - Form resolver SPI automatically detects form type
 - **Excel Template Generation** - Creates Excel templates with validation, dropdowns, and multi-select support
+- **HFE Advanced Parsing** - Supports `<repeat>`, `<obsgroup>`, concept mappings, widget detection
 - **Dry-Run Validation** - Validates data before import with detailed error reporting
 - **Color-Coded Reports** - Download Excel reports with error rows highlighted
 - **Partial Import** - Imports valid rows even if some rows fail validation
@@ -17,12 +19,122 @@ Converts OpenMRS 3 forms into Excel templates for offline data collection, then 
 
 ## Workflow
 
-1. **Generate Template** → Download Excel template from form UUIDs
+1. **Generate Template** → Download Excel template from form UUIDs (O3 or HFE forms)
 2. **Fill Data** → Enter patient and encounter data offline
 3. **Upload & Validate** → Dry-run to check for errors
 4. **Download Report** → Get color-coded Excel with highlighted errors (optional)
 5. **Fix Errors** → Correct issues in the highlighted rows
 6. **Commit** → Import valid data into OpenMRS
+
+## Form Type Support
+
+### O3 Forms (JSON Schema)
+The module automatically detects O3 forms by looking for JSON schema resources attached to the form. It parses the schema structure, extracts fields, and generates appropriate Excel columns with validation.
+
+### HTML Form Entry (HFE) Forms
+The module automatically detects HFE forms by looking for "htmlform" resources. Supported HFE elements:
+
+**Data Collection Elements:**
+- `<obs conceptId="..."/>` - Observation fields (supports UUID, numeric ID, or mappings like "CIEL:5089")
+- `<obsgroup groupingConceptId="...">` - Observation groups (flattened into sheet)
+- `<encounterDate/>` - Encounter date/time field
+- `<encounterLocation/>` - Location picker (loads all non-retired locations)
+- `<encounterProvider/>` - Provider picker (loads all non-retired providers)
+
+**HFE Directives:**
+- `<repeat with="[...]">` - Template expansion with placeholder substitution (`{0}`, `{1}`, `{2}`)
+- Conditional fields (`hideWhenExpression`) - Rendered with gray background in Excel
+
+**Concept Resolution:**
+- UUID: `conceptId="5089AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"`
+- Numeric ID: `conceptId="5089"`
+- Mapping: `conceptId="CIEL:5089"` or `conceptId="PIH:Weight"`
+
+**Datatype Inference (4-tier priority):**
+1. **Widget structure** - Detects `<select>`, `<input type="checkbox">`, `<input type="radio">`, etc.
+2. **Style attribute** - e.g., `style="date"`, `style="text"`, `style="textarea"`
+3. **Answer attributes** - `answerConceptIds` / `answerConceptId` → CODED
+4. **Concept datatype** - Fetches from concept dictionary (including drug concepts)
+
+**Answer Resolution:**
+- Multiple answers: `answerConceptIds="CIEL:1065,CIEL:1066"` with optional `answerLabels="Yes,No"`
+- Single answer: `answerConceptId="CIEL:1065"` with optional `answerLabel="Yes"` (for single checkboxes)
+- Auto-fetch from concept: If no answers specified, loads from concept's answer set
+
+**Ignored Elements** (non-data collection):
+- `<uiInclude>`, `<includeFragment>` - UI resources (CSS/JS)
+- `<script>` - JavaScript code
+- `<uimessage>` - i18n message codes
+- `<lookup>` - Dynamic value lookups (display-only)
+- `<ifMode>` - Conditional rendering directives
+
+### Example: Processing the Care Plan HFE Form
+
+For the provided care plan form with `<repeat>` directives:
+
+```xml
+<repeat with="['icrcforms.wttc.carePlan.hipSurgery','ICRC:HIP_SURGERY', 'ICRC:HIP_SURGERY_DISPOSITION_COMMENT'],
+              ['icrcforms.wttc.carePlan.kneeSurgery','ICRC:KNEE_SURGERY','ICRC:KNEE_SURGERY_DISPOSITION_COMMENT']">
+    <obs conceptId="{1}" />
+    <obs conceptId="{2}" style="text" />
+</repeat>
+```
+
+**The parser will:**
+1. Detect the `<repeat>` tag and extract 2 tuples
+2. Expand the template twice:
+   - First iteration: Create fields for `ICRC:HIP_SURGERY` (coded) and `ICRC:HIP_SURGERY_DISPOSITION_COMMENT` (text)
+   - Second iteration: Create fields for `ICRC:KNEE_SURGERY` (coded) and `ICRC:KNEE_SURGERY_DISPOSITION_COMMENT` (text)
+3. Resolve concept UUIDs via concept mapping service
+4. Fetch answer sets for coded fields from the concept dictionary
+5. Generate Excel columns with dropdowns for coded fields and text fields for comments
+
+**Final Excel template will contain columns:**
+- encounterDate
+- encounterLocation (dropdown with locations)
+- encounterProvider (dropdown with providers)
+- ICRC:HIP_SURGERY (dropdown with answers from concept)
+- ICRC:HIP_SURGERY_DISPOSITION_COMMENT (text)
+- ICRC:KNEE_SURGERY (dropdown with answers)
+- ICRC:KNEE_SURGERY_DISPOSITION_COMMENT (text)
+- ... (all other repeated sections expanded similarly)
+- ICRC:1990797 (textarea for comments)
+- __meta sheet (tracks formType="hfe-xml" for import compatibility)
+
+### Form Type Detection
+
+The module uses a **FormResolver SPI** that auto-detects form types:
+1. Try `O3JsonFormResolver` - looks for JSON schema resource
+2. Try `HfeFormResolver` - looks for "htmlform" resource
+3. If no resolver matches, throws error with helpful message
+
+You can mix O3 and HFE forms in a single template generation request - the module will process each appropriately.
+
+## Architecture
+
+### Excel Template Model (ETM)
+Both O3 and HFE forms are parsed into a unified internal model:
+- `FormModel` - Represents the entire form with metadata
+- `SheetModel` - Represents an Excel sheet (one per form section)
+- `FieldModel` - Represents a single data field/column
+- `AnswerModel` - Represents coded answer options
+
+### Processing Pipeline
+```
+Form UUID → FormResolver → FormParser → FormModel (ETM) → ExcelTemplateExporter → .xlsx file
+     ↓            ↓             ↓
+ Auto-detect   O3JsonFormResolver    Unified model works
+ form type     HfeFormResolver      for both form types
+```
+
+**Key Classes:**
+- `FormResolverRegistry` - Auto-detects and selects appropriate resolver
+- `O3JsonFormResolver` - Parses O3 JSON schemas
+- `HfeFormResolver` - Parses HFE XML forms
+- `O3FormParser` - Converts O3 schema to FormModel
+- `HfeFormParser` - Converts HFE XML to FormModel (HfeFormParser.java:261-472 for `<repeat>` expansion)
+- `ExcelTemplateExporter` - Generates Excel from FormModel
+- `TemplateGenerationServiceImpl` - Orchestrates the workflow (TemplateGenerationServiceImpl.java:58-123)
 
 ## API Endpoints
 

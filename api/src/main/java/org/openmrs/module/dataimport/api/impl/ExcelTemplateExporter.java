@@ -67,6 +67,10 @@ public class ExcelTemplateExporter {
 			CellStyle dateTimeStyle = workbook.createCellStyle();
 			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
 			
+			CellStyle conditionalStyle = workbook.createCellStyle();
+			conditionalStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+			conditionalStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+			
 			if (includePatient) {
 				createPatientSheet(workbook);
 			}
@@ -92,19 +96,64 @@ public class ExcelTemplateExporter {
 					headerCell.setCellValue(labelWithMarkers(field));
 					headerCell.setCellStyle(headerStyle);
 					
+					// Apply gray styling to conditional fields (HFE conditional display logic)
+					boolean isConditional = field.hideExpr != null && !field.hideExpr.trim().isEmpty();
+					
 					if (field.datatype == FieldDatatype.DATE) {
 						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
-							cell.setCellStyle(dateStyle);
+							if (isConditional) {
+								// Create combined style: date format + gray background
+								CellStyle dateConditionalStyle = workbook.createCellStyle();
+								dateConditionalStyle.cloneStyleFrom(dateStyle);
+								dateConditionalStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+								dateConditionalStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+								cell.setCellStyle(dateConditionalStyle);
+							} else {
+								cell.setCellStyle(dateStyle);
+							}
 						}
 					} else if (field.datatype == FieldDatatype.DATETIME) {
 						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
-							cell.setCellStyle(dateTimeStyle);
+							if (isConditional) {
+								// Create combined style: datetime format + gray background
+								CellStyle dateTimeConditionalStyle = workbook.createCellStyle();
+								dateTimeConditionalStyle.cloneStyleFrom(dateTimeStyle);
+								dateTimeConditionalStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+								dateTimeConditionalStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+								cell.setCellStyle(dateTimeConditionalStyle);
+							} else {
+								cell.setCellStyle(dateTimeStyle);
+							}
 						}
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
+						// Apply gray background to coded fields with conditional logic
+						if (isConditional) {
+							for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
+								Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
+								CellStyle existing = cell.getCellStyle();
+								if (existing != null && existing.getIndex() != 0) {
+									// Clone existing style and add gray background
+									CellStyle codedConditionalStyle = workbook.createCellStyle();
+									codedConditionalStyle.cloneStyleFrom(existing);
+									codedConditionalStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+									codedConditionalStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+									cell.setCellStyle(codedConditionalStyle);
+								} else {
+									cell.setCellStyle(conditionalStyle);
+								}
+							}
+						}
+					} else if (isConditional) {
+						// Apply gray background to other conditional fields (text, numeric, boolean)
+						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
+							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
+							cell.setCellStyle(conditionalStyle);
+						}
 					}
+					
 					sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
@@ -471,7 +520,7 @@ public class ExcelTemplateExporter {
 		rowIndex += 2; // Skip a row
 		
 		Row formHeaderRow = metaSheet.createRow(rowIndex++);
-		String[] formHeaders = { "formUuid", "formName", "formVersion", "encounterTypeUuid", "sheetName" };
+		String[] formHeaders = { "formUuid", "formName", "formVersion", "formType", "encounterTypeUuid", "sheetName" };
 		for (int i = 0; i < formHeaders.length; i++) {
 			Cell cell = formHeaderRow.createCell(i);
 			cell.setCellValue(formHeaders[i]);
@@ -483,12 +532,14 @@ public class ExcelTemplateExporter {
 			String formUuid = sheetModel.formUuid != null ? sheetModel.formUuid : "";
 			String formName = sheetModel.sheetName;
 			String formVersion = sheetModel.formVersion != null ? sheetModel.formVersion : "1.0";
+			String formType = sheetModel.formType != null ? sheetModel.formType.getCode() : "o3-json"; // Default to O3
 			String encounterTypeUuid = sheetModel.encounterTypeUuid != null ? sheetModel.encounterTypeUuid : "";
 			formRow.createCell(0).setCellValue(formUuid);
 			formRow.createCell(1).setCellValue(formName);
 			formRow.createCell(2).setCellValue(formVersion);
-			formRow.createCell(3).setCellValue(encounterTypeUuid);
-			formRow.createCell(4).setCellValue(sheetModel.sheetName);
+			formRow.createCell(3).setCellValue(formType);
+			formRow.createCell(4).setCellValue(encounterTypeUuid);
+			formRow.createCell(5).setCellValue(sheetModel.sheetName);
 		}
 		
 		rowIndex += 2; // Skip a row
