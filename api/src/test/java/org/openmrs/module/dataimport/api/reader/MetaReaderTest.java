@@ -26,8 +26,7 @@ import org.openmrs.module.dataimport.model.TemplateMeta;
 public class MetaReaderTest {
 	
 	@Test
-	@DisplayName("Should read multi-form template metadata correctly")
-	void testMultiFormTemplateMetadata() throws Exception {
+	public void testMultiFormTemplateMetadata() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
 		
@@ -155,8 +154,7 @@ public class MetaReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle backward compatibility with single-form templates")
-	void testBackwardCompatibility() throws Exception {
+	public void testBackwardCompatibility() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
 		
@@ -219,8 +217,7 @@ public class MetaReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should validate missing datatype and fail fast")
-	void testMissingDatatypeValidation() throws Exception {
+	public void testMissingDatatypeValidation() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
 		
@@ -260,8 +257,7 @@ public class MetaReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should allow missing conceptUuid for non-Patient Ref columns (will be skipped during import)")
-	void testMissingConceptUuidValidation() throws Exception {
+	public void testMissingConceptUuidValidation() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
 		
@@ -300,8 +296,7 @@ public class MetaReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should validate missing coded answers and fail fast")
-	void testMissingCodedAnswersValidation() throws Exception {
+	public void testMissingCodedAnswersValidation() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
 		
@@ -341,8 +336,7 @@ public class MetaReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should allow patientRef columns without conceptUuid")
-	void testPatientRefColumnAllowedWithoutConceptUuid() throws Exception {
+	public void testPatientRefColumnAllowedWithoutConceptUuid() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
 		
@@ -382,8 +376,7 @@ public class MetaReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should validate valid meta sheet successfully")
-	void testValidMetaSheet() throws Exception {
+	public void testValidMetaSheet() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet metaSheet = workbook.createSheet("__meta");
 		

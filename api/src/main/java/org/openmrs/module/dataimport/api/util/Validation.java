@@ -10,8 +10,8 @@
 package org.openmrs.module.dataimport.api.util;
 
 import org.openmrs.ConceptDatatype;
-import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.ObsBlueprint;
 import org.openmrs.module.dataimport.model.QuarantineItem;
@@ -85,10 +85,13 @@ public class Validation {
 	private static void validateDatatype(String sheetName, int rowIndex, ColumnMeta column, String expected,
 	        List<QuarantineItem> quarantineItems) {
 		try {
-			ConceptService cs = Context.getConceptService();
-			if (cs == null)
-				return; // outside runtime; skip
-			ConceptDatatype dt = cs.getConceptByUuid(column.conceptUuid).getDatatype();
+			ConceptAnswersService conceptService = Context.getRegisteredComponent("coreConceptAnswersProvider",
+			    ConceptAnswersService.class);
+			if (conceptService == null) {
+				return; // Service not available - skip validation
+			}
+			
+			ConceptDatatype dt = conceptService.getConceptDatatype(column.conceptUuid);
 			if (dt == null)
 				return;
 			

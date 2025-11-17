@@ -9,6 +9,7 @@
  */
 package org.openmrs.module.dataimport.model;
 
+import org.openmrs.module.dataimport.api.util.AnswerMapper;
 import org.openmrs.module.dataimport.api.util.DataImportConstants;
 
 import java.util.HashMap;
@@ -45,17 +46,6 @@ public class ColumnMeta {
 	}
 	
 	public String getAnswerConceptUuid(String label) {
-		if (answers == null)
-			return null;
-		String direct = answers.get(label);
-		if (direct != null)
-			return direct;
-		String target = DataImportConstants.normalizeLabel(label);
-		for (Map.Entry<String, String> e : answers.entrySet()) {
-			if (DataImportConstants.normalizeLabel(e.getKey()).equals(target)) {
-				return e.getValue();
-			}
-		}
-		return null;
+		return AnswerMapper.getAnswerConceptUuid(answers, label);
 	}
 }

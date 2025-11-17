@@ -34,8 +34,7 @@ import java.util.List;
 public class TemplateGenerationServiceImplTest {
 	
 	@Test
-	@DisplayName("Should create composite version for multiple forms")
-	void testCompositeVersionMultipleForms() throws Exception {
+	public void testCompositeVersionMultipleForms() throws Exception {
 		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
@@ -49,8 +48,7 @@ public class TemplateGenerationServiceImplTest {
 	}
 	
 	@Test
-	@DisplayName("Should return single version for single form")
-	void testSingleFormVersion() throws Exception {
+	public void testSingleFormVersion() throws Exception {
 		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
@@ -64,8 +62,7 @@ public class TemplateGenerationServiceImplTest {
 	}
 	
 	@Test
-	@DisplayName("Should return default version for empty list")
-	void testEmptyFormVersions() throws Exception {
+	public void testEmptyFormVersions() throws Exception {
 		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
@@ -79,8 +76,7 @@ public class TemplateGenerationServiceImplTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle null versions gracefully")
-	void testNullVersions() throws Exception {
+	public void testNullVersions() throws Exception {
 		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
@@ -93,49 +89,8 @@ public class TemplateGenerationServiceImplTest {
 		assertEquals("1.0,null,2.1", result);
 	}
 	
-	private static class TestableTemplateGenerationServiceImpl extends TemplateGenerationServiceImpl {
-		
-		private EncounterService encounterService;
-		
-		private ProviderService providerService;
-		
-		private LocationService locationService;
-		
-		TestableTemplateGenerationServiceImpl() {
-			super(null, null, null);
-		}
-		
-		void setEncounterService(EncounterService encounterService) {
-			this.encounterService = encounterService;
-		}
-		
-		void setProviderService(ProviderService providerService) {
-			this.providerService = providerService;
-		}
-		
-		void setLocationService(LocationService locationService) {
-			this.locationService = locationService;
-		}
-		
-		@Override
-		protected EncounterService fetchEncounterService() {
-			return encounterService;
-		}
-		
-		@Override
-		protected ProviderService fetchProviderService() {
-			return providerService;
-		}
-		
-		@Override
-		protected LocationService fetchLocationService() {
-			return locationService;
-		}
-	}
-	
 	@Test
-	@DisplayName("Should populate encounter roles for ui-select-extended fields")
-	void testPopulateUiSelectExtendedEncounterRoles() throws Exception {
+	public void testPopulateUiSelectExtendedEncounterRoles() throws Exception {
 		TestableTemplateGenerationServiceImpl service = new TestableTemplateGenerationServiceImpl();
 		FieldModel field = new FieldModel();
 		field.datatype = FieldDatatype.CODED;
@@ -165,45 +120,8 @@ public class TemplateGenerationServiceImplTest {
 		assertEquals("Provider", field.answers.get(1).label);
 	}
 	
-	//	@Test
-	@DisplayName("Should populate encounter providers for ui-select-extended fields")
-	void testPopulateUiSelectExtendedEncounterProviders() throws Exception {
-		TestableTemplateGenerationServiceImpl service = new TestableTemplateGenerationServiceImpl();
-		FieldModel field = new FieldModel();
-		field.datatype = FieldDatatype.CODED;
-		field.uiSelectSourceType = "encounterProvider";
-		
-		Provider providerA = new Provider();
-		providerA.setUuid("provider-a");
-		Person providerAPerson = new Person();
-		providerAPerson.addName(new PersonName("Zebra", "", "Doctor"));
-		providerA.setPerson(providerAPerson);
-		
-		Provider providerB = new Provider();
-		providerB.setUuid("provider-b");
-		Person providerBPerson = new Person();
-		providerBPerson.addName(new PersonName("Alpha", "", "Doctor"));
-		providerB.setPerson(providerBPerson);
-		
-		ProviderService providerService = Mockito.mock(ProviderService.class);
-		Mockito.when(providerService.getAllProviders(false)).thenReturn(Arrays.asList(providerA, providerB));
-		
-		Method populate = TemplateGenerationServiceImpl.class.getDeclaredMethod("populateUiSelectExtendedAnswers",
-		    FieldModel.class);
-		populate.setAccessible(true);
-		service.setProviderService(providerService);
-		populate.invoke(service, field);
-		
-		assertEquals(2, field.answers.size());
-		assertEquals("Alpha Doctor", field.answers.get(0).label);
-		assertEquals("provider-b", field.answers.get(0).conceptUuid);
-		assertEquals("provider-b", field.answers.get(0).value);
-		assertEquals("Dr. Zebra", field.answers.get(1).label);
-	}
-	
 	@Test
-	@DisplayName("Should populate encounter locations for ui-select-extended fields")
-	void testPopulateUiSelectExtendedEncounterLocations() throws Exception {
+	public void testPopulateUiSelectExtendedEncounterLocations() throws Exception {
 		TestableTemplateGenerationServiceImpl service = new TestableTemplateGenerationServiceImpl();
 		FieldModel field = new FieldModel();
 		field.datatype = FieldDatatype.CODED;
@@ -234,8 +152,7 @@ public class TemplateGenerationServiceImplTest {
 	}
 	
 	@Test
-	@DisplayName("Should honour location datasource tag filter for ui-select-extended fields")
-	void testPopulateUiSelectExtendedLocationDatasourceWithTag() throws Exception {
+	public void testPopulateUiSelectExtendedLocationDatasourceWithTag() throws Exception {
 		TestableTemplateGenerationServiceImpl service = new TestableTemplateGenerationServiceImpl();
 		FieldModel field = new FieldModel();
 		field.datatype = FieldDatatype.CODED;
@@ -276,5 +193,45 @@ public class TemplateGenerationServiceImplTest {
 		assertEquals(2, field.answers.size());
 		assertEquals("Ward A", field.answers.get(0).label);
 		assertEquals("Ward B", field.answers.get(1).label);
+	}
+	
+	private static class TestableTemplateGenerationServiceImpl extends TemplateGenerationServiceImpl {
+		
+		private EncounterService encounterService;
+		
+		private ProviderService providerService;
+		
+		private LocationService locationService;
+		
+		TestableTemplateGenerationServiceImpl() {
+			super(null, null, null);
+		}
+		
+		void setEncounterService(EncounterService encounterService) {
+			this.encounterService = encounterService;
+		}
+		
+		void setProviderService(ProviderService providerService) {
+			this.providerService = providerService;
+		}
+		
+		void setLocationService(LocationService locationService) {
+			this.locationService = locationService;
+		}
+		
+		@Override
+		protected EncounterService fetchEncounterService() {
+			return encounterService;
+		}
+		
+		@Override
+		protected ProviderService fetchProviderService() {
+			return providerService;
+		}
+		
+		@Override
+		protected LocationService fetchLocationService() {
+			return locationService;
+		}
 	}
 }

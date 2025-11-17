@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmrs.module.dataimport.api.util.DataImportConstants;
 import org.openmrs.module.dataimport.model.ImportPlan;
@@ -30,11 +29,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-class QuarantineReportGeneratorTest {
+public class QuarantineReportGeneratorTest {
 	
 	@Test
-	@DisplayName("Should include only sheets with issues and the relevant patient rows")
-	void testQuarantineReportFiltersSheets() throws Exception {
+	public void testQuarantineReport_shouldFilterSheets() throws Exception {
 		byte[] workbookBytes = createSampleWorkbook();
 		
 		List<QuarantineItem> issues = new ArrayList<>();

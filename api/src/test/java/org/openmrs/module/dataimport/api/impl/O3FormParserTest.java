@@ -14,10 +14,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
@@ -27,19 +30,22 @@ import org.openmrs.module.dataimport.test.TestDataLoader;
 
 import java.util.Locale;
 
-@DisplayName("O3FormParser Tests")
 class O3FormParserTest {
 	
 	private O3FormParser parser;
 	
+	private ConceptAnswersService conceptAnswersService;
+	
 	@BeforeEach
-	void setUp() {
-		parser = new O3FormParser();
+	public void setUp() {
+		conceptAnswersService = mock(ConceptAnswersService.class);
+		// Mock resolveConceptUuid to return the input value (identity function) for unit tests
+		when(conceptAnswersService.resolveConceptUuid(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+		parser = new O3FormParser(conceptAnswersService);
 	}
 	
 	@Test
-	@DisplayName("Should parse radio button fields with answers correctly")
-	void testParseRadioButtonFields() throws Exception {
+	public void testParseRadioButtonFields() throws Exception {
 		String json = TestDataLoader.loadRadioButtonsForm();
 		FormModel form = parser.parse(json, Locale.ENGLISH);
 		
@@ -80,8 +86,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle fields without answers as TEXT type")
-	void testParseFieldsWithoutAnswers() throws Exception {
+	public void testParseFieldsWithoutAnswers() throws Exception {
 		String json = TestDataLoader.loadMixedFieldsForm();
 		FormModel form = parser.parse(json, Locale.ENGLISH);
 		
@@ -96,8 +101,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should mark ui-select-extended fields as coded with source type")
-	void testParseUiSelectExtendedField() throws Exception {
+	public void testParseUiSelectExtendedField() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"encounter-role-form\",\n" + "    \"name\": \"Encounter Role Form\",\n"
 		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -118,8 +122,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should infer ui-select source type from question type when not specified")
-	void testUiSelectExtendedFieldUsingQuestionType() throws Exception {
+	public void testUiSelectExtendedFieldUsingQuestionType() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"encounter-provider-form\",\n" + "    \"name\": \"Encounter Provider Form\",\n"
 		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -139,8 +142,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should capture datasource configuration for ui-select-extended fields")
-	void testUiSelectExtendedFieldDatasourceConfig() throws Exception {
+	public void testUiSelectExtendedFieldDatasourceConfig() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"location-form\",\n" + "    \"name\": \"Location Form\",\n"
 		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -164,8 +166,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should correctly infer datatypes for all field types")
-	void testInferDatatypes() throws Exception {
+	public void testInferDatatypes() throws Exception {
 		String json = TestDataLoader.loadMixedFieldsForm();
 		FormModel form = parser.parse(json, Locale.ENGLISH);
 		
@@ -194,8 +195,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle repeat groups as regular groups on main sheet")
-	void testParseRepeatGroups() throws Exception {
+	public void testParseRepeatGroups() throws Exception {
 		String json = TestDataLoader.loadRepeatGroupsForm();
 		FormModel form = parser.parse(json, Locale.ENGLISH);
 		
@@ -219,8 +219,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse basic form with metadata")
-	void testParseBasicForm() throws Exception {
+	public void testParseBasicForm() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"form-uuid-123\",\n" + "    \"name\": \"Test Form\",\n"
 		        + "    \"display\": \"Test Form Display\",\n" + "    \"version\": \"1.0\",\n"
 		        + "    \"encounterType\": \"encounter-type-uuid\",\n" + "    \"pages\": [\n" + "        {\n"
@@ -238,8 +237,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse form with questions")
-	void testParseFormWithQuestions() throws Exception {
+	public void testParseFormWithQuestions() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"form-with-questions\",\n" + "    \"name\": \"Form with Questions\",\n"
 		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -280,8 +278,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse coded field with answers")
-	void testParseCodedFieldWithAnswers() throws Exception {
+	public void testParseCodedFieldWithAnswers() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"coded-form\",\n" + "    \"name\": \"Coded Form\",\n" + "    \"pages\": [\n"
 		        + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -315,8 +312,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse repeat group as regular group on main sheet")
-	void testParseRepeatGroup() throws Exception {
+	public void testParseRepeatGroup() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"repeat-form\",\n" + "    \"name\": \"Repeat Form\",\n" + "    \"pages\": [\n"
 		        + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -345,8 +341,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse form with rules")
-	void testParseFormWithRules() throws Exception {
+	public void testParseFormWithRules() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"rules-form\",\n" + "    \"name\": \"Rules Form\",\n" + "    \"pages\": [\n"
 		        + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -372,16 +367,14 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle malformed JSON gracefully")
-	void testMalformedJsonHandling() {
+	public void testMalformedJsonHandling() {
 		String malformedJson = "{ invalid json }";
 		
 		assertThrows(IllegalArgumentException.class, () -> parser.parse(malformedJson, Locale.ENGLISH));
 	}
 	
 	@Test
-	@DisplayName("Should handle missing required fields")
-	void testMissingRequiredFields() throws Exception {
+	public void testMissingRequiredFields() throws Exception {
 		String json = "{\n" + "    \"pages\": [\n" + "        {\n" + "            \"sections\": []\n" + "        }\n"
 		        + "    ]\n" + "}";
 		
@@ -396,8 +389,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle different datatypes")
-	void testDifferentDatatypes() throws Exception {
+	public void testDifferentDatatypes() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"datatypes-form\",\n" + "    \"name\": \"Datatypes Form\",\n"
 		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
@@ -424,8 +416,7 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should set isMulti flag for multiCheckbox fields")
-	void testMultiCheckboxIsMultiFlag() throws Exception {
+	public void testMultiCheckboxIsMultiFlag() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"checkbox-form\",\n" + "    \"name\": \"Checkbox Form\",\n"
 		        + "    \"pages\": [\n" + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"

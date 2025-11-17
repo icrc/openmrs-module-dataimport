@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.IdempotencyService;
@@ -37,7 +36,7 @@ public class DataImportIntegrationTest {
 	private ExcelTemplateExporter exporter;
 	
 	@BeforeEach
-	void setUp() {
+	public void setUp() {
 		ImportPlanStorageService importPlanStorage = new ImportPlanStorageService();
 		IdempotencyService idempotencyService = new IdempotencyService();
 		PatientServiceImpl patientService = new PatientServiceImpl();
@@ -51,8 +50,7 @@ public class DataImportIntegrationTest {
 	}
 	
 	@Test
-	@DisplayName("Should complete full dry-run and commit workflow")
-	void testFullWorkflow() throws Exception {
+	public void testFullWorkflow() throws Exception {
 		FormModel form = createTestForm();
 		
 		byte[] templateBytes = exporter.export(form, true);
@@ -82,8 +80,7 @@ public class DataImportIntegrationTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle complex form with all field types")
-	void testComplexForm() throws Exception {
+	public void testComplexForm() throws Exception {
 		FormModel form = createComplexForm();
 		
 		byte[] templateBytes = exporter.export(form, true);

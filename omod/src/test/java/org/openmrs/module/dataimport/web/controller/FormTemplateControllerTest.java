@@ -56,6 +56,9 @@ public class FormTemplateControllerTest {
 		field.set(controller, templateGenerationService);
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void generateTemplateFromPost_shouldUseCustomFilenameWhenProvided() {
 		FormTemplateController.TemplateRequest request = new FormTemplateController.TemplateRequest();
@@ -70,6 +73,9 @@ public class FormTemplateControllerTest {
 		    equalTo("attachment; filename=\"custom-template.xlsx\""));
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void generateTemplateFromPost_shouldFallbackToDefaultFilenameWhenBlank() {
 		FormTemplateController.TemplateRequest request = new FormTemplateController.TemplateRequest();
@@ -84,6 +90,9 @@ public class FormTemplateControllerTest {
 		    equalTo("attachment; filename=\"o3_form_template.xlsx\""));
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void generateTemplateFromPost_shouldFallbackToDefaultFilenameWhenOptionsNotProvided() {
 		FormTemplateController.TemplateRequest request = new FormTemplateController.TemplateRequest();
@@ -96,6 +105,9 @@ public class FormTemplateControllerTest {
 		    equalTo("attachment; filename=\"o3_form_template.xlsx\""));
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void downloadQuarantineReport_shouldGenerateReportWithExpectedHeaders() throws Exception {
 		UUID batchId = UUID.randomUUID();
@@ -126,11 +138,17 @@ public class FormTemplateControllerTest {
 		}
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void downloadQuarantineReport_shouldThrowWhenFileMissing() {
 		assertThrows(APIException.class, () -> controller.downloadQuarantineReport(null, UUID.randomUUID().toString()));
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void downloadQuarantineReport_shouldThrowWhenFileEmpty() throws Exception {
 		MultipartFile file = mock(MultipartFile.class);
@@ -139,6 +157,9 @@ public class FormTemplateControllerTest {
 		assertThrows(APIException.class, () -> controller.downloadQuarantineReport(file, UUID.randomUUID().toString()));
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void downloadQuarantineReport_shouldThrowWhenBatchIdMissing() throws Exception {
 		MultipartFile file = mock(MultipartFile.class);
@@ -147,6 +168,9 @@ public class FormTemplateControllerTest {
 		assertThrows(APIException.class, () -> controller.downloadQuarantineReport(file, ""));
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void downloadQuarantineReport_shouldThrowWhenServiceNotAvailable() throws Exception {
 		UUID batchId = UUID.randomUUID();
@@ -164,6 +188,9 @@ public class FormTemplateControllerTest {
 		}
 	}
 	
+	/**
+	 * @see FormTemplateController
+	 */
 	@Test
 	public void downloadQuarantineReport_shouldThrowWhenBatchIdInvalid() throws Exception {
 		MultipartFile file = mock(MultipartFile.class);

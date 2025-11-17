@@ -29,8 +29,7 @@ import java.util.Map;
 public class ObsReaderTest {
 	
 	@Test
-	@DisplayName("Should create multiple observations for multi-select coded field")
-	void testMultiSelectCodedField() throws Exception {
+	public void testMultiSelectCodedField() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		
@@ -82,8 +81,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should report unknown values in multi-select as errors")
-	void testMultiSelectWithUnknownValues() throws Exception {
+	public void testMultiSelectWithUnknownValues() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		
@@ -119,8 +117,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should record issue for unknown coded value")
-	void testUnknownCodedValueRecordsIssue() throws Exception {
+	public void testUnknownCodedValueRecordsIssue() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		
@@ -152,8 +149,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should record issue for invalid numeric value")
-	void testInvalidNumericValueRecordsIssue() throws Exception {
+	public void testInvalidNumericValueRecordsIssue() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Vitals");
 		
@@ -183,8 +179,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should record issue for invalid date value")
-	void testInvalidDateValueRecordsIssue() throws Exception {
+	public void testInvalidDateValueRecordsIssue() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Vitals");
 		
@@ -214,8 +209,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should record issue for invalid boolean value")
-	void testInvalidBooleanValueRecordsIssue() throws Exception {
+	public void testInvalidBooleanValueRecordsIssue() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Vitals");
 		
@@ -245,8 +239,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle empty multi-select values")
-	void testEmptyMultiSelect() throws Exception {
+	public void testEmptyMultiSelect() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		
@@ -276,8 +269,7 @@ public class ObsReaderTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle single value in multi-select field")
-	void testSingleValueInMultiSelect() throws Exception {
+	public void testSingleValueInMultiSelect() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		

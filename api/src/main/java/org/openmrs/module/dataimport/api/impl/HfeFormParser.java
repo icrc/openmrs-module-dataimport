@@ -14,11 +14,12 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.openmrs.Concept;
 import org.openmrs.ConceptDatatype;
-import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
 import org.openmrs.module.dataimport.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.*;
 
 import java.io.ByteArrayInputStream;
@@ -51,9 +52,12 @@ public class HfeFormParser {
 	
 	private static final Logger log = LoggerFactory.getLogger(HfeFormParser.class);
 	
-	// Performance: Cache concept resolutions within a single parse operation
-	// Key: conceptId (UUID, numeric ID, or mapping), Value: resolved UUID
-	private final Map<String, String> conceptCache = new HashMap<>();
+	private final ConceptAnswersService conceptAnswersService;
+	
+	@Autowired
+	public HfeFormParser(ConceptAnswersService conceptAnswersService) {
+		this.conceptAnswersService = conceptAnswersService;
+	}
 	
 	// XML Security Features
 	private static final String FEATURE_LOAD_EXTERNAL_DTD = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
@@ -181,12 +185,6 @@ public class HfeFormParser {
 	 * <li>Walks the DOM tree to extract data fields</li>
 	 * <li>Returns unified FormModel (ETM)</li>
 	 * </ol>
-	 *
-	 * @param hfeXml The HFE XML string (required, non-empty)
-	 * @param form The OpenMRS Form object for metadata (required)
-	 * @param locale Optional locale for label resolution (uses Context.getLocale() if null)
-	 * @return Parsed FormModel with all extracted fields
-	 * @throws IllegalArgumentException if hfeXml is null/empty, form is null, or XML parsing fails
 	 */
 	public FormModel parse(String hfeXml, org.openmrs.Form form, Locale locale) {
 		if (hfeXml == null || hfeXml.trim().isEmpty()) {
@@ -196,8 +194,6 @@ public class HfeFormParser {
 		if (form == null) {
 			throw new IllegalArgumentException(ERROR_NULL_FORM);
 		}
-		
-		conceptCache.clear();
 		
 		try {
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -259,12 +255,6 @@ public class HfeFormParser {
 	 * <li>&lt;repeat&gt; - Expands template with placeholder substitution</li>
 	 * </ul>
 	 * All other elements are recursively traversed but not processed.
-	 *
-	 * @param element Current DOM element
-	 * @param sheet Sheet to add fields to
-	 * @param form FormModel for metadata
-	 * @param locale Locale for label resolution
-	 * @param path Current path in DOM tree (for debugging/field IDs)
 	 */
 	private void walkHfeElements(Element element, SheetModel sheet, FormModel form, Locale locale, String path) {
 		NodeList children = element.getChildNodes();
@@ -331,12 +321,6 @@ public class HfeFormParser {
 	 * <li>required - "true" if field is required</li>
 	 * <li>id - Explicit field ID</li>
 	 * </ul>
-	 *
-	 * @param obsElement The &lt;obs&gt; DOM element
-	 * @param sheet Sheet to add field to
-	 * @param form FormModel for metadata (unused but kept for consistency)
-	 * @param locale Locale for label resolution
-	 * @param path Current DOM path for field ID generation
 	 */
 	private void handleObs(Element obsElement, SheetModel sheet, FormModel form, Locale locale, String path) {
 		String conceptId = getAttributeOrNull(obsElement, ATTR_CONCEPT_ID);
@@ -391,12 +375,6 @@ public class HfeFormParser {
 	 * <p>
 	 * The group's label is tracked in the path for field ID generation, which helps maintain context
 	 * when generating unique field IDs.
-	 *
-	 * @param groupElement The &lt;obsgroup&gt; DOM element
-	 * @param sheet Sheet to add child fields to
-	 * @param form FormModel for metadata
-	 * @param locale Locale for label resolution
-	 * @param path Current DOM path (updated with group label)
 	 */
 	private void handleObsGroup(Element groupElement, SheetModel sheet, FormModel form, Locale locale, String path) {
 		String groupingConceptId = getAttributeOrNull(groupElement, ATTR_GROUPING_CONCEPT_ID);
@@ -415,11 +393,6 @@ public class HfeFormParser {
 	 * multiple &lt;encounterDate&gt; tags exist.
 	 * <p>
 	 * The field is always marked as required.
-	 *
-	 * @param element The &lt;encounterDate&gt; DOM element
-	 * @param sheet Sheet to add field to
-	 * @param form FormModel for metadata (unused)
-	 * @param locale Locale for label resolution (unused)
 	 */
 	private void handleEncounterDate(Element element, SheetModel sheet, FormModel form, Locale locale) {
 		if (sheet.fields.stream().anyMatch(f -> FIELD_ID_ENCOUNTER_DATE.equals(f.id))) {
@@ -439,11 +412,6 @@ public class HfeFormParser {
 	 * Handle &lt;encounterLocation/&gt; element - creates location picker field.
 	 * <p>
 	 * The uiSelectSourceType triggers location loading during template enrichment.
-	 *
-	 * @param element The &lt;encounterLocation&gt; DOM element
-	 * @param sheet Sheet to add field to
-	 * @param form FormModel for metadata (unused)
-	 * @param locale Locale for label resolution (unused)
 	 */
 	private void handleEncounterLocation(Element element, SheetModel sheet, FormModel form, Locale locale) {
 		if (sheet.fields.stream().anyMatch(f -> FIELD_ID_ENCOUNTER_LOCATION.equals(f.id))) {
@@ -465,11 +433,6 @@ public class HfeFormParser {
 	 * <p>
 	 * The uiSelectSourceType triggers provider loading during template enrichment. Supports optional
 	 * 'role' attribute for contextual labeling.
-	 *
-	 * @param element The &lt;encounterProvider&gt; DOM element
-	 * @param sheet Sheet to add field to
-	 * @param form FormModel for metadata (unused)
-	 * @param locale Locale for label resolution (unused)
 	 */
 	private void handleEncounterProvider(Element element, SheetModel sheet, FormModel form, Locale locale) {
 		if (sheet.fields.stream().anyMatch(f -> FIELD_ID_ENCOUNTER_PROVIDER.equals(f.id))) {
@@ -498,12 +461,6 @@ public class HfeFormParser {
 	 *   &lt;obs conceptId="{1}" labelText="{0}"/&gt;
 	 * &lt;/repeat&gt;
 	 * </pre> Expands to two obs fields with concepts CONCEPT:1 and CONCEPT:2.
-	 *
-	 * @param repeatElement The &lt;repeat&gt; element
-	 * @param sheet Sheet to add expanded fields to
-	 * @param form FormModel for metadata
-	 * @param locale Locale for label resolution
-	 * @param path Current path for debugging
 	 */
 	private void handleRepeat(Element repeatElement, SheetModel sheet, FormModel form, Locale locale, String path) {
 		String withAttr = getAttributeOrNull(repeatElement, ATTR_WITH);
@@ -532,9 +489,6 @@ public class HfeFormParser {
 	 * Uses bracket depth tracking to find tuple boundaries, then parses each tuple.
 	 * <p>
 	 * Example: "['a','b'], ['c','d']" → [["a","b"], ["c","d"]]
-	 *
-	 * @param withAttr The 'with' attribute value
-	 * @return List of tuples (each tuple is a list of strings)
 	 */
 	private List<List<String>> parseRepeatWith(String withAttr) {
 		List<List<String>> result = new ArrayList<>();
@@ -577,9 +531,6 @@ public class HfeFormParser {
 	 * Parse a single tuple string by splitting on commas while respecting quoted values.
 	 * <p>
 	 * Example: "'value1','value2','value3'" → ["value1", "value2", "value3"]
-	 *
-	 * @param tupleStr The tuple string to parse
-	 * @return List of values extracted from the tuple
 	 */
 	private List<String> parseTuple(String tupleStr) {
 		List<String> values = new ArrayList<>();
@@ -710,89 +661,10 @@ public class HfeFormParser {
 		return result;
 	}
 	
-	/**
-	 * Resolve concept ID to UUID with caching for performance.
-	 * <p>
-	 * Supports three formats:
-	 * <ul>
-	 * <li>UUID: "5089AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"</li>
-	 * <li>Numeric ID: "5089"</li>
-	 * <li>Mapping: "CIEL:5089" or "PIH:WEIGHT"</li>
-	 * </ul>
-	 * <p>
-	 * Resolution order:
-	 * <ol>
-	 * <li>Check cache for previous resolution</li>
-	 * <li>Try as UUID via ConceptService.getConceptByUuid()</li>
-	 * <li>Try as numeric ID via ConceptService.getConcept(int)</li>
-	 * <li>Try as mapping via ConceptService.getConceptByMapping()</li>
-	 * </ol>
-	 * <p>
-	 * Results are cached per parse() invocation to avoid repeated lookups.
-	 *
-	 * @param conceptId The concept identifier (UUID, numeric ID, or mapping)
-	 * @return Resolved concept UUID, or null if not found
-	 */
 	private String resolveConceptUuid(String conceptId) {
-		if (conceptId == null || conceptId.trim().isEmpty()) {
-			return null;
-		}
-		
-		String normalized = conceptId.trim();
-		
-		// Check cache first (performance optimization)
-		if (conceptCache.containsKey(normalized)) {
-			return conceptCache.get(normalized);
-		}
-		
-		String resolvedUuid = null;
-		
-		try {
-			ConceptService cs = Context.getConceptService();
-			Concept concept = cs.getConceptByUuid(normalized);
-			if (concept != null) {
-				resolvedUuid = concept.getUuid();
-			}
-			
-			if (resolvedUuid == null) {
-				try {
-					int id = Integer.parseInt(normalized);
-					concept = cs.getConcept(id);
-					if (concept != null) {
-						resolvedUuid = concept.getUuid();
-					}
-				}
-				catch (NumberFormatException ignored) {
-					// Not a numeric ID, continue
-				}
-			}
-			
-			if (resolvedUuid == null && normalized.contains(CONCEPT_MAPPING_SEPARATOR)) {
-				String[] parts = normalized.split(CONCEPT_MAPPING_SEPARATOR, 2);
-				if (parts.length == 2) {
-					String source = parts[0].trim();
-					String code = parts[1].trim();
-					concept = cs.getConceptByMapping(code, source);
-					if (concept != null) {
-						resolvedUuid = concept.getUuid();
-					}
-				}
-			}
-			
-		}
-		catch (Exception e) {
-			log.warn(ERROR_CONCEPT_RESOLVE, conceptId, e.getMessage());
-		}
-		
-		conceptCache.put(normalized, resolvedUuid);
-		
-		return resolvedUuid;
+		return conceptAnswersService.resolveConceptUuid(conceptId);
 	}
 	
-	/**
-	 * Resolve label text from various sources Priority: labelText > labelCode (message lookup) >
-	 * concept preferred name
-	 */
 	private String resolveLabelText(String labelText, String labelCode, String conceptUuid, Locale locale) {
 		if (labelText != null && !labelText.trim().isEmpty()) {
 			return labelText.trim();
@@ -806,10 +678,9 @@ public class HfeFormParser {
 		
 		if (conceptUuid != null) {
 			try {
-				ConceptService cs = Context.getConceptService();
-				Concept concept = cs.getConceptByUuid(conceptUuid);
-				if (concept != null && concept.getName(locale) != null) {
-					return concept.getName(locale).getName();
+				String conceptName = conceptAnswersService.getConceptName(conceptUuid);
+				if (conceptName != null && !conceptName.trim().isEmpty()) {
+					return conceptName;
 				}
 			}
 			catch (Exception e) {
@@ -820,17 +691,6 @@ public class HfeFormParser {
 		return "Field";
 	}
 	
-	/**
-	 * Infer datatype and rendering from multiple sources (ENHANCED with hfe-o3-converter insights)
-	 * Priority: Widget structure > Style attribute > Answer attributes > Concept datatype
-	 * 
-	 * @param obsElement The obs DOM element (for widget structure inspection)
-	 * @param conceptUuid The concept UUID
-	 * @param style The style attribute value
-	 * @param answerConceptIds Multiple answer concept IDs
-	 * @param answerConceptId Single answer concept ID
-	 * @return The inferred field datatype
-	 */
 	private FieldDatatype inferDatatypeAndRendering(Element obsElement, String conceptUuid, String style,
 	        String answerConceptIds, String answerConceptId) {
 		
@@ -858,10 +718,8 @@ public class HfeFormParser {
 		}
 		
 		try {
-			ConceptService cs = Context.getConceptService();
-			Concept concept = cs.getConceptByUuid(conceptUuid);
+			Concept concept = conceptAnswersService.getConceptByUuid(conceptUuid);
 			if (concept != null) {
-				// Check if it's a drug concept
 				if (concept.getConceptClass() != null) {
 					String conceptClassName = concept.getConceptClass().getName();
 					if (conceptClassName != null && conceptClassName.toLowerCase().contains("drug")) {
@@ -869,21 +727,19 @@ public class HfeFormParser {
 					}
 				}
 				
+				FieldDatatype fieldDatatype = conceptAnswersService.convertToFieldDatatype(concept.getDatatype());
+				if (fieldDatatype != FieldDatatype.TEXT) {
+					return fieldDatatype;
+				}
+				
+				// Additional check for datetime types not covered by convertToFieldDatatype
 				ConceptDatatype dt = concept.getDatatype();
 				if (dt != null) {
 					String dtName = dt.getHl7Abbreviation();
 					if (dtName != null) {
 						switch (dtName.toUpperCase()) {
-							case "NM":
-								return FieldDatatype.NUMERIC;
-							case "DT":
-								return FieldDatatype.DATE;
 							case "TM":
-							case "TS":
 								return FieldDatatype.DATETIME;
-							case "BIT":
-								return FieldDatatype.BOOLEAN;
-							case "CWE":
 							case "CNE":
 								return FieldDatatype.CODED;
 						}
@@ -898,13 +754,6 @@ public class HfeFormParser {
 		return FieldDatatype.TEXT; // Default
 	}
 	
-	/**
-	 * Infer datatype from HTML widget structure (checkboxes, radios, selects, inputs) Uses standard DOM
-	 * traversal (not jsoup selectors)
-	 * 
-	 * @param obsElement The obs DOM element
-	 * @return The inferred datatype, or null if cannot determine
-	 */
 	private FieldDatatype inferFromWidgetStructure(Element obsElement) {
 		if (hasChildElement(obsElement, "select")) {
 			return FieldDatatype.CODED;
@@ -936,17 +785,11 @@ public class HfeFormParser {
 		return null;
 	}
 	
-	/**
-	 * Check if element has child elements with given tag name (case-insensitive)
-	 */
 	private boolean hasChildElement(Element element, String tagName) {
 		NodeList nodes = element.getElementsByTagName(tagName);
 		return nodes != null && nodes.getLength() > 0;
 	}
 	
-	/**
-	 * Count input elements of a specific type within an element
-	 */
 	private int countInputsByType(Element element, String inputType) {
 		NodeList inputs = element.getElementsByTagName("input");
 		if (inputs == null || inputs.getLength() == 0) {
@@ -985,16 +828,11 @@ public class HfeFormParser {
 			
 			String label = i < labels.length ? labels[i].trim() : null;
 			
-			// If no label provided, fetch from concept
+			// If no label provided, fetch from concept using ConceptAnswersService
 			if (label == null || label.isEmpty()) {
 				try {
-					ConceptService cs = Context.getConceptService();
-					Concept concept = cs.getConceptByUuid(conceptUuid);
-					if (concept != null && concept.getName(locale) != null) {
-						label = concept.getName(locale).getName();
-					} else {
-						label = conceptUuid;
-					}
+					String conceptName = conceptAnswersService.getConceptName(conceptUuid);
+					label = conceptName != null && !conceptName.trim().isEmpty() ? conceptName : conceptUuid;
 				}
 				catch (Exception e) {
 					label = conceptUuid;
@@ -1017,22 +855,15 @@ public class HfeFormParser {
 		String conceptUuid = resolveConceptUuid(answerConceptId);
 		
 		if (conceptUuid == null) {
-			log.warn("Could not resolve answer concept '{}' - skipping", answerConceptId);
 			return;
 		}
 		
 		String label = answerLabel;
 		
-		// If no label provided, fetch from concept
 		if (label == null || label.trim().isEmpty()) {
 			try {
-				ConceptService cs = Context.getConceptService();
-				Concept concept = cs.getConceptByUuid(conceptUuid);
-				if (concept != null && concept.getName(locale) != null) {
-					label = concept.getName(locale).getName();
-				} else {
-					label = conceptUuid;
-				}
+				String conceptName = conceptAnswersService.getConceptName(conceptUuid);
+				label = conceptName != null && !conceptName.trim().isEmpty() ? conceptName : conceptUuid;
 			}
 			catch (Exception e) {
 				label = conceptUuid;
@@ -1043,17 +874,11 @@ public class HfeFormParser {
 		log.debug("Added single answer: {} ({})", label, conceptUuid);
 	}
 	
-	/**
-	 * Check if element has conditional display logic
-	 */
 	private boolean hasConditionalLogic(Element element) {
 		return element.hasAttribute("showDate") || element.hasAttribute("hideDate") || element.hasAttribute("showId")
 		        || element.hasAttribute("hideId") || element.hasAttribute("when");
 	}
 	
-	/**
-	 * Generate field ID from available information
-	 */
 	private String generateFieldId(String conceptId, String labelText, String path, int index) {
 		String candidate = null;
 		
@@ -1067,7 +892,6 @@ public class HfeFormParser {
 			candidate = "field_" + index;
 		}
 		
-		// Prevent Excel cell reference conflicts
 		if (isExcelCellReference(candidate)) {
 			candidate = "field_" + candidate;
 		}
@@ -1075,9 +899,6 @@ public class HfeFormParser {
 		return candidate;
 	}
 	
-	/**
-	 * Sanitize field ID to remove special characters
-	 */
 	private String sanitizeFieldId(String id) {
 		String sanitized = sanitize(id);
 		if (isExcelCellReference(sanitized)) {
@@ -1086,9 +907,6 @@ public class HfeFormParser {
 		return sanitized;
 	}
 	
-	/**
-	 * Sanitize string for use in IDs
-	 */
 	private String sanitize(String str) {
 		if (str == null || str.trim().isEmpty()) {
 			return "field";
@@ -1096,9 +914,6 @@ public class HfeFormParser {
 		return str.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("_+", "_").replaceAll("^_|_$", "").toLowerCase();
 	}
 	
-	/**
-	 * Sanitize sheet name (Excel max 31 chars, no special chars)
-	 */
 	private String sanitizeSheetName(String name) {
 		if (name == null || name.trim().isEmpty()) {
 			return "Form";
@@ -1107,16 +922,10 @@ public class HfeFormParser {
 		return sanitized.substring(0, Math.min(28, sanitized.length()));
 	}
 	
-	/**
-	 * Check if string looks like an Excel cell reference (e.g., "A1", "Z99")
-	 */
 	private boolean isExcelCellReference(String str) {
 		return str != null && str.matches("^[a-zA-Z]+\\d+$");
 	}
 	
-	/**
-	 * Get attribute value or null if not present
-	 */
 	private String getAttributeOrNull(Element element, String attributeName) {
 		if (element.hasAttribute(attributeName)) {
 			String value = element.getAttribute(attributeName);

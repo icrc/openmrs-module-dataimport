@@ -15,10 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.FormType;
 
@@ -26,54 +29,45 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Unit tests for HfeFormParser.
- * <p>
- * Note: Integration tests with OpenMRS Context are in DataImportIntegrationTest. These unit tests
- * focus on standalone parsing logic.
- */
-@DisplayName("HfeFormParser Unit Tests")
-class HfeFormParserTest {
+public class HfeFormParserTest {
 	
 	private HfeFormParser parser;
 	
+	private ConceptAnswersService conceptAnswersService;
+	
 	@BeforeEach
-	void setUp() {
-		parser = new HfeFormParser();
+	public void setUp() {
+		conceptAnswersService = mock(ConceptAnswersService.class);
+		when(conceptAnswersService.resolveConceptUuid(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+		parser = new HfeFormParser(conceptAnswersService);
 	}
 	
 	@Test
-	@DisplayName("Should throw IllegalArgumentException when HFE XML is null")
-	void testParseNullXml() {
+	public void parse_shouldThrowIllegalArgumentExceptionWhenHfeXmlIsNull() {
 		assertThrows(IllegalArgumentException.class, () -> {
 			parser.parse(null, createMockForm(), null);
 		});
 	}
 	
 	@Test
-	@DisplayName("Should throw IllegalArgumentException when HFE XML is empty")
-	void testParseEmptyXml() {
+	public void parse_shouldThrowIllegalArgumentExceptionWhenHfeXmlIsEmpty() {
 		assertThrows(IllegalArgumentException.class, () -> {
 			parser.parse("", createMockForm(), null);
 		});
 	}
 	
 	@Test
-	@DisplayName("Should throw IllegalArgumentException when Form is null")
-	void testParseNullForm() {
+	public void parse_shouldThrowIllegalArgumentExceptionWhenFormIsNull() {
 		assertThrows(IllegalArgumentException.class, () -> {
 			parser.parse("<htmlform></htmlform>", null, null);
 		});
 	}
 	
 	@Test
-	@DisplayName("Should parse repeat 'with' attribute into tuples correctly")
-	void testParseRepeatWith() throws Exception {
-		// Use reflection to test private method
+	public void parseRepeatWith_shouldParseRepeatWithAttributeIntoTuplesCorrectly() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("parseRepeatWith", String.class);
 		method.setAccessible(true);
 		
-		// Test case 1: Two tuples with three values each
 		String withAttr = "['label1','CONCEPT:1','comment1'], ['label2','CONCEPT:2','comment2']";
 		@SuppressWarnings("unchecked")
 		List<List<String>> result = (List<List<String>>) method.invoke(parser, withAttr);
@@ -93,8 +87,7 @@ class HfeFormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse repeat 'with' attribute with single tuple")
-	void testParseRepeatWithSingleTuple() throws Exception {
+	public void parseRepeatWith_shouldParseRepeatWithAttributeWithSingleTuple() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("parseRepeatWith", String.class);
 		method.setAccessible(true);
 		
@@ -110,8 +103,7 @@ class HfeFormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse repeat 'with' attribute with complex mappings")
-	void testParseRepeatWithComplexMappings() throws Exception {
+	public void parseRepeatWith_shouldParseRepeatWithAttributeWithComplexMappings() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("parseRepeatWith", String.class);
 		method.setAccessible(true);
 		
@@ -129,8 +121,7 @@ class HfeFormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should parse single tuple correctly")
-	void testParseTuple() throws Exception {
+	public void parseTuple_shouldParseSingleTupleCorrectly() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("parseTuple", String.class);
 		method.setAccessible(true);
 		
@@ -146,8 +137,7 @@ class HfeFormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should substitute placeholders correctly")
-	void testSubstitutePlaceholders() throws Exception {
+	public void substitutePlaceholders_shouldSubstitutePlaceholdersCorrectly() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("substitutePlaceholders", String.class, List.class);
 		method.setAccessible(true);
 		
@@ -161,8 +151,7 @@ class HfeFormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle placeholders with no matching tuple values")
-	void testSubstitutePlaceholdersOutOfBounds() throws Exception {
+	public void substitutePlaceholders_shouldHandlePlaceholdersWithNoMatchingTupleValues() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("substitutePlaceholders", String.class, List.class);
 		method.setAccessible(true);
 		
@@ -171,43 +160,35 @@ class HfeFormParserTest {
 		
 		String result = (String) method.invoke(parser, text, tuple);
 		
-		// Should replace {0} and {1}, but leave {5} unchanged
 		assertTrue(result.contains("first"));
 		assertTrue(result.contains("second"));
 		assertTrue(result.contains("{5}")); // Unchanged
 	}
 	
 	@Test
-	@DisplayName("Should sanitize field IDs correctly")
-	void testSanitizeFieldId() throws Exception {
+	public void sanitizeFieldId_shouldSanitizeFieldIdsCorrectly() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("sanitizeFieldId", String.class);
 		method.setAccessible(true);
 		
-		// Test case 1: Replace spaces with underscores
 		String result1 = (String) method.invoke(parser, "field with spaces");
 		assertEquals("field_with_spaces", result1);
 		
-		// Test case 2: Remove special characters
 		String result2 = (String) method.invoke(parser, "field@with#special$chars");
 		assertTrue(result2.matches("[a-zA-Z0-9_]+"));
 		
-		// Test case 3: Handle Excel cell reference collision
 		String result3 = (String) method.invoke(parser, "A1");
 		assertFalse(result3.equals("A1")); // Should be transformed to avoid collision
 	}
 	
 	@Test
-	@DisplayName("Should detect Excel cell references correctly")
-	void testIsExcelCellReference() throws Exception {
+	public void isExcelCellReference_shouldDetectExcelCellReferencesCorrectly() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("isExcelCellReference", String.class);
 		method.setAccessible(true);
 		
-		// Valid Excel cell references
 		assertTrue((Boolean) method.invoke(parser, "A1"));
 		assertTrue((Boolean) method.invoke(parser, "Z99"));
 		assertTrue((Boolean) method.invoke(parser, "AA123"));
 		
-		// Invalid Excel cell references
 		assertFalse((Boolean) method.invoke(parser, "A"));
 		assertFalse((Boolean) method.invoke(parser, "1A"));
 		assertFalse((Boolean) method.invoke(parser, "field_name"));
@@ -215,23 +196,19 @@ class HfeFormParserTest {
 	}
 	
 	@Test
-	@DisplayName("Should sanitize sheet names correctly")
-	void testSanitizeSheetName() throws Exception {
+	public void sanitizeSheetName_shouldSanitizeSheetNamesCorrectly() throws Exception {
 		Method method = HfeFormParser.class.getDeclaredMethod("sanitizeSheetName", String.class);
 		method.setAccessible(true);
 		
-		// Test case 1: Long name should be truncated
 		String longName = "This is a very long sheet name that exceeds the maximum allowed length";
 		String result1 = (String) method.invoke(parser, longName);
 		assertTrue(result1.length() <= 31, "Sheet name should be <= 31 characters");
 		
-		// Test case 2: Invalid characters should be replaced
 		String result2 = (String) method.invoke(parser, "Sheet:With*Invalid/Chars");
 		assertFalse(result2.contains(":"));
 		assertFalse(result2.contains("*"));
 		assertFalse(result2.contains("/"));
 		
-		// Test case 3: Null/empty should return default
 		String result3 = (String) method.invoke(parser, (Object) null);
 		assertNotNull(result3);
 		assertFalse(result3.isEmpty());

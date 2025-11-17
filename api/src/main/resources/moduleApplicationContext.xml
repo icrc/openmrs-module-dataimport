@@ -21,8 +21,12 @@
 	<bean id="coreFormSchemaResolver" class="org.openmrs.module.dataimport.api.impl.FormSchemaServiceImpl" />
 
 	<!-- Parsers -->
-	<bean id="o3FormParser" class="org.openmrs.module.dataimport.api.impl.O3FormParser" />
-	<bean id="hfeFormParser" class="org.openmrs.module.dataimport.api.impl.HfeFormParser" />
+	<bean id="o3FormParser" class="org.openmrs.module.dataimport.api.impl.O3FormParser">
+		<constructor-arg ref="coreConceptAnswersProvider" />
+	</bean>
+	<bean id="hfeFormParser" class="org.openmrs.module.dataimport.api.impl.HfeFormParser">
+		<constructor-arg ref="coreConceptAnswersProvider" />
+	</bean>
 
 	<!-- Form Resolvers (pluggable architecture) -->
 	<bean id="o3JsonFormResolver" class="org.openmrs.module.dataimport.api.resolver.O3JsonFormResolver">
@@ -68,5 +72,4 @@
 		<constructor-arg ref="obsSaver" />
 		<constructor-arg ref="visitImportService" />
 	</bean>
-    <bean id="validation" class="org.openmrs.module.dataimport.api.util.Validation"/>
 </beans>
