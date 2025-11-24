@@ -17,15 +17,46 @@
 		    http://www.springframework.org/schema/util
 		    http://www.springframework.org/schema/util/spring-util-3.0.xsd">
 
+	<!-- Legacy FormSchemaService (kept for backward compatibility if needed) -->
 	<bean id="coreFormSchemaResolver" class="org.openmrs.module.dataimport.api.impl.FormSchemaServiceImpl" />
-	<bean id="templateGenerationService" class="org.openmrs.module.dataimport.api.impl.TemplateGenerationServiceImpl">
-		<constructor-arg ref="coreFormSchemaResolver" />
+
+	<!-- Parsers -->
+	<bean id="o3FormParser" class="org.openmrs.module.dataimport.api.impl.O3FormParser">
+		<constructor-arg ref="coreConceptAnswersProvider" />
+	</bean>
+	<bean id="hfeFormParser" class="org.openmrs.module.dataimport.api.impl.HfeFormParser">
+		<constructor-arg ref="coreConceptAnswersProvider" />
+	</bean>
+
+	<!-- Form Resolvers (pluggable architecture) -->
+	<bean id="o3JsonFormResolver" class="org.openmrs.module.dataimport.api.resolver.O3JsonFormResolver">
 		<constructor-arg ref="o3FormParser" />
+	</bean>
+	<bean id="hfeFormResolver" class="org.openmrs.module.dataimport.api.resolver.HfeFormResolver">
+		<constructor-arg ref="hfeFormParser" />
+	</bean>
+
+	<!-- Form Resolver Registry (auto-detects form type) -->
+	<bean id="formResolverRegistry" class="org.openmrs.module.dataimport.api.resolver.FormResolverRegistry">
+		<constructor-arg>
+			<list>
+				<ref bean="o3JsonFormResolver" />
+				<ref bean="hfeFormResolver" />
+			</list>
+		</constructor-arg>
+	</bean>
+
+	<!-- Template Generation Service (now uses FormResolverRegistry) -->
+	<bean id="templateGenerationService" class="org.openmrs.module.dataimport.api.impl.TemplateGenerationServiceImpl">
+		<constructor-arg ref="formResolverRegistry" />
 		<constructor-arg ref="excelTemplateExporter" />
 		<constructor-arg ref="coreConceptAnswersProvider" />
 	</bean>
-	<bean id="o3FormParser" class="org.openmrs.module.dataimport.api.impl.O3FormParser" />
+
+	<!-- Excel Template Exporter -->
 	<bean id="excelTemplateExporter" class="org.openmrs.module.dataimport.api.impl.ExcelTemplateExporter" />
+
+	<!-- Concept Answers Provider -->
 	<bean id="coreConceptAnswersProvider" class="org.openmrs.module.dataimport.api.impl.CoreConceptAnswersServiceImpl" />
 	<bean id="importPlanStorageService" class="org.openmrs.module.dataimport.api.storage.ImportPlanStorageService" />
 	<bean id="idempotencyService" class="org.openmrs.module.dataimport.api.storage.IdempotencyService" />
@@ -41,5 +72,4 @@
 		<constructor-arg ref="obsSaver" />
 		<constructor-arg ref="visitImportService" />
 	</bean>
-    <bean id="validation" class="org.openmrs.module.dataimport.api.util.Validation"/>
 </beans>

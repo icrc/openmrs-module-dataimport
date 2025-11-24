@@ -28,3 +28,11 @@ Thumbs.db
 ~$*.xlsx
 ~$*.xls
 /.vscode/
+
+.cursor/
+.claude/
+.specify/
+.vscode/
+.idea/
+CLAUDE.md
+specs/

@@ -1,0 +1,29 @@
+<htmlform>
+  <!-- Basic Vitals Form for Testing HFE Support -->
+
+  <encounterDate/>
+
+  <!-- Weight in kg -->
+  <obs conceptId="CIEL:5089" labelText="Weight (kg)" style="number"/>
+
+  <!-- Height in cm -->
+  <obs conceptId="CIEL:5090" labelText="Height (cm)" style="number"/>
+
+  <!-- Temperature in Celsius -->
+  <obs conceptId="CIEL:5088" labelText="Temperature (C)" style="number"/>
+
+  <!-- Blood Pressure - Systolic -->
+  <obs conceptId="CIEL:5085" labelText="Systolic BP (mmHg)" style="number"/>
+
+  <!-- Blood Pressure - Diastolic -->
+  <obs conceptId="CIEL:5086" labelText="Diastolic BP (mmHg)" style="number"/>
+
+  <!-- Heart Rate -->
+  <obs conceptId="CIEL:5087" labelText="Heart Rate (bpm)" style="number"/>
+
+  <!-- Respiratory Rate -->
+  <obs conceptId="CIEL:5242" labelText="Respiratory Rate (/min)" style="number"/>
+
+  <!-- Oxygen Saturation -->
+  <obs conceptId="CIEL:5092" labelText="Oxygen Saturation (%)" style="number"/>
+</htmlform>

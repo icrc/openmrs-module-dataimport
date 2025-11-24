@@ -1,0 +1,34 @@
+<htmlform>
+  <!-- Complex Care Plan Form with Multiple Repeat Sections -->
+
+  <encounterDate/>
+
+  <!-- Patient Demographics Section -->
+  <obs conceptId="CIEL:1010" labelText="Patient Category" style="dropdown"/>
+  <obs conceptId="CIEL:1011" labelText="Admission Date" style="date"/>
+
+  <!-- Surgery Repeat Section -->
+  <repeat with="['Hip Surgery','ICRC:HIP001','Hip','General'], ['Knee Surgery','ICRC:KNEE001','Knee','Spinal'], ['Shoulder Surgery','ICRC:SHOULDER001','Shoulder','General']">
+    <template>
+      <obs conceptId="{2}" labelText="{1}" style="dropdown"/>
+      <obs conceptId="CIEL:1012" labelText="{3} Operation Date" style="date"/>
+      <obs conceptId="CIEL:1013" labelText="{3} Anesthesia Type: {4}" style="text"/>
+      <obs conceptId="CIEL:1014" labelText="{3} Outcome" style="dropdown"/>
+      <obs conceptId="CIEL:1015" labelText="{3} Complications" style="text"/>
+    </template>
+  </repeat>
+
+  <!-- Follow-up Repeat Section -->
+  <repeat with="['1 Week','7'], ['2 Weeks','14'], ['1 Month','30'], ['3 Months','90']">
+    <template>
+      <obs conceptId="CIEL:1016" labelText="Follow-up at {1} (Day {2})" style="date"/>
+      <obs conceptId="CIEL:1017" labelText="Status at {1}" style="dropdown"/>
+      <obs conceptId="CIEL:1018" labelText="Notes at {1}" style="text"/>
+    </template>
+  </repeat>
+
+  <!-- Discharge Information -->
+  <obs conceptId="CIEL:1019" labelText="Discharge Date" style="date"/>
+  <obs conceptId="CIEL:1020" labelText="Discharge Status" style="dropdown"/>
+  <obs conceptId="CIEL:1021" labelText="Discharge Notes" style="text"/>
+</htmlform>

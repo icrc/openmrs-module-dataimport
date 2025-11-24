@@ -105,6 +105,7 @@ public class ExcelTemplateExporter {
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
+					
 					sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
@@ -471,7 +472,7 @@ public class ExcelTemplateExporter {
 		rowIndex += 2; // Skip a row
 		
 		Row formHeaderRow = metaSheet.createRow(rowIndex++);
-		String[] formHeaders = { "formUuid", "formName", "formVersion", "encounterTypeUuid", "sheetName" };
+		String[] formHeaders = { "formUuid", "formName", "formVersion", "formType", "encounterTypeUuid", "sheetName" };
 		for (int i = 0; i < formHeaders.length; i++) {
 			Cell cell = formHeaderRow.createCell(i);
 			cell.setCellValue(formHeaders[i]);
@@ -483,12 +484,14 @@ public class ExcelTemplateExporter {
 			String formUuid = sheetModel.formUuid != null ? sheetModel.formUuid : "";
 			String formName = sheetModel.sheetName;
 			String formVersion = sheetModel.formVersion != null ? sheetModel.formVersion : "1.0";
+			String formType = sheetModel.formType != null ? sheetModel.formType.getCode() : "o3-json"; // Default to O3
 			String encounterTypeUuid = sheetModel.encounterTypeUuid != null ? sheetModel.encounterTypeUuid : "";
 			formRow.createCell(0).setCellValue(formUuid);
 			formRow.createCell(1).setCellValue(formName);
 			formRow.createCell(2).setCellValue(formVersion);
-			formRow.createCell(3).setCellValue(encounterTypeUuid);
-			formRow.createCell(4).setCellValue(sheetModel.sheetName);
+			formRow.createCell(3).setCellValue(formType);
+			formRow.createCell(4).setCellValue(encounterTypeUuid);
+			formRow.createCell(5).setCellValue(sheetModel.sheetName);
 		}
 		
 		rowIndex += 2; // Skip a row

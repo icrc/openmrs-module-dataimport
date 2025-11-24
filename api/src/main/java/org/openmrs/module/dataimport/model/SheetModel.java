@@ -22,6 +22,8 @@ public class SheetModel {
 	
 	public String encounterTypeUuid; // Track encounter type for this sheet
 	
+	public FormType formType; // Track form type (O3_JSON or HFE_XML)
+	
 	public final List<FieldModel> fields = new ArrayList<>();
 	
 	SheetModel shallowCopy() {
@@ -30,6 +32,7 @@ public class SheetModel {
 		c.formUuid = formUuid;
 		c.formVersion = formVersion;
 		c.encounterTypeUuid = encounterTypeUuid;
+		c.formType = formType;
 		for (FieldModel f : fields) {
 			c.fields.add(f.copyHeaderOnly());
 		}

@@ -24,8 +24,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Tests all methods in the {@link ValidationDate}
+ */
+/**
+ * Tests all methods in the {@link ValidationDate}
+ */
+/**
+ * Tests all methods in the {@link ValidationDate}
+ */
 public class ValidationDateTest {
 	
+	/**
+	 * @see ValidationDate
+	 */
 	@Test
 	public void validDate_shouldTestValidateDateObs() {
 		LocalDate validDate = LocalDate.of(2023, 6, 15);
@@ -48,6 +60,9 @@ public class ValidationDateTest {
 		assertTrue(quarantineItems.isEmpty());
 	}
 	
+	/**
+	 * @see ValidationDate
+	 */
 	@Test
 	public void dateTooEarly_shouldTestValidateDateObs() {
 		LocalDate earlyDate = LocalDate.of(2020, 1, 1);
@@ -76,6 +91,9 @@ public class ValidationDateTest {
 		assertTrue(item.getMessage().contains("is before minimum date"));
 	}
 	
+	/**
+	 * @see ValidationDate
+	 */
 	@Test
 	public void dateTooLate_shouldTestValidateDateObs() {
 		LocalDate lateDate = LocalDate.of(2023, 6, 15);
@@ -104,6 +122,9 @@ public class ValidationDateTest {
 		assertTrue(item.getMessage().contains("is after maximum date"));
 	}
 	
+	/**
+	 * @see ValidationDate
+	 */
 	@Test
 	public void futureDate_shouldTestValidateDateObs() {
 		LocalDate futureDate = LocalDate.now().plusDays(1);
@@ -132,6 +153,9 @@ public class ValidationDateTest {
 		assertTrue(item.getMessage().contains("is in the future"));
 	}
 	
+	/**
+	 * @see ValidationDate
+	 */
 	@Test
 	public void dateWithinRange_shouldTestValidateDateObs() {
 		LocalDate validDate = LocalDate.of(2023, 6, 15);

@@ -1,0 +1,63 @@
+[
+  {
+    "uuid": "icrc-hip001-uuid",
+    "mappingCode": "ICRC:HIP001",
+    "name": "Hip Surgery",
+    "datatype": "CWE",
+    "source": "ICRC",
+    "answers": [
+      {"uuid": "icrc-hip-left-uuid", "name": "Left Hip Replacement"},
+      {"uuid": "icrc-hip-right-uuid", "name": "Right Hip Replacement"},
+      {"uuid": "icrc-hip-bilateral-uuid", "name": "Bilateral Hip Replacement"}
+    ]
+  },
+  {
+    "uuid": "icrc-knee001-uuid",
+    "mappingCode": "ICRC:KNEE001",
+    "name": "Knee Surgery",
+    "datatype": "CWE",
+    "source": "ICRC",
+    "answers": [
+      {"uuid": "icrc-knee-left-uuid", "name": "Left Knee Replacement"},
+      {"uuid": "icrc-knee-right-uuid", "name": "Right Knee Replacement"},
+      {"uuid": "icrc-knee-bilateral-uuid", "name": "Bilateral Knee Replacement"}
+    ]
+  },
+  {
+    "uuid": "icrc-shoulder001-uuid",
+    "mappingCode": "ICRC:SHOULDER001",
+    "name": "Shoulder Surgery",
+    "datatype": "CWE",
+    "source": "ICRC",
+    "answers": [
+      {"uuid": "icrc-shoulder-left-uuid", "name": "Left Shoulder Replacement"},
+      {"uuid": "icrc-shoulder-right-uuid", "name": "Right Shoulder Replacement"}
+    ]
+  },
+  {
+    "uuid": "icrc-limb-amputation-uuid",
+    "mappingCode": "ICRC:LIMB_AMP",
+    "name": "Limb Amputation",
+    "datatype": "CWE",
+    "source": "ICRC",
+    "answers": [
+      {"uuid": "icrc-amp-above-knee-uuid", "name": "Above Knee"},
+      {"uuid": "icrc-amp-below-knee-uuid", "name": "Below Knee"},
+      {"uuid": "icrc-amp-above-elbow-uuid", "name": "Above Elbow"},
+      {"uuid": "icrc-amp-below-elbow-uuid", "name": "Below Elbow"}
+    ]
+  },
+  {
+    "uuid": "icrc-wound-type-uuid",
+    "mappingCode": "ICRC:WOUND_TYPE",
+    "name": "Wound Type",
+    "datatype": "CWE",
+    "source": "ICRC",
+    "answers": [
+      {"uuid": "icrc-wound-gunshot-uuid", "name": "Gunshot"},
+      {"uuid": "icrc-wound-shrapnel-uuid", "name": "Shrapnel"},
+      {"uuid": "icrc-wound-blast-uuid", "name": "Blast"},
+      {"uuid": "icrc-wound-burn-uuid", "name": "Burn"}
+    ]
+  }
+]

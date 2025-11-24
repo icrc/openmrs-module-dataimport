@@ -1,0 +1,74 @@
+[
+  {
+    "uuid": "c607c80f-1ea9-4da3-bb88-6276ce8868dd",
+    "conceptId": 5089,
+    "mappingCode": "CIEL:5089",
+    "name": "Weight (kg)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "5090aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 5090,
+    "mappingCode": "CIEL:5090",
+    "name": "Height (cm)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "5088aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 5088,
+    "mappingCode": "CIEL:5088",
+    "name": "Temperature (C)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "5085aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 5085,
+    "mappingCode": "CIEL:5085",
+    "name": "Systolic BP (mmHg)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "5086aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 5086,
+    "mappingCode": "CIEL:5086",
+    "name": "Diastolic BP (mmHg)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "5087aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 5087,
+    "mappingCode": "CIEL:5087",
+    "name": "Heart Rate (bpm)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "5242aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 5242,
+    "mappingCode": "CIEL:5242",
+    "name": "Respiratory Rate (/min)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "5092aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 5092,
+    "mappingCode": "CIEL:5092",
+    "name": "Oxygen Saturation (%)",
+    "datatype": "NM",
+    "source": "CIEL"
+  },
+  {
+    "uuid": "1107aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "conceptId": 1107,
+    "mappingCode": "CIEL:1107",
+    "name": "None",
+    "datatype": "N/A",
+    "source": "CIEL"
+  }
+]

@@ -13,17 +13,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmrs.module.dataimport.model.EncounterBlueprint;
 import org.openmrs.module.dataimport.model.SheetMeta;
 
-@DisplayName("EncounterReader Location Tests")
-class EncounterReaderLocationTest {
+public class EncounterReaderLocationTest {
 	
 	@Test
-	@DisplayName("Should use template default location when sheet has no location")
-	void testTemplateDefaultLocation() throws Exception {
+	public void testTemplateDefaultLocation() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		
@@ -41,8 +38,7 @@ class EncounterReaderLocationTest {
 	}
 	
 	@Test
-	@DisplayName("Should use sheet location when available, ignoring template default")
-	void testSheetLocationOverridesTemplate() throws Exception {
+	public void testSheetLocationOverridesTemplate() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		Sheet sheet = workbook.createSheet("Test Sheet");
 		
@@ -62,8 +58,7 @@ class EncounterReaderLocationTest {
 	}
 	
 	@Test
-	@DisplayName("Should handle null template default location gracefully")
-	void testNullTemplateDefaultLocation() throws Exception {
+	public void testNullTemplateDefaultLocation() throws Exception {
 		XSSFWorkbook workbook = new XSSFWorkbook();
 		SheetMeta sheetMeta = new SheetMeta();
 		sheetMeta.sheetName = "Test Sheet";

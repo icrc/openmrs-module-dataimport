@@ -1,0 +1,36 @@
+<htmlform>
+  <!-- Form with Nested Obsgroups (2-3 level nesting) -->
+
+  <encounterDate/>
+
+  <!-- Level 1: Patient Assessment -->
+  <obsgroup groupingConceptId="CIEL:2001">
+    <obs conceptId="CIEL:2002" labelText="Assessment Date" style="date"/>
+    <obs conceptId="CIEL:2003" labelText="Assessment Type" style="dropdown"/>
+
+    <!-- Level 2: Physical Examination -->
+    <obsgroup groupingConceptId="CIEL:2004">
+      <obs conceptId="CIEL:2005" labelText="General Appearance" style="text"/>
+      <obs conceptId="CIEL:2006" labelText="Mobility Status" style="dropdown"/>
+
+      <!-- Level 3: Vital Signs Group -->
+      <obsgroup groupingConceptId="CIEL:2007">
+        <obs conceptId="CIEL:5089" labelText="Weight (kg)" style="number"/>
+        <obs conceptId="CIEL:5088" labelText="Temperature (C)" style="number"/>
+        <obs conceptId="CIEL:5085" labelText="Systolic BP" style="number"/>
+        <obs conceptId="CIEL:5086" labelText="Diastolic BP" style="number"/>
+      </obsgroup>
+    </obsgroup>
+
+    <!-- Level 2: Mental Status -->
+    <obsgroup groupingConceptId="CIEL:2008">
+      <obs conceptId="CIEL:2009" labelText="Alert Level" style="dropdown"/>
+      <obs conceptId="CIEL:2010" labelText="Orientation" style="text"/>
+      <obs conceptId="CIEL:2011" labelText="Mood" style="text"/>
+    </obsgroup>
+  </obsgroup>
+
+  <!-- Standalone Observations -->
+  <obs conceptId="CIEL:2012" labelText="Overall Assessment" style="text"/>
+  <obs conceptId="CIEL:2013" labelText="Recommended Follow-up" style="date"/>
+</htmlform>

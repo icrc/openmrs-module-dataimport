@@ -12,34 +12,46 @@ package org.openmrs.module.dataimport.api.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openmrs.module.dataimport.model.*;
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
+import org.openmrs.module.dataimport.model.AnswerModel;
+import org.openmrs.module.dataimport.model.FieldDatatype;
+import org.openmrs.module.dataimport.model.FieldModel;
+import org.openmrs.module.dataimport.model.FormModel;
+import org.openmrs.module.dataimport.model.SheetModel;
 import org.openmrs.module.dataimport.test.TestDataLoader;
 
 import java.io.ByteArrayInputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-@DisplayName("ExcelTemplateExporter Tests")
-class ExcelTemplateExporterTest {
+/**
+ * Tests all methods in the {@link ExcelTemplateExporter}
+ */
+public class ExcelTemplateExporterTest {
 	
 	private ExcelTemplateExporter exporter;
 	
 	private O3FormParser parser;
 	
 	@BeforeEach
-	void setUp() {
+	public void setUp() {
 		exporter = new ExcelTemplateExporter();
-		parser = new O3FormParser();
+		ConceptAnswersService conceptAnswersService = mock(ConceptAnswersService.class);
+		when(conceptAnswersService.resolveConceptUuid(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+		parser = new O3FormParser(conceptAnswersService);
 	}
 	
 	@Test
-	@DisplayName("Should generate Excel with dropdowns for radio button fields")
-	void testGenerateExcelWithRadioButtonDropdowns() throws Exception {
+	public void export_shouldGenerateExcelWithDropdownsForRadioButtonFields() throws Exception {
 		String json = TestDataLoader.loadRadioButtonsForm();
 		FormModel form = parser.parse(json, null);
 		
@@ -91,8 +103,7 @@ class ExcelTemplateExporterTest {
 	}
 	
 	@Test
-	@DisplayName("Should generate Excel with proper field types")
-	void testGenerateExcelWithMixedFieldTypes() throws Exception {
+	public void export_shouldGenerateExcelWithProperFieldTypes() throws Exception {
 		String json = TestDataLoader.loadMixedFieldsForm();
 		FormModel form = parser.parse(json, null);
 		
@@ -131,8 +142,7 @@ class ExcelTemplateExporterTest {
 	}
 	
 	@Test
-	@DisplayName("Should create dropdown for Anesthesia Type with exact JSON structure")
-	void testAnesthesiaTypeDropdown() throws Exception {
+	public void export_shouldCreateDropdownForAnesthesiaType() throws Exception {
 		String jsonContent = "{\n" + "  \"name\": \"Surgical Operation\",\n" + "  \"description\": \"Surgery Form\",\n"
 		        + "  \"version\": \"1\",\n" + "  \"published\": true,\n" + "  \"retired\": false,\n"
 		        + "  \"encounter\": \"Consultation\",\n" + "  \"pages\": [\n" + "    {\n"
@@ -221,9 +231,11 @@ class ExcelTemplateExporterTest {
 		}
 	}
 	
+	/**
+	 * @see ExcelTemplateExporter#export(FormModel, boolean)
+	 */
 	@Test
-	@DisplayName("Should handle repeat groups on main sheet")
-	void testGenerateExcelWithRepeatGroups() throws Exception {
+	public void export_shouldHandleRepeatGroupsOnMainSheet() throws Exception {
 		String json = TestDataLoader.loadRepeatGroupsForm();
 		FormModel form = parser.parse(json, null);
 		
@@ -268,9 +280,11 @@ class ExcelTemplateExporterTest {
 		}
 	}
 	
+	/**
+	 * @see ExcelTemplateExporter#export(FormModel, boolean)
+	 */
 	@Test
-	@DisplayName("Should export basic form to Excel template")
-	void testExportBasicForm() throws Exception {
+	public void export_shouldExportBasicFormToExcelTemplate() throws Exception {
 		FormModel form = createBasicForm();
 		
 		byte[] result = exporter.export(form, true);
@@ -283,9 +297,11 @@ class ExcelTemplateExporterTest {
 		}
 	}
 	
+	/**
+	 * @see ExcelTemplateExporter#export(FormModel, boolean)
+	 */
 	@Test
-	@DisplayName("Should create all required sheets")
-	void testCreateAllRequiredSheets() throws Exception {
+	public void export_shouldCreateAllRequiredSheets() throws Exception {
 		FormModel form = createBasicForm();
 		
 		byte[] result = exporter.export(form, true);
@@ -305,9 +321,11 @@ class ExcelTemplateExporterTest {
 		}
 	}
 	
+	/**
+	 * @see ExcelTemplateExporter#export(FormModel, boolean)
+	 */
 	@Test
-	@DisplayName("Should handle coded fields with dropdowns")
-	void testExportCodedFieldsWithDropdowns() throws Exception {
+	public void export_shouldHandleCodedFieldsWithDropdowns() throws Exception {
 		FormModel form = createFormWithCodedFields();
 		
 		byte[] result = exporter.export(form, true);
@@ -321,9 +339,11 @@ class ExcelTemplateExporterTest {
 		}
 	}
 	
+	/**
+	 * @see ExcelTemplateExporter#export(FormModel, boolean)
+	 */
 	@Test
-	@DisplayName("Should handle repeat groups on main sheet")
-	void testExportRepeatGroupsOnMainSheet() throws Exception {
+	public void export_shouldPlaceRepeatGroupFieldsOnMainSheet() throws Exception {
 		FormModel form = createFormWithRepeatGroups();
 		
 		byte[] result = exporter.export(form, true);
@@ -360,9 +380,11 @@ class ExcelTemplateExporterTest {
 		}
 	}
 	
+	/**
+	 * @see ExcelTemplateExporter#export(FormModel, boolean)
+	 */
 	@Test
-	@DisplayName("Should parse O3 JSON and export to Excel")
-	void testParseAndExportO3Json() throws Exception {
+	public void export_shouldParseAndExportO3JsonToExcel() throws Exception {
 		String o3Json = createBasicO3Json();
 		
 		FormModel form = parser.parse(o3Json, null);
@@ -376,9 +398,11 @@ class ExcelTemplateExporterTest {
 		}
 	}
 	
+	/**
+	 * @see ExcelTemplateExporter#export(FormModel, boolean)
+	 */
 	@Test
-	@DisplayName("Should handle empty form")
-	void testHandleEmptyForm() throws Exception {
+	public void export_shouldHandleEmptyForm() throws Exception {
 		FormModel form = new FormModel();
 		form.name = "Empty Form";
 		form.formUuid = "empty-form-uuid";

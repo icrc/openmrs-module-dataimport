@@ -9,12 +9,16 @@
  */
 package org.openmrs.module.dataimport.api.impl;
 
+import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.RuleModel;
 import org.openmrs.module.dataimport.model.SheetModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -24,7 +28,16 @@ import java.util.Locale;
 
 public class O3FormParser {
 	
+	private static final Logger log = LoggerFactory.getLogger(O3FormParser.class);
+	
 	private final ObjectMapper mapper = new ObjectMapper();
+	
+	private final ConceptAnswersService conceptAnswersService;
+	
+	@Autowired
+	public O3FormParser(ConceptAnswersService conceptAnswersService) {
+		this.conceptAnswersService = conceptAnswersService;
+	}
 	
 	public FormModel parse(String schemaJson, Locale locale) {
 		try {
@@ -94,7 +107,20 @@ public class O3FormParser {
 				field.id = qid;
 			}
 			field.label = label != null ? label : field.id;
-			field.conceptUuid = getTextOrNull(questionOptions, "concept");
+			
+			// Resolve and validate concept through ConceptAnswersService
+			// O3 forms typically use UUIDs, but we support mappings (e.g., "CIEL:5089") too
+			String conceptIdOrUuid = getTextOrNull(questionOptions, "concept");
+			if (conceptIdOrUuid != null && !conceptIdOrUuid.trim().isEmpty()) {
+				String resolvedUuid = conceptAnswersService.resolveConceptUuid(conceptIdOrUuid);
+				if (resolvedUuid != null) {
+					field.conceptUuid = resolvedUuid;
+				} else {
+					log.warn("Could not resolve concept '{}' for question '{}' - using as-is", conceptIdOrUuid, field.id);
+					field.conceptUuid = conceptIdOrUuid; // Store original value for debugging
+				}
+			}
+			
 			field.hideExpr = hideExpr;
 			
 			inferDatatypeAndAnswers(field, questionOptions, questionType);
@@ -193,14 +219,36 @@ public class O3FormParser {
 				ArrayNode answersArray = (ArrayNode) answersNode;
 				for (JsonNode answerNode : answersArray) {
 					String answerLabel;
+					String answerConceptIdOrUuid;
 					String answerConceptUuid;
+					
 					if (answerNode.isTextual()) {
-						answerConceptUuid = answerNode.asText();
+						answerConceptIdOrUuid = answerNode.asText();
 						answerLabel = null;
 					} else {
 						answerLabel = getTextOrNull(answerNode, "label");
-						answerConceptUuid = getTextOrNull(answerNode, "concept");
+						answerConceptIdOrUuid = getTextOrNull(answerNode, "concept");
 					}
+					
+					// Resolve answer concept through ConceptAnswersService (supports UUIDs and mappings)
+					if (answerConceptIdOrUuid != null && !answerConceptIdOrUuid.trim().isEmpty()) {
+						answerConceptUuid = conceptAnswersService.resolveConceptUuid(answerConceptIdOrUuid);
+						
+						// If no label provided, fetch from concept
+						if (answerLabel == null || answerLabel.trim().isEmpty()) {
+							if (answerConceptUuid != null) {
+								String conceptName = conceptAnswersService.getConceptName(answerConceptUuid);
+								answerLabel = conceptName != null && !conceptName.trim().isEmpty() ? conceptName
+								        : answerConceptUuid;
+							} else {
+								answerLabel = answerConceptIdOrUuid; // Fallback to original value
+								log.warn("Could not resolve answer concept '{}' - using as-is", answerConceptIdOrUuid);
+							}
+						}
+					} else {
+						answerConceptUuid = null;
+					}
+					
 					String answerValue = answerConceptUuid != null ? answerConceptUuid
 					        : (answerLabel != null ? answerLabel : "");
 					field.answers.add(new AnswerModel(answerLabel, answerConceptUuid, answerValue));
