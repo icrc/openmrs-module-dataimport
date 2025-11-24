@@ -149,6 +149,12 @@
         <artifactId>commons-io</artifactId>
         <version>2.18.0</version>
       </dependency>
+      <!-- Guava for caching -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>31.1-jre</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

@@ -15,9 +15,7 @@ import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.DataValidation;
 import org.apache.poi.ss.usermodel.DataValidationConstraint;
 import org.apache.poi.ss.usermodel.DataValidationHelper;
-import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
-import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -45,14 +43,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ExcelTemplateExporter {
-	
+
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
-	
+
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
-	
+
 	private static final int STANDARD_COLUMN_WIDTH = 20 * 256;
-	
+
 	private final Map<String, Integer> usedNames = new HashMap<>();
+
+	// Style cache to avoid creating duplicate CellStyle and Font objects
+	private CellStyle cachedHeaderStyle;
+
+	private CellStyle cachedDateStyle;
+
+	private CellStyle cachedDateTimeStyle;
+
+	private Font cachedBoldFont;
 	
 	public byte[] export(FormModel form, boolean includePatient) {
 		return export(form, includePatient, null);
@@ -60,12 +67,12 @@ public class ExcelTemplateExporter {
 	
 	public byte[] export(FormModel form, boolean includePatient, String locationUuid) {
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+			// Initialize style cache for this workbook
+			initializeStyleCache(workbook);
+
 			LongStringRegistry longStrings = new LongStringRegistry();
-			DataFormat dataFormat = workbook.createDataFormat();
-			CellStyle dateStyle = workbook.createCellStyle();
-			dateStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd"));
-			CellStyle dateTimeStyle = workbook.createCellStyle();
-			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
+			CellStyle dateStyle = cachedDateStyle;
+			CellStyle dateTimeStyle = cachedDateTimeStyle;
 			
 			if (includePatient) {
 				createPatientSheet(workbook);
@@ -78,7 +85,7 @@ public class ExcelTemplateExporter {
 				sheetModel.sheetName = uniqueSheetName;
 				XSSFSheet sheet = workbook.createSheet(uniqueSheetName);
 				Row headerRow = sheet.createRow(0);
-				CellStyle headerStyle = createHeaderStyle(workbook);
+				CellStyle headerStyle = cachedHeaderStyle;
 				int columnIndex = 0;
 				
 				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
@@ -137,10 +144,10 @@ public class ExcelTemplateExporter {
 		}
 	}
 	
-	private static void createPatientSheet(Workbook workbook) {
+	private void createPatientSheet(Workbook workbook) {
 		XSSFWorkbook wb = (XSSFWorkbook) workbook;
 		XSSFSheet sheet = wb.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
-		CellStyle headerStyle = createHeaderStyle(wb);
+		CellStyle headerStyle = cachedHeaderStyle;
 		DataFormat dataFormat = wb.createDataFormat();
 		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
 		        "City/Village", "Country", "Phone", DataImportConstants.PATIENT_REF_HEADER };
@@ -156,8 +163,6 @@ public class ExcelTemplateExporter {
 		
 		CellStyle readonlyStyle = wb.createCellStyle();
 		readonlyStyle.setLocked(true);
-		readonlyStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
-		readonlyStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		CellStyle unlockedStyle = wb.createCellStyle();
 		unlockedStyle.setLocked(false);
 		CellStyle textStyle = wb.createCellStyle();
@@ -425,13 +430,39 @@ public class ExcelTemplateExporter {
 		sheet.addValidationData(validation);
 	}
 	
+	/**
+	 * Initializes cached styles for the workbook to avoid creating duplicate styles.
+	 * This method should be called once per workbook at the start of export.
+	 *
+	 * @param workbook the workbook to create styles for
+	 */
+	private void initializeStyleCache(XSSFWorkbook workbook) {
+		DataFormat dataFormat = workbook.createDataFormat();
+
+		// Create and cache bold font
+		cachedBoldFont = workbook.createFont();
+		cachedBoldFont.setBold(true);
+
+		// Create and cache header style
+		cachedHeaderStyle = workbook.createCellStyle();
+		cachedHeaderStyle.setFont(cachedBoldFont);
+
+		// Create and cache date style
+		cachedDateStyle = workbook.createCellStyle();
+		cachedDateStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd"));
+
+		// Create and cache datetime style
+		cachedDateTimeStyle = workbook.createCellStyle();
+		cachedDateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
+
+		log.debug("Initialized style cache: 1 font, 3 cell styles");
+	}
+
 	private static CellStyle createHeaderStyle(XSSFWorkbook workbook) {
 		CellStyle style = workbook.createCellStyle();
 		Font font = workbook.createFont();
 		font.setBold(true);
 		style.setFont(font);
-		style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
 	}
 	
@@ -439,8 +470,8 @@ public class ExcelTemplateExporter {
 	        LongStringRegistry longStrings) {
 		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
-		
-		CellStyle headerStyle = createHeaderStyle(workbook);
+
+		CellStyle headerStyle = cachedHeaderStyle;
 		
 		Row headerRow = metaSheet.createRow(0);
 		Cell keyHeader = headerRow.createCell(0);
@@ -569,7 +600,7 @@ public class ExcelTemplateExporter {
 	private void createConceptsSheet(XSSFWorkbook workbook, FormModel form) {
 		XSSFSheet conceptsSheet = workbook.createSheet(DataImportConstants.CONCEPTS_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(conceptsSheet), true);
-		CellStyle headerStyle = createHeaderStyle(workbook);
+		CellStyle headerStyle = cachedHeaderStyle;
 		Row header = conceptsSheet.createRow(0);
 		String[] headers = { "sheetName", "fieldId", "questionLabel", "questionConceptUuid", "questionDatatype",
 		        "questionClass", "isMulti", "answerLabel", "answerConceptUuid", "answerDatatype", "answerClass" };

@@ -10,6 +10,7 @@
 package org.openmrs.module.dataimport.api.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -19,6 +20,9 @@ import org.openmrs.LocationTag;
 import org.openmrs.api.EncounterService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.ProviderService;
+import org.openmrs.module.dataimport.api.cache.ConceptAnswerCache;
+import org.openmrs.module.dataimport.api.cache.FormSchemaCache;
+import org.openmrs.module.dataimport.api.service.PerformanceMetricsService;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 
@@ -31,7 +35,8 @@ public class TemplateGenerationServiceImplTest {
 	
 	@Test
 	public void testCompositeVersionMultipleForms() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null,
+		        mock(FormSchemaCache.class), mock(ConceptAnswerCache.class), mock(PerformanceMetricsService.class));
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -45,7 +50,8 @@ public class TemplateGenerationServiceImplTest {
 	
 	@Test
 	public void testSingleFormVersion() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null,
+		        mock(FormSchemaCache.class), mock(ConceptAnswerCache.class), mock(PerformanceMetricsService.class));
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -59,7 +65,8 @@ public class TemplateGenerationServiceImplTest {
 	
 	@Test
 	public void testEmptyFormVersions() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null,
+		        mock(FormSchemaCache.class), mock(ConceptAnswerCache.class), mock(PerformanceMetricsService.class));
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -73,7 +80,8 @@ public class TemplateGenerationServiceImplTest {
 	
 	@Test
 	public void testNullVersions() throws Exception {
-		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null);
+		TemplateGenerationServiceImpl service = new TemplateGenerationServiceImpl(null, null, null,
+		        mock(FormSchemaCache.class), mock(ConceptAnswerCache.class), mock(PerformanceMetricsService.class));
 		
 		Method createCompositeVersion = TemplateGenerationServiceImpl.class.getDeclaredMethod("createCompositeVersion",
 		    List.class);
@@ -200,7 +208,8 @@ public class TemplateGenerationServiceImplTest {
 		private LocationService locationService;
 		
 		TestableTemplateGenerationServiceImpl() {
-			super(null, null, null);
+			super(null, null, null, mock(FormSchemaCache.class), mock(ConceptAnswerCache.class),
+			        mock(PerformanceMetricsService.class));
 		}
 		
 		void setEncounterService(EncounterService encounterService) {

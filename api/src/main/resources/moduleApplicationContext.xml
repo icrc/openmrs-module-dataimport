@@ -17,6 +17,13 @@
 		    http://www.springframework.org/schema/util
 		    http://www.springframework.org/schema/util/spring-util-3.0.xsd">
 
+	<!-- Enable component scanning for cache and service implementations -->
+	<context:component-scan base-package="org.openmrs.module.dataimport.api.cache.impl" />
+	<context:component-scan base-package="org.openmrs.module.dataimport.api.service.impl" />
+
+	<!-- Enable property placeholder for cache configuration -->
+	<context:property-placeholder location="classpath:dataimport.properties" ignore-resource-not-found="true" />
+
 	<!-- Legacy FormSchemaService (kept for backward compatibility if needed) -->
 	<bean id="coreFormSchemaResolver" class="org.openmrs.module.dataimport.api.impl.FormSchemaServiceImpl" />
 
@@ -46,11 +53,14 @@
 		</constructor-arg>
 	</bean>
 
-	<!-- Template Generation Service (now uses FormResolverRegistry) -->
+	<!-- Template Generation Service (now uses FormResolverRegistry and caching) -->
 	<bean id="templateGenerationService" class="org.openmrs.module.dataimport.api.impl.TemplateGenerationServiceImpl">
 		<constructor-arg ref="formResolverRegistry" />
 		<constructor-arg ref="excelTemplateExporter" />
 		<constructor-arg ref="coreConceptAnswersProvider" />
+		<constructor-arg ref="formSchemaCache" />
+		<constructor-arg ref="conceptAnswerCache" />
+		<constructor-arg ref="performanceMetricsService" />
 	</bean>
 
 	<!-- Excel Template Exporter -->
