@@ -11,15 +11,11 @@ package org.openmrs.module.dataimport.api.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmrs.EncounterRole;
 import org.openmrs.Location;
 import org.openmrs.LocationTag;
-import org.openmrs.Person;
-import org.openmrs.PersonName;
-import org.openmrs.Provider;
 import org.openmrs.api.EncounterService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.ProviderService;

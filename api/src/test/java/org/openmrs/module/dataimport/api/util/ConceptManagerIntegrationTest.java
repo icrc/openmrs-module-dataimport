@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmrs.Concept;
 import org.openmrs.ConceptDatatype;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;

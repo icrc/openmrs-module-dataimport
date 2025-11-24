@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmrs.module.dataimport.model.ColumnMeta;
 import org.openmrs.module.dataimport.model.FieldDatatype;
