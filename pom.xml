@@ -310,7 +310,7 @@
     <webServices.version>2.33.0</webServices.version>
     <junitVersion>5.8.1</junitVersion>
     <mockitoVersion>3.12.4</mockitoVersion>
-    <mockitoInlineVersion>4.8.0</mockitoInlineVersion>
+    <mockitoInlineVersion>3.12.4</mockitoInlineVersion>
     <powerMockVersion>2.0.9</powerMockVersion>
     <poiVersion>5.4.1</poiVersion>
     <legacyUiVersion>1.9.0</legacyUiVersion>
