@@ -21,11 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Utility class for standardized answer mapping operations. Provides conversion between
- * List&lt;AnswerModel&gt; and Map&lt;String, String&gt; representations, and consistent label
- * normalization for answer lookups.
- */
 public class AnswerMapper {
 	
 	private static final Logger log = LoggerFactory.getLogger(AnswerMapper.class);
@@ -33,9 +28,6 @@ public class AnswerMapper {
 	/**
 	 * Converts a list of AnswerModel objects to a Map (label -> conceptUuid). Preserves insertion order
 	 * using LinkedHashMap.
-	 *
-	 * @param answers List of AnswerModel objects
-	 * @return Map with normalized labels as keys and concept UUIDs as values
 	 */
 	public static Map<String, String> toMap(List<AnswerModel> answers) {
 		if (answers == null || answers.isEmpty()) {
@@ -56,9 +48,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Converts a Map (label -> conceptUuid) to a list of AnswerModel objects.
-	 *
-	 * @param answersMap Map with labels as keys and concept UUIDs as values
-	 * @return List of AnswerModel objects
 	 */
 	public static List<AnswerModel> toList(Map<String, String> answersMap) {
 		if (answersMap == null || answersMap.isEmpty()) {
@@ -78,12 +67,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Finds the concept UUID for a given answer label with normalization fallback.
-	 * <p>
-	 * Lookup strategy: 1. Direct match (exact label) 2. Normalized match (case-insensitive, trimmed)
-	 *
-	 * @param answersMap Map of label -> concept UUID
-	 * @param label The answer label to look up
-	 * @return The concept UUID, or null if not found
 	 */
 	public static String getAnswerConceptUuid(Map<String, String> answersMap, String label) {
 		if (answersMap == null || label == null) {
@@ -108,10 +91,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Finds the concept UUID for a given answer label from a list of AnswerModel objects.
-	 *
-	 * @param answers List of AnswerModel objects
-	 * @param label The answer label to look up
-	 * @return The concept UUID, or null if not found
 	 */
 	public static String getAnswerConceptUuid(List<AnswerModel> answers, String label) {
 		if (answers == null || label == null) {
@@ -138,10 +117,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Validates that an answer label exists in the allowed answers.
-	 *
-	 * @param answersMap Map of allowed answers
-	 * @param label The answer label to validate
-	 * @return true if the answer is valid
 	 */
 	public static boolean isValidAnswer(Map<String, String> answersMap, String label) {
 		return getAnswerConceptUuid(answersMap, label) != null;
@@ -149,10 +124,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Validates that an answer label exists in the allowed answers list.
-	 *
-	 * @param answers List of allowed answers
-	 * @param label The answer label to validate
-	 * @return true if the answer is valid
 	 */
 	public static boolean isValidAnswer(List<AnswerModel> answers, String label) {
 		return getAnswerConceptUuid(answers, label) != null;
@@ -160,9 +131,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Gets all answer labels from a map.
-	 *
-	 * @param answersMap Map of answers
-	 * @return List of answer labels
 	 */
 	public static List<String> getAnswerLabels(Map<String, String> answersMap) {
 		if (answersMap == null) {
@@ -173,9 +141,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Gets all answer labels from a list of AnswerModel objects.
-	 *
-	 * @param answers List of AnswerModel objects
-	 * @return List of answer labels
 	 */
 	public static List<String> getAnswerLabels(List<AnswerModel> answers) {
 		if (answers == null) {
@@ -194,9 +159,6 @@ public class AnswerMapper {
 	/**
 	 * Enriches answers with concept labels from the ConceptAnswersService. Useful when you have UUIDs
 	 * but missing labels.
-	 *
-	 * @param answers List of AnswerModel objects (may have null labels)
-	 * @return New list with labels populated from concepts
 	 */
 	public static List<AnswerModel> enrichAnswerLabels(List<AnswerModel> answers) {
 		if (answers == null || answers.isEmpty()) {
@@ -238,10 +200,6 @@ public class AnswerMapper {
 	
 	/**
 	 * Merges two answer lists, preferring entries from the first list when duplicates exist.
-	 *
-	 * @param primary Primary list (takes precedence)
-	 * @param secondary Secondary list (used for missing entries)
-	 * @return Merged list with no duplicate concept UUIDs
 	 */
 	public static List<AnswerModel> mergeAnswers(List<AnswerModel> primary, List<AnswerModel> secondary) {
 		if (primary == null || primary.isEmpty()) {
@@ -254,14 +212,12 @@ public class AnswerMapper {
 		
 		Map<String, AnswerModel> merged = new LinkedHashMap<>();
 		
-		// Add primary answers first
 		for (AnswerModel answer : primary) {
 			if (answer.conceptUuid != null) {
 				merged.put(answer.conceptUuid, answer);
 			}
 		}
 		
-		// Add secondary answers if not already present
 		for (AnswerModel answer : secondary) {
 			if (answer.conceptUuid != null && !merged.containsKey(answer.conceptUuid)) {
 				merged.put(answer.conceptUuid, answer);
@@ -274,9 +230,6 @@ public class AnswerMapper {
 	/**
 	 * Creates a JSON string representation of an answer map. Format:
 	 * {"label1":"uuid1","label2":"uuid2",...}
-	 *
-	 * @param answersMap Map of answers
-	 * @return JSON string
 	 */
 	public static String toJson(Map<String, String> answersMap) {
 		if (answersMap == null || answersMap.isEmpty()) {

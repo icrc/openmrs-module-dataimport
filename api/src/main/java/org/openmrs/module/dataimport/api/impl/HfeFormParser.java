@@ -26,28 +26,6 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/**
- * Parses HTML Form Entry (HFE) XML into Excel Template Model (ETM).
- * <p>
- * Supported HFE elements:
- * <ul>
- * <li>&lt;obs conceptId="..." labelText="..."/&gt; - Observation fields</li>
- * <li>&lt;obsgroup groupingConceptId="..."/&gt; - Observation groups (flattened)</li>
- * <li>&lt;encounterDate/&gt;, &lt;encounterLocation/&gt;, &lt;encounterProvider/&gt;</li>
- * <li>&lt;repeat with="..."/&gt; - Template expansion with placeholder substitution</li>
- * </ul>
- * <p>
- * Features:
- * <ul>
- * <li>Widget type detection (date, number, text, radio, select, checkbox)</li>
- * <li>Concept resolution (UUID, numeric ID, mappings like "CIEL:5089")</li>
- * <li>4-tier datatype inference (widget → style → answers → concept)</li>
- * <li>Conditional display detection (mapped to gray cell styling)</li>
- * <li>Answer auto-loading from concept dictionary</li>
- * </ul>
- *
- * @see <a href="https://guide.openmrs.org/collecting-data/html-forms/">OpenMRS HTML Forms Guide</a>
- */
 public class HfeFormParser {
 	
 	private static final Logger log = LoggerFactory.getLogger(HfeFormParser.class);
@@ -61,23 +39,17 @@ public class HfeFormParser {
 		this.conceptAnswersService = conceptAnswersService;
 	}
 	
-	/**
-	 * Optional: Inject MessageSourceService for i18n label resolution. If not set, labelCode attributes
-	 * will be used as fallback text.
-	 */
 	@Autowired(required = false)
 	public void setMessageSourceService(org.openmrs.messagesource.MessageSourceService messageSourceService) {
 		this.messageSourceService = messageSourceService;
 	}
 	
-	// XML Security Features
 	private static final String FEATURE_LOAD_EXTERNAL_DTD = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
 	
 	private static final String FEATURE_EXTERNAL_GENERAL_ENTITIES = "http://xml.org/sax/features/external-general-entities";
 	
 	private static final String FEATURE_EXTERNAL_PARAMETER_ENTITIES = "http://xml.org/sax/features/external-parameter-entities";
 	
-	// HFE Element Names
 	private static final String ELEMENT_OBS = "obs";
 	
 	private static final String ELEMENT_OBSGROUP = "obsgroup";
@@ -90,7 +62,6 @@ public class HfeFormParser {
 	
 	private static final String ELEMENT_REPEAT = "repeat";
 	
-	// HFE Attributes
 	private static final String ATTR_CONCEPT_ID = "conceptId";
 	
 	private static final String ATTR_GROUPING_CONCEPT_ID = "groupingConceptId";
@@ -113,14 +84,12 @@ public class HfeFormParser {
 	
 	private static final String ATTR_WITH = "with";
 	
-	// HTML Widget Elements
 	private static final String WIDGET_SELECT = "select";
 	
 	private static final String WIDGET_INPUT = "input";
 	
 	private static final String WIDGET_TEXTAREA = "textarea";
 	
-	// Input Types
 	private static final String INPUT_TYPE_CHECKBOX = "checkbox";
 	
 	private static final String INPUT_TYPE_RADIO = "radio";
@@ -131,7 +100,6 @@ public class HfeFormParser {
 	
 	private static final String INPUT_ATTR_TYPE = "type";
 	
-	// Concept Datatype Names
 	private static final String DATATYPE_NUMERIC = "Numeric";
 	
 	private static final String DATATYPE_CODED = "Coded";
@@ -144,15 +112,12 @@ public class HfeFormParser {
 	
 	private static final String DATATYPE_BOOLEAN = "Boolean";
 	
-	// Style Keywords
 	private static final String STYLE_DATE = "date";
 	
 	private static final String STYLE_LOCATION = "location";
 	
-	// Concept Mapping Separator
 	private static final String CONCEPT_MAPPING_SEPARATOR = ":";
 	
-	// Field ID Components
 	private static final String FIELD_ID_SEPARATOR = "_";
 	
 	private static final String FIELD_ID_ENCOUNTER_DATE = "encounterDate";
@@ -161,15 +126,12 @@ public class HfeFormParser {
 	
 	private static final String FIELD_ID_ENCOUNTER_PROVIDER = "encounterProvider";
 	
-	// Default Values
 	private static final String DEFAULT_SHEET_NAME = "Main";
 	
 	private static final int MAX_SHEET_NAME_LENGTH = 31;
 	
-	// Regex Patterns
 	private static final String EXCEL_CELL_REFERENCE_PATTERN = "^[A-Z]+[0-9]+$";
 	
-	// Error Messages
 	private static final String ERROR_NULL_XML = "HFE XML cannot be null or empty";
 	
 	private static final String ERROR_NULL_FORM = "Form object cannot be null";
@@ -185,17 +147,7 @@ public class HfeFormParser {
 	private static final String ERROR_CLONE_FAILED = "Failed to clone element for substitution: {}";
 	
 	/**
-	 * Parse HFE XML into FormModel (ETM).
-	 * <p>
-	 * This method performs the following steps:
-	 * <ol>
-	 * <li>Validates input parameters</li>
-	 * <li>Configures secure XML parsing (disables external entities)</li>
-	 * <li>Parses XML into DOM structure</li>
-	 * <li>Extracts form metadata from the Form object</li>
-	 * <li>Walks the DOM tree to extract data fields</li>
-	 * <li>Returns unified FormModel (ETM)</li>
-	 * </ol>
+	 * Parse HFE XML into FormModel.
 	 */
 	public FormModel parse(String hfeXml, org.openmrs.Form form, Locale locale) {
 		if (hfeXml == null || hfeXml.trim().isEmpty()) {
@@ -255,17 +207,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Recursively walk HFE DOM elements and extract data fields.
-	 * <p>
-	 * Recognized elements:
-	 * <ul>
-	 * <li>&lt;obs&gt; - Creates observation field</li>
-	 * <li>&lt;obsgroup&gt; - Flattens group and processes children</li>
-	 * <li>&lt;encounterDate&gt; - Creates encounter date field</li>
-	 * <li>&lt;encounterLocation&gt; - Creates location picker</li>
-	 * <li>&lt;encounterProvider&gt; - Creates provider picker</li>
-	 * <li>&lt;repeat&gt; - Expands template with placeholder substitution</li>
-	 * </ul>
-	 * All other elements are recursively traversed but not processed.
 	 */
 	private void walkHfeElements(Element element, SheetModel sheet, FormModel form, Locale locale, String path) {
 		NodeList children = element.getChildNodes();
@@ -299,7 +240,6 @@ public class HfeFormParser {
 					handleRepeat(child, sheet, form, locale, path);
 					break;
 				default:
-					// Recursively walk unknown elements
 					walkHfeElements(child, sheet, form, locale, path);
 					break;
 			}
@@ -308,30 +248,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Handle &lt;obs/&gt; element - creates an observation field.
-	 * <p>
-	 * Extraction process:
-	 * <ol>
-	 * <li>Resolve concept UUID from conceptId (supports UUID, numeric ID, or mapping)</li>
-	 * <li>Generate field ID (from explicit 'id' attribute or auto-generated)</li>
-	 * <li>Resolve label text (from labelText, labelCode, or concept name)</li>
-	 * <li>Infer datatype using 4-tier priority (widget → style → answers → concept)</li>
-	 * <li>Parse answers (supports multiple or single answer formats)</li>
-	 * <li>Detect required and conditional logic</li>
-	 * </ol>
-	 * <p>
-	 * Supported attributes:
-	 * <ul>
-	 * <li>conceptId - Concept identifier (UUID, ID, or mapping like "CIEL:5089")</li>
-	 * <li>labelText - Explicit label text</li>
-	 * <li>labelCode - Message code for i18n label lookup</li>
-	 * <li>answerConceptIds - Comma-separated answer concept IDs (multi-select)</li>
-	 * <li>answerConceptId - Single answer concept ID (checkbox)</li>
-	 * <li>answerLabels - Comma-separated answer labels (optional)</li>
-	 * <li>answerLabel - Single answer label (optional)</li>
-	 * <li>style - Style hint (e.g., "date", "text", "textarea")</li>
-	 * <li>required - "true" if field is required</li>
-	 * <li>id - Explicit field ID</li>
-	 * </ul>
 	 */
 	private void handleObs(Element obsElement, SheetModel sheet, FormModel form, Locale locale, String path) {
 		String conceptId = getAttributeOrNull(obsElement, ATTR_CONCEPT_ID);
@@ -374,7 +290,6 @@ public class HfeFormParser {
 			field.hideExpr = "HFE conditional logic (advisory - validated on server during import)";
 		}
 		
-		// Mark field as coming from a repeat expansion
 		if (path != null && path.contains("/repeat[")) {
 			field.isRepeat = true;
 		}
@@ -386,12 +301,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Handle &lt;obsgroup/&gt; element - flattens observation group into sheet.
-	 * <p>
-	 * For Excel templates, observation groups are flattened (not hierarchical). This means all child
-	 * &lt;obs&gt; elements within the group are added as individual columns to the sheet.
-	 * <p>
-	 * The group's label is tracked in the path for field ID generation, which helps maintain context
-	 * when generating unique field IDs.
 	 */
 	private void handleObsGroup(Element groupElement, SheetModel sheet, FormModel form, Locale locale, String path) {
 		String groupingConceptId = getAttributeOrNull(groupElement, ATTR_GROUPING_CONCEPT_ID);
@@ -405,11 +314,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Handle &lt;encounterDate/&gt; element - creates encounter date/time field.
-	 * <p>
-	 * Creates a single DATE field for encounter datetime. Prevents duplicate encounterDate fields if
-	 * multiple &lt;encounterDate&gt; tags exist.
-	 * <p>
-	 * The field is always marked as required.
 	 */
 	private void handleEncounterDate(Element element, SheetModel sheet, FormModel form, Locale locale) {
 		if (sheet.fields.stream().anyMatch(f -> FIELD_ID_ENCOUNTER_DATE.equals(f.id))) {
@@ -427,8 +331,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Handle &lt;encounterLocation/&gt; element - creates location picker field.
-	 * <p>
-	 * The uiSelectSourceType triggers location loading during template enrichment.
 	 */
 	private void handleEncounterLocation(Element element, SheetModel sheet, FormModel form, Locale locale) {
 		if (sheet.fields.stream().anyMatch(f -> FIELD_ID_ENCOUNTER_LOCATION.equals(f.id))) {
@@ -447,9 +349,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Handle &lt;encounterProvider/&gt; element - creates provider picker field.
-	 * <p>
-	 * The uiSelectSourceType triggers provider loading during template enrichment. Supports optional
-	 * 'role' attribute for contextual labeling.
 	 */
 	private void handleEncounterProvider(Element element, SheetModel sheet, FormModel form, Locale locale) {
 		if (sheet.fields.stream().anyMatch(f -> FIELD_ID_ENCOUNTER_PROVIDER.equals(f.id))) {
@@ -469,15 +368,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Handle &lt;repeat/&gt; element with template expansion.
-	 * <p>
-	 * Parses the 'with' attribute containing tuples of values, then expands the template for each tuple
-	 * by substituting placeholders ({0}, {1}, {2}, etc.) with actual values.
-	 * <p>
-	 * Example: <pre>
-	 * &lt;repeat with="['label1','CONCEPT:1'], ['label2','CONCEPT:2']"&gt;
-	 *   &lt;obs conceptId="{1}" labelText="{0}"/&gt;
-	 * &lt;/repeat&gt;
-	 * </pre> Expands to two obs fields with concepts CONCEPT:1 and CONCEPT:2.
 	 */
 	private void handleRepeat(Element repeatElement, SheetModel sheet, FormModel form, Locale locale, String path) {
 		String withAttr = getAttributeOrNull(repeatElement, ATTR_WITH);
@@ -502,10 +392,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Parse HFE repeat 'with' attribute into list of tuples.
-	 * <p>
-	 * Uses bracket depth tracking to find tuple boundaries, then parses each tuple.
-	 * <p>
-	 * Example: "['a','b'], ['c','d']" → [["a","b"], ["c","d"]]
 	 */
 	private List<List<String>> parseRepeatWith(String withAttr) {
 		List<List<String>> result = new ArrayList<>();
@@ -546,8 +432,6 @@ public class HfeFormParser {
 	
 	/**
 	 * Parse a single tuple string by splitting on commas while respecting quoted values.
-	 * <p>
-	 * Example: "'value1','value2','value3'" → ["value1", "value2", "value3"]
 	 */
 	private List<String> parseTuple(String tupleStr) {
 		List<String> values = new ArrayList<>();
@@ -687,7 +571,6 @@ public class HfeFormParser {
 			return labelText.trim();
 		}
 		
-		// Try to resolve labelCode using MessageSourceService for i18n
 		if (labelCode != null && !labelCode.trim().isEmpty()) {
 			if (messageSourceService != null) {
 				try {
@@ -702,7 +585,6 @@ public class HfeFormParser {
 				}
 			}
 			
-			// Fallback to using labelCode as literal text
 			log.debug("Using labelCode '{}' as fallback text (MessageSourceService {} available)", labelCode,
 			    messageSourceService != null ? "was" : "not");
 			return labelCode;
@@ -764,7 +646,6 @@ public class HfeFormParser {
 					return fieldDatatype;
 				}
 				
-				// Additional check for datetime types not covered by convertToFieldDatatype
 				ConceptDatatype dt = concept.getDatatype();
 				if (dt != null) {
 					String dtName = dt.getHl7Abbreviation();
@@ -783,7 +664,7 @@ public class HfeFormParser {
 			log.debug("Could not infer datatype from concept {}", conceptUuid);
 		}
 		
-		return FieldDatatype.TEXT; // Default
+		return FieldDatatype.TEXT;
 	}
 	
 	private FieldDatatype inferFromWidgetStructure(Element obsElement) {
@@ -793,9 +674,9 @@ public class HfeFormParser {
 		
 		int checkboxCount = countInputsByType(obsElement, "checkbox");
 		if (checkboxCount > 1) {
-			return FieldDatatype.CODED; // Multi-select
+			return FieldDatatype.CODED;
 		} else if (checkboxCount == 1) {
-			return FieldDatatype.CODED; // Single checkbox (boolean-style coded)
+			return FieldDatatype.CODED;
 		}
 		
 		if (countInputsByType(obsElement, "radio") > 0) {
@@ -860,7 +741,6 @@ public class HfeFormParser {
 			
 			String label = i < labels.length ? labels[i].trim() : null;
 			
-			// If no label provided, fetch from concept using ConceptAnswersService
 			if (label == null || label.isEmpty()) {
 				try {
 					String conceptName = conceptAnswersService.getConceptName(conceptUuid);
@@ -876,12 +756,7 @@ public class HfeFormParser {
 	}
 	
 	/**
-	 * Parse single answer concept (for checkbox-style single answer fields)
-	 * 
-	 * @param field The field model to populate
-	 * @param answerConceptId Single answer concept ID
-	 * @param answerLabel Optional custom label
-	 * @param locale Locale for concept name resolution
+	 * Parse single answer concept.
 	 */
 	private void parseSingleAnswer(FieldModel field, String answerConceptId, String answerLabel, Locale locale) {
 		String conceptUuid = resolveConceptUuid(answerConceptId);

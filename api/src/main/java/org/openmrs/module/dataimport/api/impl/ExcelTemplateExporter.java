@@ -27,6 +27,7 @@ import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openmrs.Concept;
+import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.util.DataImportConstants;
@@ -469,7 +470,7 @@ public class ExcelTemplateExporter {
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formCount");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
 		
-		rowIndex += 2; // Skip a row
+		rowIndex += 2;
 		
 		Row formHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] formHeaders = { "formUuid", "formName", "formVersion", "formType", "encounterTypeUuid", "sheetName" };
@@ -494,7 +495,7 @@ public class ExcelTemplateExporter {
 			formRow.createCell(5).setCellValue(sheetModel.sheetName);
 		}
 		
-		rowIndex += 2; // Skip a row
+		rowIndex += 2;
 		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] columnHeaders = { "sheetName", "colIndex", "fieldId", "label", "conceptUuid", "datatype", "isRepeat",
 		        "isMulti", "answersJson" };
@@ -511,13 +512,13 @@ public class ExcelTemplateExporter {
 				Row row = metaSheet.createRow(rowIndex++);
 				row.createCell(0).setCellValue(DataImportConstants.PATIENT_SHEET_NAME);
 				row.createCell(1).setCellValue(colIndex);
-				row.createCell(2).setCellValue(""); // fieldId
+				row.createCell(2).setCellValue("");
 				row.createCell(3).setCellValue(patientHeaders[colIndex]);
-				row.createCell(4).setCellValue(""); // conceptUuid
-				row.createCell(5).setCellValue("TEXT"); // datatype
-				row.createCell(6).setCellValue(false); // isRepeat
-				row.createCell(7).setCellValue(false); // isMulti
-				row.createCell(8).setCellValue("{}"); // answersJson
+				row.createCell(4).setCellValue("");
+				row.createCell(5).setCellValue("TEXT");
+				row.createCell(6).setCellValue(false);
+				row.createCell(7).setCellValue(false);
+				row.createCell(8).setCellValue("{}");
 			}
 		}
 		
@@ -527,13 +528,13 @@ public class ExcelTemplateExporter {
 			Row row = metaSheet.createRow(rowIndex++);
 			row.createCell(0).setCellValue(sheetModel.sheetName);
 			row.createCell(1).setCellValue(colIndex++);
-			row.createCell(2).setCellValue(""); // fieldId
+			row.createCell(2).setCellValue("");
 			row.createCell(3).setCellValue(DataImportConstants.PATIENT_REF_HEADER);
-			row.createCell(4).setCellValue(""); // conceptUuid
-			row.createCell(5).setCellValue("TEXT"); // datatype
-			row.createCell(6).setCellValue(false); // isRepeat
-			row.createCell(7).setCellValue(false); // isMulti
-			row.createCell(8).setCellValue("{}"); // answersJson
+			row.createCell(4).setCellValue("");
+			row.createCell(5).setCellValue("TEXT");
+			row.createCell(6).setCellValue(false);
+			row.createCell(7).setCellValue(false);
+			row.createCell(8).setCellValue("{}");
 			
 			for (FieldModel field : sheetModel.fields) {
 				row = metaSheet.createRow(rowIndex++);
@@ -543,10 +544,9 @@ public class ExcelTemplateExporter {
 				row.createCell(3).setCellValue(field.label != null ? field.label : "");
 				row.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
 				row.createCell(5).setCellValue(field.datatype != null ? field.datatype.name() : "TEXT");
-				row.createCell(6).setCellValue(field.isRepeat); // isRepeat - tracks fields from repeat expansions
-				row.createCell(7).setCellValue(field.isMulti); // isMulti
+				row.createCell(6).setCellValue(field.isRepeat);
+				row.createCell(7).setCellValue(field.isMulti);
 				
-				// Build answers JSON for coded fields
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
 					Map<String, String> answersMap = new HashMap<>();
 					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
@@ -581,9 +581,18 @@ public class ExcelTemplateExporter {
 		int rowIndex = 1;
 		ConceptService conceptService = null;
 		try {
-			conceptService = Context.getConceptService();
+			if (Context.isSessionOpen()) {
+				try {
+					conceptService = Context.getConceptService();
+				}
+				catch (APIException e) {
+					log.debug("ConceptService not available (Context not initialized): {}", e.getMessage());
+				}
+			}
 		}
-		catch (Exception ignore) {}
+		catch (Exception e) {
+			log.debug("Context not available: {}", e.getMessage());
+		}
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
@@ -596,11 +605,14 @@ public class ExcelTemplateExporter {
 						String qDatatype = "";
 						String qClass = "";
 						if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-							Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
-							if (qc != null) {
-								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
+							try {
+								Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
+								if (qc != null) {
+									qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+									qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
+								}
 							}
+							catch (APIException e) {}
 						}
 						r.createCell(4).setCellValue(qDatatype);
 						r.createCell(5).setCellValue(qClass);
@@ -610,11 +622,14 @@ public class ExcelTemplateExporter {
 						String aDatatype = "";
 						String aClass = "";
 						if (conceptService != null && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
-							Concept ac = conceptService.getConceptByUuid(answer.conceptUuid);
-							if (ac != null) {
-								aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
-								aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
+							try {
+								Concept ac = conceptService.getConceptByUuid(answer.conceptUuid);
+								if (ac != null) {
+									aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
+									aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
+								}
 							}
+							catch (APIException e) {}
 						}
 						r.createCell(9).setCellValue(aDatatype);
 						r.createCell(10).setCellValue(aClass);
@@ -628,11 +643,14 @@ public class ExcelTemplateExporter {
 					String qDatatype = "";
 					String qClass = "";
 					if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
-						if (qc != null) {
-							qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-							qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
+						try {
+							Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
+							if (qc != null) {
+								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
+							}
 						}
+						catch (APIException e) {}
 					}
 					r.createCell(4).setCellValue(qDatatype);
 					r.createCell(5).setCellValue(qClass);

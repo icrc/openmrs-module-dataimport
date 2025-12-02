@@ -211,10 +211,6 @@ public class HfeFormParserTest {
 		assertFalse(result3.isEmpty());
 	}
 	
-	/**
-	 * Create a mock Form object for testing. In real tests, this would use OpenMRS Context and actual
-	 * Form objects.
-	 */
 	private org.openmrs.Form createMockForm() {
 		org.openmrs.Form form = new org.openmrs.Form();
 		form.setUuid("test-form-uuid");

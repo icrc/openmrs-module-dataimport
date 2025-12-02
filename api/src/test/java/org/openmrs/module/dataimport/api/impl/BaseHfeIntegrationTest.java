@@ -44,10 +44,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Base class for HFE integration tests. Provides common setup, utilities, and helper methods for
- * testing HFE form workflows.
- */
 public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveTest {
 	
 	protected ConceptService conceptService;
@@ -58,9 +54,6 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 	
 	protected ObjectMapper objectMapper;
 	
-	/**
-	 * Setup method run before each test. Initializes OpenMRS services and test infrastructure.
-	 */
 	@BeforeEach
 	public void setUpBase() {
 		conceptService = Context.getConceptService();
@@ -68,17 +61,11 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 		encounterService = Context.getEncounterService();
 		objectMapper = new ObjectMapper();
 		
-		// Load test concepts
 		loadTestConcepts();
 	}
 	
-	/**
-	 * Loads test concepts from JSON files in test resources. Creates mock concepts for testing without
-	 * requiring full concept dictionary.
-	 */
 	protected void loadTestConcepts() {
 		try {
-			// Try to load CIEL concepts
 			String cielPath = "api/src/test/resources/test-data/test-concepts/ciel-concepts.json";
 			if (Files.exists(Paths.get(cielPath))) {
 				byte[] jsonBytes = Files.readAllBytes(Paths.get(cielPath));
@@ -92,19 +79,10 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 			}
 		}
 		catch (IOException e) {
-			// Log warning but don't fail - tests may provide their own concepts
 			System.err.println("Warning: Could not load test concepts: " + e.getMessage());
 		}
 	}
 	
-	/**
-	 * Creates a test concept in the OpenMRS database.
-	 *
-	 * @param uuid the concept UUID
-	 * @param name the concept name
-	 * @param datatypeCode the HL7 datatype code (NM, DT, CWE, etc.)
-	 * @return the created Concept
-	 */
 	protected Concept createTestConcept(String uuid, String name, String datatypeCode) {
 		Concept concept = new Concept();
 		concept.setUuid(uuid);
@@ -113,7 +91,6 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 		conceptName.setLocalePreferred(true);
 		concept.addName(conceptName);
 		
-		// Set datatype
 		ConceptDatatype datatype = getOrCreateDatatype(datatypeCode);
 		concept.setDatatype(datatype);
 		
@@ -122,12 +99,6 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 		return conceptService.saveConcept(concept);
 	}
 	
-	/**
-	 * Gets or creates a concept datatype.
-	 *
-	 * @param code the HL7 datatype code
-	 * @return the ConceptDatatype
-	 */
 	protected ConceptDatatype getOrCreateDatatype(String code) {
 		ConceptDatatype datatype = conceptService.getConceptDatatypeByName(code);
 		if (datatype == null) {
@@ -152,21 +123,12 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 		return datatype != null ? datatype : conceptService.getConceptDatatypeByName("N/A");
 	}
 	
-	/**
-	 * Creates a mock OpenMRS Form for testing.
-	 *
-	 * @param uuid the form UUID
-	 * @param name the form name
-	 * @param hfeXml the HFE XML content (optional, can be null)
-	 * @return the created Form
-	 */
 	protected Form createMockForm(String uuid, String name, String hfeXml) {
 		Form form = new Form();
 		form.setUuid(uuid);
 		form.setName(name);
 		form.setVersion("1.0");
 		
-		// Create encounter type (don't save - just for parsing)
 		EncounterType encounterType = new EncounterType();
 		encounterType.setUuid(uuid + "-encounter-type");
 		encounterType.setName(name + " Encounter");
@@ -177,13 +139,6 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 		return form;
 	}
 	
-	/**
-	 * Loads test resource file content as a string.
-	 *
-	 * @param resourcePath the path relative to test resources root
-	 * @return the file content
-	 * @throws IOException if file cannot be read
-	 */
 	protected String loadTestResource(String resourcePath) throws IOException {
 		try (InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
 			if (is == null) {
@@ -202,10 +157,6 @@ public abstract class BaseHfeIntegrationTest extends BaseModuleContextSensitiveT
 	
 	/**
 	 * Converts Excel byte array to Workbook.
-	 *
-	 * @param excelBytes the Excel file bytes
-	 * @return the Workbook
-	 * @throws IOException if conversion fails
 	 */
 	protected Workbook bytesToWorkbook(byte[] excelBytes) throws IOException {
 		return WorkbookFactory.create(new ByteArrayInputStream(excelBytes));

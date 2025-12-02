@@ -17,10 +17,6 @@ import org.openmrs.module.dataimport.model.FieldDatatype;
 
 import java.util.List;
 
-/**
- * Centralized service for all concept-related operations. Acts as a thin wrapper around
- * ConceptManager to ensure all concept operations go through a single service interface.
- */
 public interface ConceptAnswersService extends OpenmrsService {
 	
 	/**
