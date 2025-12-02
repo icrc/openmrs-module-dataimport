@@ -174,9 +174,7 @@ public class EncounterServiceImpl extends BaseOpenmrsService implements Encounte
 					}
 				}
 			}
-			catch (Exception ignored) {
-				// If no provider can be resolved, proceed without setting one
-			}
+			catch (Exception ignored) {}
 		}
 		return createEncounter(patient.getUuid(), encounterTypeUuid, encounterDate, locationUuid, blueprint.getFormUuid(),
 		    providerUuid, encounterRoleUuid, visit);

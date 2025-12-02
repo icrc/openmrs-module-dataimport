@@ -20,10 +20,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Implementation of ConceptAnswersService that acts as a thin wrapper around ConceptManager. All
- * concept operations must go through this service to ensure centralized caching and management.
- */
 @Component
 public class CoreConceptAnswersServiceImpl extends BaseOpenmrsService implements ConceptAnswersService {
 	

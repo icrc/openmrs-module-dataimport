@@ -26,10 +26,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Centralized utility for concept resolution, caching, and management. Provides a single point of
- * access for all concept-related operations across the module.
- */
 public class ConceptManager {
 	
 	private static final Logger log = LoggerFactory.getLogger(ConceptManager.class);

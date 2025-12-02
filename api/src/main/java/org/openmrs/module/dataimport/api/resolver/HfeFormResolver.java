@@ -102,11 +102,7 @@ public class HfeFormResolver implements FormResolver {
 	}
 	
 	/**
-	 * Fetch HFE XML from form resources
-	 *
-	 * @param formUuid The form UUID
-	 * @return The HFE XML string
-	 * @throws APIException if form not found or no HFE resource exists
+	 * Fetch HFE XML from form resources.
 	 */
 	private String fetchHfeXml(String formUuid) {
 		if (formUuid == null || formUuid.trim().isEmpty()) {
@@ -141,9 +137,6 @@ public class HfeFormResolver implements FormResolver {
 	 * Extract HFE XML from form resource HFE XML can be stored either as: 1. A CLOB reference
 	 * (valueReference pointing to ClobDatatypeStorage) 2. Directly as a string value (older
 	 * implementations)
-	 *
-	 * @param fr The form resource
-	 * @return The HFE XML string, or null if not found
 	 */
 	private String extractHfeXmlFromResource(FormResource fr) {
 		if (fr == null) {

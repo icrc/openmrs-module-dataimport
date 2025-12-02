@@ -108,8 +108,6 @@ public class O3FormParser {
 			}
 			field.label = label != null ? label : field.id;
 			
-			// Resolve and validate concept through ConceptAnswersService
-			// O3 forms typically use UUIDs, but we support mappings (e.g., "CIEL:5089") too
 			String conceptIdOrUuid = getTextOrNull(questionOptions, "concept");
 			if (conceptIdOrUuid != null && !conceptIdOrUuid.trim().isEmpty()) {
 				String resolvedUuid = conceptAnswersService.resolveConceptUuid(conceptIdOrUuid);
@@ -117,7 +115,7 @@ public class O3FormParser {
 					field.conceptUuid = resolvedUuid;
 				} else {
 					log.warn("Could not resolve concept '{}' for question '{}' - using as-is", conceptIdOrUuid, field.id);
-					field.conceptUuid = conceptIdOrUuid; // Store original value for debugging
+					field.conceptUuid = conceptIdOrUuid;
 				}
 			}
 			

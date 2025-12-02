@@ -39,7 +39,6 @@ class O3FormParserTest {
 	@BeforeEach
 	public void setUp() {
 		conceptAnswersService = mock(ConceptAnswersService.class);
-		// Mock resolveConceptUuid to return the input value (identity function) for unit tests
 		when(conceptAnswersService.resolveConceptUuid(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
 		parser = new O3FormParser(conceptAnswersService);
 	}
@@ -187,7 +186,7 @@ class O3FormParserTest {
 		assertEquals(FieldDatatype.DATETIME, datetimeField.datatype);
 		
 		FieldModel booleanField = findField(sheet, "is_active");
-		assertEquals(FieldDatatype.CODED, booleanField.datatype); // checkbox without answers is CODED
+		assertEquals(FieldDatatype.CODED, booleanField.datatype);
 		
 		FieldModel codedField = findField(sheet, "status");
 		assertEquals(FieldDatatype.CODED, codedField.datatype);
@@ -331,10 +330,8 @@ class O3FormParserTest {
 		
 		FormModel result = parser.parse(json, Locale.ENGLISH);
 		
-		// Should have 1 sheet: main form (repeat groups are treated as regular groups)
 		assertEquals(1, result.sheets.size());
 		
-		// The temperature field should be on the main sheet
 		SheetModel mainSheet = result.sheets.get(0);
 		assertEquals(1, mainSheet.fields.size());
 		assertEquals("temperature", mainSheet.fields.get(0).id);
@@ -358,7 +355,6 @@ class O3FormParserTest {
 		assertNotNull(result.rules);
 		assertTrue(result.rules.size() > 0);
 		
-		// Should have relevance and required-if rules
 		boolean hasRelevanceRule = result.rules.stream().anyMatch(r -> "relevance".equals(r.type));
 		boolean hasRequiredRule = result.rules.stream().anyMatch(r -> "required-if".equals(r.type));
 		
@@ -382,10 +378,10 @@ class O3FormParserTest {
 		
 		assertNotNull(result);
 		assertNull(result.formUuid);
-		assertNull(result.name); // No fallback provided in this test case
+		assertNull(result.name);
 		assertNull(result.version);
 		assertNull(result.encounterTypeUuid);
-		assertEquals("Form", result.sheets.get(0).sheetName); // Sheet gets the fallback name
+		assertEquals("Form", result.sheets.get(0).sheetName);
 	}
 	
 	@Test
@@ -412,7 +408,7 @@ class O3FormParserTest {
 		SheetModel sheet = result.sheets.get(0);
 		assertEquals(FieldDatatype.TEXT, sheet.fields.get(0).datatype);
 		assertEquals(FieldDatatype.DATE, sheet.fields.get(1).datatype);
-		assertEquals(FieldDatatype.CODED, sheet.fields.get(2).datatype); // checkbox without answers is CODED
+		assertEquals(FieldDatatype.CODED, sheet.fields.get(2).datatype);
 	}
 	
 	@Test
@@ -444,11 +440,11 @@ class O3FormParserTest {
 		FieldModel singleCheckbox = findField(sheet, "singleCheckbox");
 		assertEquals(FieldDatatype.CODED, singleCheckbox.datatype);
 		assertEquals(2, singleCheckbox.answers.size());
-		assertTrue(singleCheckbox.isMulti == false); // checkbox is NOT multi
+		assertTrue(singleCheckbox.isMulti == false);
 		
 		FieldModel multiCheckbox = findField(sheet, "multiCheckbox");
 		assertEquals(FieldDatatype.CODED, multiCheckbox.datatype);
 		assertEquals(2, multiCheckbox.answers.size());
-		assertTrue(multiCheckbox.isMulti == true); // multiCheckbox IS multi
+		assertTrue(multiCheckbox.isMulti == true);
 	}
 }

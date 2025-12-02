@@ -14,8 +14,6 @@ import org.openmrs.Obs;
 import org.openmrs.api.OpenmrsService;
 import org.openmrs.module.dataimport.model.ObsBlueprint;
 
-import java.util.Date;
-
 public interface ObservationService extends OpenmrsService {
 	
 	Obs createObsFromBlueprint(Encounter enc, ObsBlueprint blueprint);

@@ -35,9 +35,6 @@ public class FormResolverRegistry {
 	
 	/**
 	 * Find the first resolver that can handle this form.
-	 *
-	 * @param formUuid The form UUID
-	 * @return The compatible FormResolver, or null if none found
 	 */
 	public FormResolver findResolver(String formUuid) {
 		if (formUuid == null || formUuid.trim().isEmpty()) {
