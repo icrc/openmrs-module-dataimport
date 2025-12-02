@@ -574,7 +574,7 @@ public class ExcelTemplateExporter {
 				row.createCell(3).setCellValue(field.label != null ? field.label : "");
 				row.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
 				row.createCell(5).setCellValue(field.datatype != null ? field.datatype.name() : "TEXT");
-				row.createCell(6).setCellValue(false); // isRepeat - TODO: implement repeat groups
+				row.createCell(6).setCellValue(field.isRepeat); // isRepeat - tracks fields from repeat expansions
 				row.createCell(7).setCellValue(field.isMulti); // isMulti
 				
 				// Build answers JSON for coded fields

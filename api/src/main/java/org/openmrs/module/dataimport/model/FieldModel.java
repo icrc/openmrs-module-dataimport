@@ -38,6 +38,8 @@ public class FieldModel {
 	
 	public boolean isMulti = false;
 	
+	public boolean isRepeat = false;
+	
 	public String uiSelectSourceType;
 	
 	public String uiSelectDatasourceName;
@@ -51,6 +53,8 @@ public class FieldModel {
 		f.conceptUuid = conceptUuid;
 		f.datatype = datatype;
 		f.answers.addAll(answers);
+		f.isMulti = isMulti;
+		f.isRepeat = isRepeat;
 		f.uiSelectSourceType = uiSelectSourceType;
 		f.uiSelectDatasourceName = uiSelectDatasourceName;
 		f.uiSelectDatasourceConfig.putAll(uiSelectDatasourceConfig);

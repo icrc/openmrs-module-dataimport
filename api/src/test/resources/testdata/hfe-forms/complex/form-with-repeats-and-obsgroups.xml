@@ -1,0 +1,31 @@
+<htmlform formUuid="test-complex-form-uuid"
+          formName="Complex Test Form"
+          formEncounterType="61ae96f4-6afe-4351-b6f8-cd4fc383cce1"
+          formVersion="1.0">
+
+    <!-- Encounter metadata -->
+    <encounterDate id="encounterDate" default="now"/>
+    <encounterLocation default="SessionAttribute:emrContext.sessionLocationId"/>
+    <encounterProvider default="currentUser" required="true"/>
+
+    <!-- Basic obs field with labelCode for i18n testing -->
+    <obs conceptId="CIEL:5089" labelCode="vitals.weight" id="weight"/>
+
+    <!-- Obsgroup -->
+    <obsgroup groupingConceptId="CIEL:1234">
+        <obs conceptId="CIEL:5085" labelText="Systolic BP" id="bp_systolic"/>
+        <obs conceptId="CIEL:5086" labelText="Diastolic BP" id="bp_diastolic"/>
+    </obsgroup>
+
+    <!-- Repeat group with placeholder substitution -->
+    <repeat with="['Left Hip','CIEL:1001'], ['Right Hip','CIEL:1002'], ['Left Knee','CIEL:1003']">
+        <obs conceptId="{1}" labelText="{0} Pain Level" id="pain_{0}"/>
+    </repeat>
+
+    <!-- Conditional obs -->
+    <obs conceptId="CIEL:1065" labelText="Has Complications" id="has_complications"
+         answerConceptIds="CIEL:1065,CIEL:1066" answerLabels="Yes,No"/>
+    <obs conceptId="CIEL:160221" labelText="Complication Details" id="complication_details"
+         hideId="has_complications" hideValue="CIEL:1066"/>
+
+</htmlform>

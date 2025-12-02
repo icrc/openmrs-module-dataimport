@@ -1,0 +1,15 @@
+<htmlform formUuid="test-i18n-form-uuid"
+          formName="Internationalization Test Form"
+          formEncounterType="61ae96f4-6afe-4351-b6f8-cd4fc383cce1"
+          formVersion="1.0">
+
+    <encounterDate id="encounterDate" default="now"/>
+    <encounterProvider default="currentUser" required="true"/>
+
+    <!-- Multiple obs with labelCode attributes to test i18n -->
+    <obs conceptId="CIEL:5089" labelCode="vitals.weight.label" id="weight"/>
+    <obs conceptId="CIEL:5090" labelCode="vitals.height.label" id="height"/>
+    <obs conceptId="CIEL:5088" labelCode="vitals.temperature.label" id="temperature"/>
+    <obs conceptId="CIEL:5087" labelCode="vitals.pulse.label" id="pulse"/>
+
+</htmlform>
