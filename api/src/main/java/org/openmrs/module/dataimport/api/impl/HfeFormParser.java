@@ -54,9 +54,20 @@ public class HfeFormParser {
 	
 	private final ConceptAnswersService conceptAnswersService;
 	
+	private org.openmrs.messagesource.MessageSourceService messageSourceService;
+	
 	@Autowired
 	public HfeFormParser(ConceptAnswersService conceptAnswersService) {
 		this.conceptAnswersService = conceptAnswersService;
+	}
+	
+	/**
+	 * Optional: Inject MessageSourceService for i18n label resolution. If not set, labelCode attributes
+	 * will be used as fallback text.
+	 */
+	@Autowired(required = false)
+	public void setMessageSourceService(org.openmrs.messagesource.MessageSourceService messageSourceService) {
+		this.messageSourceService = messageSourceService;
 	}
 	
 	// XML Security Features
@@ -363,8 +374,14 @@ public class HfeFormParser {
 			field.hideExpr = "HFE conditional logic (advisory - validated on server during import)";
 		}
 		
+		// Mark field as coming from a repeat expansion
+		if (path != null && path.contains("/repeat[")) {
+			field.isRepeat = true;
+		}
+		
 		sheet.fields.add(field);
-		log.debug("Added obs field '{}' (concept={}, datatype={})", field.label, conceptUuid, field.datatype);
+		log.debug("Added obs field '{}' (concept={}, datatype={}, isRepeat={})", field.label, conceptUuid, field.datatype,
+		    field.isRepeat);
 	}
 	
 	/**
@@ -670,9 +687,24 @@ public class HfeFormParser {
 			return labelText.trim();
 		}
 		
-		// TODO: Implement message source lookup when available
+		// Try to resolve labelCode using MessageSourceService for i18n
 		if (labelCode != null && !labelCode.trim().isEmpty()) {
-			log.debug("labelCode '{}' found but message source lookup not implemented - using as fallback", labelCode);
+			if (messageSourceService != null) {
+				try {
+					String message = messageSourceService.getMessage(labelCode, null, locale);
+					if (message != null && !message.trim().isEmpty()) {
+						log.debug("Resolved labelCode '{}' to '{}'", labelCode, message);
+						return message;
+					}
+				}
+				catch (Exception e) {
+					log.debug("Failed to resolve labelCode '{}' using MessageSourceService: {}", labelCode, e.getMessage());
+				}
+			}
+			
+			// Fallback to using labelCode as literal text
+			log.debug("Using labelCode '{}' as fallback text (MessageSourceService {} available)", labelCode,
+			    messageSourceService != null ? "was" : "not");
 			return labelCode;
 		}
 		
