@@ -1,4 +1,4 @@
-name: Verify on PRs
+name: Build with Maven
 
 on:
   push:
