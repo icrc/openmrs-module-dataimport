@@ -45,8 +45,12 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ExcelTemplateExporter {
 	
@@ -557,20 +561,10 @@ public class ExcelTemplateExporter {
 			cell.setCellStyle(headerStyle);
 		}
 		int rowIndex = 1;
-		ConceptService conceptService = null;
-		try {
-			if (Context.isSessionOpen()) {
-				try {
-					conceptService = Context.getConceptService();
-				}
-				catch (APIException e) {
-					log.debug("ConceptService not available (Context not initialized): {}", e.getMessage());
-				}
-			}
-		}
-		catch (Exception e) {
-			log.debug("Context not available: {}", e.getMessage());
-		}
+
+		// Batch load all concepts upfront for better performance
+		Map<String, Concept> conceptCache = loadConceptsForForm(form);
+
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
@@ -582,17 +576,12 @@ public class ExcelTemplateExporter {
 						r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
 						String qDatatype = "";
 						String qClass = "";
-						if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-							try {
-								Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
-								if (qc != null) {
-									qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-									qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-								}
+						if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+							Concept qc = conceptCache.get(field.conceptUuid);
+							if (qc != null) {
+								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
 							}
-							catch (APIException e) {
-						log.debug("Could not load concept details: {}", e.getMessage());
-					}
 						}
 						r.createCell(4).setCellValue(qDatatype);
 						r.createCell(5).setCellValue(qClass);
@@ -601,17 +590,12 @@ public class ExcelTemplateExporter {
 						r.createCell(8).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
 						String aDatatype = "";
 						String aClass = "";
-						if (conceptService != null && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
-							try {
-								Concept ac = conceptService.getConceptByUuid(answer.conceptUuid);
-								if (ac != null) {
-									aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
-									aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
-								}
+						if (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
+							Concept ac = conceptCache.get(answer.conceptUuid);
+							if (ac != null) {
+								aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
+								aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
 							}
-							catch (APIException e) {
-						log.debug("Could not load concept details: {}", e.getMessage());
-					}
 						}
 						r.createCell(9).setCellValue(aDatatype);
 						r.createCell(10).setCellValue(aClass);
@@ -624,17 +608,12 @@ public class ExcelTemplateExporter {
 					r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
 					String qDatatype = "";
 					String qClass = "";
-					if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						try {
-							Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
-							if (qc != null) {
-								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-							}
+					if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+						Concept qc = conceptCache.get(field.conceptUuid);
+						if (qc != null) {
+							qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+							qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
 						}
-						catch (APIException e) {
-						log.debug("Could not load concept details: {}", e.getMessage());
-					}
 					}
 					r.createCell(4).setCellValue(qDatatype);
 					r.createCell(5).setCellValue(qClass);
@@ -669,5 +648,64 @@ public class ExcelTemplateExporter {
 		String registered = longStrings.register(value);
 		cell.setCellValue(registered != null ? registered : "");
 	}
-	
+
+	private Map<String, Concept> loadConceptsForForm(FormModel form) {
+		Map<String, Concept> conceptCache = new HashMap<>();
+
+		// Check if ConceptService is available
+		ConceptService conceptService = getConceptServiceIfAvailable();
+		if (conceptService == null) {
+			return conceptCache;
+		}
+
+		// Collect all unique concept UUIDs
+		Set<String> conceptUuids = new HashSet<>();
+		for (SheetModel sheet : form.sheets) {
+			for (FieldModel field : sheet.fields) {
+				if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+					conceptUuids.add(field.conceptUuid.trim());
+				}
+				if (field.datatype == FieldDatatype.CODED) {
+					for (AnswerModel answer : field.answers) {
+						if (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
+							conceptUuids.add(answer.conceptUuid.trim());
+						}
+					}
+				}
+			}
+		}
+
+		// Load all concepts (with caching)
+		for (String uuid : conceptUuids) {
+			try {
+				Concept concept = conceptService.getConceptByUuid(uuid);
+				if (concept != null) {
+					conceptCache.put(uuid, concept);
+				}
+			}
+			catch (APIException e) {
+				log.debug("Failed to load concept {}: {}", uuid, e.getMessage());
+			}
+		}
+
+		return conceptCache;
+	}
+
+	private ConceptService getConceptServiceIfAvailable() {
+		try {
+			if (Context.isSessionOpen()) {
+				try {
+					return Context.getConceptService();
+				}
+				catch (APIException e) {
+					log.debug("ConceptService not available (Context not initialized): {}", e.getMessage());
+				}
+			}
+		}
+		catch (Exception e) {
+			log.debug("Context not available: {}", e.getMessage());
+		}
+		return null;
+	}
+
 }
