@@ -29,20 +29,25 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 	private ConceptService getConceptService() {
 		return Context.getConceptService();
 	}
-	
+
 	private org.openmrs.api.ObsService getObsService() {
 		return Context.getObsService();
 	}
-	
+
+	private Concept validateAndGetConcept(String conceptUuid) {
+		Concept concept = getConceptService().getConceptByUuid(conceptUuid);
+		if (concept == null) {
+			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
+		}
+		return concept;
+	}
+
 	public Obs addTextObs(Encounter enc, String conceptUuid, String value) {
 		if (value == null || value.trim().isEmpty()) {
 			return null;
 		}
-		
-		Concept c = getConceptService().getConceptByUuid(conceptUuid);
-		if (c == null) {
-			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
-		}
+
+		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && (c.getDatatype().isCoded() || c.getDatatype().isNumeric() || c.getDatatype().isDate()
 		        || c.getDatatype().isDateTime() || c.getDatatype().isBoolean())) {
 			throw new IllegalArgumentException("Concept '" + c.getName() + "' (" + c.getUuid()
@@ -58,11 +63,8 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (value == null) {
 			return null;
 		}
-		
-		Concept c = getConceptService().getConceptByUuid(conceptUuid);
-		if (c == null) {
-			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
-		}
+
+		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && !c.getDatatype().isNumeric()) {
 			throw new IllegalArgumentException(
 			        "Concept '" + c.getName() + "' (" + c.getUuid() + ") is not NUMERIC; update template/datatype");
@@ -77,20 +79,14 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (answerConceptUuid == null || answerConceptUuid.trim().isEmpty()) {
 			return null;
 		}
-		
-		Concept q = getConceptService().getConceptByUuid(questionConceptUuid);
-		if (q == null) {
-			throw new IllegalArgumentException("Question concept not found: " + questionConceptUuid);
-		}
+
+		Concept q = validateAndGetConcept(questionConceptUuid);
 		if (q.getDatatype() != null && !q.getDatatype().isCoded()) {
 			throw new IllegalArgumentException(
 			        "Concept '" + q.getName() + "' (" + q.getUuid() + ") is not CODED; update template/datatype");
 		}
-		
-		Concept a = getConceptService().getConceptByUuid(answerConceptUuid);
-		if (a == null) {
-			throw new IllegalArgumentException("Answer concept not found: " + answerConceptUuid);
-		}
+
+		Concept a = validateAndGetConcept(answerConceptUuid);
 		
 		Obs o = base(enc, q);
 		o.setValueCoded(a);
@@ -101,11 +97,8 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (date == null) {
 			return null;
 		}
-		
-		Concept c = getConceptService().getConceptByUuid(conceptUuid);
-		if (c == null) {
-			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
-		}
+
+		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && !(c.getDatatype().isDate() || c.getDatatype().isDateTime())) {
 			throw new IllegalArgumentException(
 			        "Concept '" + c.getName() + "' (" + c.getUuid() + ") is not DATE/DATETIME; update template/datatype");
@@ -120,11 +113,8 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (dateTime == null) {
 			return null;
 		}
-		
-		Concept c = getConceptService().getConceptByUuid(conceptUuid);
-		if (c == null) {
-			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
-		}
+
+		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && !(c.getDatatype().isDateTime() || c.getDatatype().isDate())) {
 			throw new IllegalArgumentException(
 			        "Concept '" + c.getName() + "' (" + c.getUuid() + ") is not DATETIME/DATE; update template/datatype");
@@ -140,12 +130,9 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (value == null) {
 			return null;
 		}
-		
+
 		String answerConceptUuid = value ? trueConceptUuid : falseConceptUuid;
-		Concept q = getConceptService().getConceptByUuid(conceptUuid);
-		if (q == null) {
-			throw new IllegalArgumentException("Concept not found: " + conceptUuid);
-		}
+		Concept q = validateAndGetConcept(conceptUuid);
 		if (q.getDatatype() != null && !(q.getDatatype().isCoded() || q.getDatatype().isBoolean())) {
 			throw new IllegalArgumentException(
 			        "Concept '" + q.getName() + "' (" + q.getUuid() + ") is not BOOLEAN/CODED; update template/datatype");
