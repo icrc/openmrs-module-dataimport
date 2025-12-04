@@ -31,6 +31,7 @@ import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.util.DataImportConstants;
+import org.openmrs.module.dataimport.api.util.ExcelNameUtils;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
@@ -265,45 +266,24 @@ public class ExcelTemplateExporter {
 	}
 	
 	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
-		if (baseName == null || baseName.trim().isEmpty()) {
-			baseName = "Sheet";
-		}
-		
-		final int MAX_SHEET_NAME_LENGTH = 31;
-		String sanitized = baseName.replaceAll("[\\\\/*?\\[\\]:]", "_");
-		
-		if (sanitized.length() > MAX_SHEET_NAME_LENGTH) {
-			sanitized = sanitized.substring(0, MAX_SHEET_NAME_LENGTH);
-		}
-		
-		String candidate = sanitized;
+		String candidate = ExcelNameUtils.sanitizeSheetName(baseName);
 		int counter = 1;
-		
+
 		while (workbook.getSheet(candidate) != null) {
-			String suffix = "_" + counter;
-			int maxBaseLength = MAX_SHEET_NAME_LENGTH - suffix.length();
-			
-			String base = sanitized;
-			if (base.length() > maxBaseLength) {
-				base = sanitized.substring(0, maxBaseLength);
-			}
-			
-			candidate = base + suffix;
+			usedNames.put(baseName, counter);
+			candidate = ExcelNameUtils.getUniqueSheetName(baseName, usedNames);
 			counter++;
-			
+
 			if (counter > 1000) {
-				candidate = base + "_" + System.currentTimeMillis();
-				if (candidate.length() > MAX_SHEET_NAME_LENGTH) {
-					candidate = candidate.substring(0, MAX_SHEET_NAME_LENGTH);
-				}
+				candidate = "Sheet_" + System.currentTimeMillis();
 				break;
 			}
 		}
-		
-		if (!candidate.equals(sanitized)) {
+
+		if (counter > 1) {
 			log.debug("Sheet name '{}' already exists, using unique name '{}'", baseName, candidate);
 		}
-		
+
 		return candidate;
 	}
 	
@@ -318,7 +298,7 @@ public class ExcelTemplateExporter {
 		// Excel doesn't allow named ranges to have names that are valid cell references (e.g., "q1", "A1")
 		// A valid cell reference is: one or more letters followed by one or more digits (nothing else)
 		// Use regex to check if it matches this exact pattern
-		if (isExcelCellReference(safeName)) {
+		if (ExcelNameUtils.isExcelCellReference(safeName)) {
 			safeName = "field_" + safeName;
 		}
 		
@@ -327,12 +307,6 @@ public class ExcelTemplateExporter {
 		return safeName;
 	}
 	
-	private boolean isExcelCellReference(String str) {
-		if (str == null || str.isEmpty()) {
-			return false;
-		}
-		return str.matches("^[A-Za-z]+\\d+$");
-	}
 	
 	private String makeUniqueExcelName(String baseName) {
 		String safeName = makeSafeExcelName(baseName);

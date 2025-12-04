@@ -177,39 +177,6 @@ public class HfeFormParserTest {
 		assertFalse(result3.equals("A1")); // Should be transformed to avoid collision
 	}
 	
-	@Test
-	public void isExcelCellReference_shouldDetectExcelCellReferencesCorrectly() throws Exception {
-		Method method = HfeFormParser.class.getDeclaredMethod("isExcelCellReference", String.class);
-		method.setAccessible(true);
-		
-		assertTrue((Boolean) method.invoke(parser, "A1"));
-		assertTrue((Boolean) method.invoke(parser, "Z99"));
-		assertTrue((Boolean) method.invoke(parser, "AA123"));
-		
-		assertFalse((Boolean) method.invoke(parser, "A"));
-		assertFalse((Boolean) method.invoke(parser, "1A"));
-		assertFalse((Boolean) method.invoke(parser, "field_name"));
-		assertFalse((Boolean) method.invoke(parser, ""));
-	}
-	
-	@Test
-	public void sanitizeSheetName_shouldSanitizeSheetNamesCorrectly() throws Exception {
-		Method method = HfeFormParser.class.getDeclaredMethod("sanitizeSheetName", String.class);
-		method.setAccessible(true);
-		
-		String longName = "This is a very long sheet name that exceeds the maximum allowed length";
-		String result1 = (String) method.invoke(parser, longName);
-		assertTrue(result1.length() <= 31, "Sheet name should be <= 31 characters");
-		
-		String result2 = (String) method.invoke(parser, "Sheet:With*Invalid/Chars");
-		assertFalse(result2.contains(":"));
-		assertFalse(result2.contains("*"));
-		assertFalse(result2.contains("/"));
-		
-		String result3 = (String) method.invoke(parser, (Object) null);
-		assertNotNull(result3);
-		assertFalse(result3.isEmpty());
-	}
 	
 	private org.openmrs.Form createMockForm() {
 		org.openmrs.Form form = new org.openmrs.Form();

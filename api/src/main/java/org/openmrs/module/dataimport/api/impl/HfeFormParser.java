@@ -16,6 +16,7 @@ import org.openmrs.Concept;
 import org.openmrs.ConceptDatatype;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
+import org.openmrs.module.dataimport.api.util.ExcelNameUtils;
 import org.openmrs.module.dataimport.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,7 +178,7 @@ public class HfeFormParser {
 			formModel.formType = FormType.HFE_XML;
 			
 			SheetModel sheet = new SheetModel();
-			sheet.sheetName = sanitizeSheetName(formModel.name);
+			sheet.sheetName = ExcelNameUtils.sanitizeSheetName(formModel.name);
 			sheet.formUuid = formModel.formUuid;
 			sheet.formVersion = formModel.version;
 			sheet.encounterTypeUuid = formModel.encounterTypeUuid;
@@ -799,7 +800,7 @@ public class HfeFormParser {
 			candidate = "field_" + index;
 		}
 		
-		if (isExcelCellReference(candidate)) {
+		if (ExcelNameUtils.isExcelCellReference(candidate)) {
 			candidate = "field_" + candidate;
 		}
 		
@@ -808,7 +809,7 @@ public class HfeFormParser {
 	
 	private String sanitizeFieldId(String id) {
 		String sanitized = sanitize(id);
-		if (isExcelCellReference(sanitized)) {
+		if (ExcelNameUtils.isExcelCellReference(sanitized)) {
 			return "field_" + sanitized;
 		}
 		return sanitized;
@@ -821,17 +822,6 @@ public class HfeFormParser {
 		return str.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("_+", "_").replaceAll("^_|_$", "").toLowerCase();
 	}
 	
-	private String sanitizeSheetName(String name) {
-		if (name == null || name.trim().isEmpty()) {
-			return "Form";
-		}
-		String sanitized = name.replaceAll("[\\\\/*?\\[\\]:]", "_");
-		return sanitized.substring(0, Math.min(28, sanitized.length()));
-	}
-	
-	private boolean isExcelCellReference(String str) {
-		return str != null && str.matches("^[a-zA-Z]+\\d+$");
-	}
 	
 	private String getAttributeOrNull(Element element, String attributeName) {
 		if (element.hasAttribute(attributeName)) {
