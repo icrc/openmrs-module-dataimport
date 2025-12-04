@@ -22,6 +22,7 @@ import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -429,42 +430,67 @@ public class ExcelTemplateExporter {
 		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
 	}
+
+	private static CellStyle createSectionHeaderStyle(XSSFWorkbook workbook) {
+		CellStyle style = workbook.createCellStyle();
+		Font font = workbook.createFont();
+		font.setBold(true);
+		font.setFontHeightInPoints((short) 12);
+		style.setFont(font);
+		style.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
+		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+		return style;
+	}
 	
 	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid,
 	        LongStringRegistry longStrings) {
 		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
-		
+
 		CellStyle headerStyle = createHeaderStyle(workbook);
-		
-		Row headerRow = metaSheet.createRow(0);
+		CellStyle sectionHeaderStyle = createSectionHeaderStyle(workbook);
+
+		int rowIndex = 0;
+
+		Row sectionRow = metaSheet.createRow(rowIndex++);
+		Cell sectionCell = sectionRow.createCell(0);
+		sectionCell.setCellValue("TEMPLATE INFORMATION");
+		sectionCell.setCellStyle(sectionHeaderStyle);
+		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 1));
+
+		Row headerRow = metaSheet.createRow(rowIndex++);
 		Cell keyHeader = headerRow.createCell(0);
 		keyHeader.setCellValue("key");
 		keyHeader.setCellStyle(headerStyle);
 		Cell valueHeader = headerRow.createCell(1);
 		valueHeader.setCellValue("value");
 		valueHeader.setCellStyle(headerStyle);
-		
-		int rowIndex = 1;
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateVersion");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(1);
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("generatedAt");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(Instant.now().toString());
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("locale");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("en");
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateName");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("Multi-Form Template");
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("defaultLocationUuid");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(locationUuid != null ? locationUuid : "");
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formCount");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
-		
+
 		rowIndex += 2;
+
+		sectionRow = metaSheet.createRow(rowIndex++);
+		sectionCell = sectionRow.createCell(0);
+		sectionCell.setCellValue("FORM DEFINITIONS");
+		sectionCell.setCellStyle(sectionHeaderStyle);
+		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 5));
 		
 		Row formHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] formHeaders = { "formUuid", "formName", "formVersion", "formType", "encounterTypeUuid", "sheetName" };
@@ -490,9 +516,16 @@ public class ExcelTemplateExporter {
 		}
 		
 		rowIndex += 2;
+
+		sectionRow = metaSheet.createRow(rowIndex++);
+		sectionCell = sectionRow.createCell(0);
+		sectionCell.setCellValue("FIELD MAPPINGS");
+		sectionCell.setCellStyle(sectionHeaderStyle);
+		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 8));
+
 		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] columnHeaders = { "sheetName", "colIndex", "fieldId", "label", "conceptUuid", "datatype", "isRepeat",
-		        "isMulti", "answersJson" };
+		        "isMulti", "answerCount" };
 		for (int i = 0; i < columnHeaders.length; i++) {
 			Cell cell = columnHeaderRow.createCell(i);
 			cell.setCellValue(columnHeaders[i]);
@@ -512,13 +545,13 @@ public class ExcelTemplateExporter {
 				row.createCell(5).setCellValue("TEXT");
 				row.createCell(6).setCellValue(false);
 				row.createCell(7).setCellValue(false);
-				row.createCell(8).setCellValue("{}");
+				row.createCell(8).setCellValue(colIndex == 2 ? 3 : 0);
 			}
 		}
 		
 		for (SheetModel sheetModel : form.sheets) {
 			int colIndex = 0;
-			
+
 			Row row = metaSheet.createRow(rowIndex++);
 			row.createCell(0).setCellValue(sheetModel.sheetName);
 			row.createCell(1).setCellValue(colIndex++);
@@ -528,8 +561,8 @@ public class ExcelTemplateExporter {
 			row.createCell(5).setCellValue("TEXT");
 			row.createCell(6).setCellValue(false);
 			row.createCell(7).setCellValue(false);
-			row.createCell(8).setCellValue("{}");
-			
+			row.createCell(8).setCellValue(0);
+
 			for (FieldModel field : sheetModel.fields) {
 				row = metaSheet.createRow(rowIndex++);
 				row.createCell(0).setCellValue(sheetModel.sheetName);
@@ -540,18 +573,10 @@ public class ExcelTemplateExporter {
 				row.createCell(5).setCellValue(field.datatype != null ? field.datatype.name() : "TEXT");
 				row.createCell(6).setCellValue(field.isRepeat);
 				row.createCell(7).setCellValue(field.isMulti);
-				
-				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
-					Map<String, String> answersMap = new HashMap<>();
-					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
-						if (answer.label != null && answer.conceptUuid != null) {
-							answersMap.put(DataImportConstants.normalizeLabel(answer.label), answer.conceptUuid);
-						}
-					}
-					setString(row.createCell(8), mapToJson(answersMap), longStrings);
-				} else {
-					setString(row.createCell(8), "{}", longStrings);
-				}
+
+				int answerCount = (field.datatype == FieldDatatype.CODED && field.answers != null) ? field.answers.size()
+				        : 0;
+				row.createCell(8).setCellValue(answerCount);
 			}
 		}
 		
