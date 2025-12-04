@@ -77,7 +77,7 @@ public class ExcelTemplateExporter {
 			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
 			
 			XSSFSheet listSheet = getOrCreateListSheet(workbook);
-
+			
 			if (includePatient) {
 				String[] genderOptions = { "Male", "Female", "Unknown" };
 				int genderStartRow = addAnswersToListSheet(listSheet, "__GLOBAL__", "patientGender", genderOptions, null);
@@ -135,9 +135,9 @@ public class ExcelTemplateExporter {
 					applyPatientRefDropdown(s, 0, DataImportConstants.FIRST_DATA_ROW, DataImportConstants.LAST_DATA_ROW);
 				}
 			}
-
+			
 			finalizeListSheet(workbook);
-
+			
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			workbook.write(outputStream);
 			return outputStream.toByteArray();
@@ -165,7 +165,7 @@ public class ExcelTemplateExporter {
 				sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 			}
 		}
-
+		
 		CellStyle readonlyStyle = workbook.createCellStyle();
 		readonlyStyle.setLocked(true);
 		readonlyStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
@@ -175,7 +175,7 @@ public class ExcelTemplateExporter {
 		CellStyle textStyle = workbook.createCellStyle();
 		textStyle.setLocked(false);
 		textStyle.setDataFormat(dataFormat.getFormat("@"));
-
+		
 		createGenderDropdown(workbook, sheet, listSheet, genderStartRow);
 		
 		for (int r = DataImportConstants.FIRST_DATA_ROW; r <= DataImportConstants.LAST_DATA_ROW; r++) {
@@ -212,12 +212,12 @@ public class ExcelTemplateExporter {
 	private static void createGenderDropdown(XSSFWorkbook workbook, XSSFSheet sheet, XSSFSheet listSheet, int startRow) {
 		String[] genderOptions = { "Male", "Female", "Unknown" };
 		int endRow = startRow + genderOptions.length - 1;
-
+		
 		Name namedRange = workbook.createName();
 		namedRange.setNameName("GenderOptions");
 		String reference = String.format("'%s'!$C$%d:$C$%d", DataImportConstants.LIST_SHEET, startRow, endRow);
 		namedRange.setRefersToFormula(reference);
-
+		
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint("GenderOptions");
 		CellRangeAddressList region = new CellRangeAddressList(DataImportConstants.FIRST_DATA_ROW,
@@ -252,7 +252,7 @@ public class ExcelTemplateExporter {
 		}
 		return listSheet;
 	}
-
+	
 	private void initializeListSheetHeaders(XSSFWorkbook workbook, XSSFSheet listSheet) {
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		Row headerRow = listSheet.createRow(0);
@@ -264,12 +264,12 @@ public class ExcelTemplateExporter {
 		}
 		listSheet.createFreezePane(0, 1);
 	}
-
+	
 	private int addAnswersToListSheet(XSSFSheet listSheet, String sheetName, String fieldId, String[] answerLabels,
 	        List<AnswerModel> answers) {
 		int currentRow = listSheet.getLastRowNum() + 1;
 		int startRow = currentRow;
-
+		
 		if (answerLabels != null) {
 			for (int i = 0; i < answerLabels.length; i++) {
 				Row row = listSheet.createRow(currentRow++);
@@ -292,10 +292,10 @@ public class ExcelTemplateExporter {
 				row.createCell(4).setCellValue(i + 1);
 			}
 		}
-
+		
 		return startRow + 1;
 	}
-
+	
 	private void finalizeListSheet(XSSFWorkbook workbook) {
 		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
 		if (listSheet != null && listSheet.getLastRowNum() > 0) {
@@ -304,7 +304,7 @@ public class ExcelTemplateExporter {
 			}
 		}
 	}
-
+	
 	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
 		String candidate = ExcelNameUtils.sanitizeSheetName(baseName);
 		int counter = 1;
@@ -377,26 +377,26 @@ public class ExcelTemplateExporter {
 		if (field.answers.isEmpty()) {
 			return;
 		}
-
+		
 		String fieldName = makeUniqueExcelName(field.label != null ? field.label : field.id);
-
+		
 		XSSFSheet listSheet = getOrCreateListSheet(workbook);
-
+		
 		String sheetName = sheet.getSheetName();
 		int startRow = addAnswersToListSheet(listSheet, sheetName, field.id, null, field.answers);
 		int endRow = startRow + field.answers.size() - 1;
-
+		
 		Name namedRange = workbook.createName();
 		namedRange.setNameName(fieldName);
 		String reference = String.format("'%s'!$C$%d:$C$%d", DataImportConstants.LIST_SHEET, startRow, endRow);
 		namedRange.setRefersToFormula(reference);
-
+		
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint(fieldName);
 		CellRangeAddressList region = new CellRangeAddressList(DataImportConstants.FIRST_DATA_ROW,
 		        DataImportConstants.LAST_DATA_ROW, columnIndex, columnIndex);
 		DataValidation validation = helper.createValidation(constraint, region);
-
+		
 		sheet.addValidationData(validation);
 	}
 	
@@ -430,7 +430,7 @@ public class ExcelTemplateExporter {
 		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
 	}
-
+	
 	private static CellStyle createSectionHeaderStyle(XSSFWorkbook workbook) {
 		CellStyle style = workbook.createCellStyle();
 		Font font = workbook.createFont();
@@ -446,18 +446,18 @@ public class ExcelTemplateExporter {
 	        LongStringRegistry longStrings) {
 		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
-
+		
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		CellStyle sectionHeaderStyle = createSectionHeaderStyle(workbook);
-
+		
 		int rowIndex = 0;
-
+		
 		Row sectionRow = metaSheet.createRow(rowIndex++);
 		Cell sectionCell = sectionRow.createCell(0);
 		sectionCell.setCellValue("TEMPLATE INFORMATION");
 		sectionCell.setCellStyle(sectionHeaderStyle);
 		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 1));
-
+		
 		Row headerRow = metaSheet.createRow(rowIndex++);
 		Cell keyHeader = headerRow.createCell(0);
 		keyHeader.setCellValue("key");
@@ -465,27 +465,27 @@ public class ExcelTemplateExporter {
 		Cell valueHeader = headerRow.createCell(1);
 		valueHeader.setCellValue("value");
 		valueHeader.setCellStyle(headerStyle);
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateVersion");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(1);
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("generatedAt");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(Instant.now().toString());
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("locale");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("en");
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateName");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("Multi-Form Template");
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("defaultLocationUuid");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(locationUuid != null ? locationUuid : "");
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formCount");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
-
+		
 		rowIndex += 2;
-
+		
 		sectionRow = metaSheet.createRow(rowIndex++);
 		sectionCell = sectionRow.createCell(0);
 		sectionCell.setCellValue("FORM DEFINITIONS");
@@ -516,13 +516,13 @@ public class ExcelTemplateExporter {
 		}
 		
 		rowIndex += 2;
-
+		
 		sectionRow = metaSheet.createRow(rowIndex++);
 		sectionCell = sectionRow.createCell(0);
 		sectionCell.setCellValue("FIELD MAPPINGS");
 		sectionCell.setCellStyle(sectionHeaderStyle);
 		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 8));
-
+		
 		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] columnHeaders = { "sheetName", "colIndex", "fieldId", "label", "conceptUuid", "datatype", "isRepeat",
 		        "isMulti", "answerCount" };
@@ -551,7 +551,7 @@ public class ExcelTemplateExporter {
 		
 		for (SheetModel sheetModel : form.sheets) {
 			int colIndex = 0;
-
+			
 			Row row = metaSheet.createRow(rowIndex++);
 			row.createCell(0).setCellValue(sheetModel.sheetName);
 			row.createCell(1).setCellValue(colIndex++);
@@ -562,7 +562,7 @@ public class ExcelTemplateExporter {
 			row.createCell(6).setCellValue(false);
 			row.createCell(7).setCellValue(false);
 			row.createCell(8).setCellValue(0);
-
+			
 			for (FieldModel field : sheetModel.fields) {
 				row = metaSheet.createRow(rowIndex++);
 				row.createCell(0).setCellValue(sheetModel.sheetName);
@@ -573,7 +573,7 @@ public class ExcelTemplateExporter {
 				row.createCell(5).setCellValue(field.datatype != null ? field.datatype.name() : "TEXT");
 				row.createCell(6).setCellValue(field.isRepeat);
 				row.createCell(7).setCellValue(field.isMulti);
-
+				
 				int answerCount = (field.datatype == FieldDatatype.CODED && field.answers != null) ? field.answers.size()
 				        : 0;
 				row.createCell(8).setCellValue(answerCount);
@@ -597,9 +597,9 @@ public class ExcelTemplateExporter {
 			cell.setCellStyle(headerStyle);
 		}
 		int rowIndex = 1;
-
+		
 		Map<String, Concept> conceptCache = loadConceptsForForm(form);
-
+		
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
 				Row questionRow = conceptsSheet.createRow(rowIndex++);
@@ -608,7 +608,7 @@ public class ExcelTemplateExporter {
 				questionRow.createCell(2).setCellValue(field.id != null ? field.id : "");
 				questionRow.createCell(3).setCellValue(field.label != null ? field.label : "");
 				questionRow.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
-
+				
 				String datatype = "";
 				String conceptClass = "";
 				if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
@@ -621,7 +621,7 @@ public class ExcelTemplateExporter {
 				questionRow.createCell(5).setCellValue(datatype);
 				questionRow.createCell(6).setCellValue(conceptClass);
 				questionRow.createCell(7).setCellValue(field.isMulti);
-
+				
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
 					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
 						Row answerRow = conceptsSheet.createRow(rowIndex++);
@@ -630,14 +630,13 @@ public class ExcelTemplateExporter {
 						answerRow.createCell(2).setCellValue(field.id != null ? field.id : "");
 						answerRow.createCell(3).setCellValue(answer.label != null ? answer.label : "");
 						answerRow.createCell(4).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
-
+						
 						String answerDatatype = "";
 						String answerClass = "";
 						if (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
 							Concept answerConcept = conceptCache.get(answer.conceptUuid);
 							if (answerConcept != null) {
-								answerDatatype = answerConcept.getDatatype() != null
-								        ? answerConcept.getDatatype().getName()
+								answerDatatype = answerConcept.getDatatype() != null ? answerConcept.getDatatype().getName()
 								        : "";
 								answerClass = answerConcept.getConceptClass() != null
 								        ? answerConcept.getConceptClass().getName()
