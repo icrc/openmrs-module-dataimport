@@ -590,75 +590,64 @@ public class ExcelTemplateExporter {
 		workbook.setSheetHidden(workbook.getSheetIndex(conceptsSheet), true);
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		Row header = conceptsSheet.createRow(0);
-		String[] headers = { "sheetName", "fieldId", "questionLabel", "questionConceptUuid", "questionDatatype",
-		        "questionClass", "isMulti", "answerLabel", "answerConceptUuid", "answerDatatype", "answerClass" };
+		String[] headers = { "level", "sheetName", "fieldId", "label", "conceptUuid", "datatype", "class", "isMulti" };
 		for (int i = 0; i < headers.length; i++) {
 			Cell cell = header.createCell(i);
 			cell.setCellValue(headers[i]);
 			cell.setCellStyle(headerStyle);
 		}
 		int rowIndex = 1;
-		
-		// Batch load all concepts upfront for better performance
+
 		Map<String, Concept> conceptCache = loadConceptsForForm(form);
-		
+
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
+				Row questionRow = conceptsSheet.createRow(rowIndex++);
+				questionRow.createCell(0).setCellValue("QUESTION");
+				questionRow.createCell(1).setCellValue(sheetModel.sheetName);
+				questionRow.createCell(2).setCellValue(field.id != null ? field.id : "");
+				questionRow.createCell(3).setCellValue(field.label != null ? field.label : "");
+				questionRow.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
+
+				String datatype = "";
+				String conceptClass = "";
+				if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+					Concept concept = conceptCache.get(field.conceptUuid);
+					if (concept != null) {
+						datatype = concept.getDatatype() != null ? concept.getDatatype().getName() : "";
+						conceptClass = concept.getConceptClass() != null ? concept.getConceptClass().getName() : "";
+					}
+				}
+				questionRow.createCell(5).setCellValue(datatype);
+				questionRow.createCell(6).setCellValue(conceptClass);
+				questionRow.createCell(7).setCellValue(field.isMulti);
+
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
 					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
-						Row r = conceptsSheet.createRow(rowIndex++);
-						r.createCell(0).setCellValue(sheetModel.sheetName);
-						r.createCell(1).setCellValue(field.id != null ? field.id : "");
-						r.createCell(2).setCellValue(field.label != null ? field.label : "");
-						r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
-						String qDatatype = "";
-						String qClass = "";
-						if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-							Concept qc = conceptCache.get(field.conceptUuid);
-							if (qc != null) {
-								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-							}
-						}
-						r.createCell(4).setCellValue(qDatatype);
-						r.createCell(5).setCellValue(qClass);
-						r.createCell(6).setCellValue(field.isMulti);
-						r.createCell(7).setCellValue(answer.label != null ? answer.label : "");
-						r.createCell(8).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
-						String aDatatype = "";
-						String aClass = "";
+						Row answerRow = conceptsSheet.createRow(rowIndex++);
+						answerRow.createCell(0).setCellValue("ANSWER");
+						answerRow.createCell(1).setCellValue(sheetModel.sheetName);
+						answerRow.createCell(2).setCellValue(field.id != null ? field.id : "");
+						answerRow.createCell(3).setCellValue(answer.label != null ? answer.label : "");
+						answerRow.createCell(4).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
+
+						String answerDatatype = "";
+						String answerClass = "";
 						if (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
-							Concept ac = conceptCache.get(answer.conceptUuid);
-							if (ac != null) {
-								aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
-								aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
+							Concept answerConcept = conceptCache.get(answer.conceptUuid);
+							if (answerConcept != null) {
+								answerDatatype = answerConcept.getDatatype() != null
+								        ? answerConcept.getDatatype().getName()
+								        : "";
+								answerClass = answerConcept.getConceptClass() != null
+								        ? answerConcept.getConceptClass().getName()
+								        : "";
 							}
 						}
-						r.createCell(9).setCellValue(aDatatype);
-						r.createCell(10).setCellValue(aClass);
+						answerRow.createCell(5).setCellValue(answerDatatype);
+						answerRow.createCell(6).setCellValue(answerClass);
+						answerRow.createCell(7).setCellValue(false);
 					}
-				} else {
-					Row r = conceptsSheet.createRow(rowIndex++);
-					r.createCell(0).setCellValue(sheetModel.sheetName);
-					r.createCell(1).setCellValue(field.id != null ? field.id : "");
-					r.createCell(2).setCellValue(field.label != null ? field.label : "");
-					r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
-					String qDatatype = "";
-					String qClass = "";
-					if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						Concept qc = conceptCache.get(field.conceptUuid);
-						if (qc != null) {
-							qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-							qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-						}
-					}
-					r.createCell(4).setCellValue(qDatatype);
-					r.createCell(5).setCellValue(qClass);
-					r.createCell(6).setCellValue(field.isMulti);
-					r.createCell(7).setCellValue("");
-					r.createCell(8).setCellValue("");
-					r.createCell(9).setCellValue("");
-					r.createCell(10).setCellValue("");
 				}
 			}
 		}
