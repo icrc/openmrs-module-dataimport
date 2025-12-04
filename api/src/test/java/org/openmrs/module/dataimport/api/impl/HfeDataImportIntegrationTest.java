@@ -48,10 +48,11 @@ public class HfeDataImportIntegrationTest extends BaseHfeIntegrationTest {
 		
 		hfeFormParser = new HfeFormParser(conceptAnswersService);
 		templateExporter = new ExcelTemplateExporter();
-		
-		importService = new WorkbookImportServiceImpl(new ImportPlanStorageService(), new IdempotencyService(),
-		        new PatientServiceImpl(), new EncounterServiceImpl(), new ObservationServiceImpl(),
-		        new VisitImportServiceImpl());
+
+		importService = new WorkbookImportServiceImpl(new ImportPlanStorageService(),
+		        new WorkbookValidationServiceImpl(), new PatientImportServiceImpl(new PatientServiceImpl()),
+		        new EncounterImportOrchestratorImpl(new IdempotencyService(), new EncounterServiceImpl(),
+		                new ObservationServiceImpl(), new VisitImportServiceImpl()));
 	}
 	
 	@Test
