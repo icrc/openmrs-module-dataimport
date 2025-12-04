@@ -58,18 +58,31 @@
 
 	<!-- Concept Answers Provider -->
 	<bean id="coreConceptAnswersProvider" class="org.openmrs.module.dataimport.api.impl.CoreConceptAnswersServiceImpl" />
+	<!-- Storage Services -->
 	<bean id="importPlanStorageService" class="org.openmrs.module.dataimport.api.storage.ImportPlanStorageService" />
 	<bean id="idempotencyService" class="org.openmrs.module.dataimport.api.storage.IdempotencyService" />
+
+	<!-- Core Services -->
 	<bean id="patientSaver" class="org.openmrs.module.dataimport.api.impl.PatientServiceImpl" />
 	<bean id="encounterSaver" class="org.openmrs.module.dataimport.api.impl.EncounterServiceImpl" />
 	<bean id="obsSaver" class="org.openmrs.module.dataimport.api.impl.ObservationServiceImpl" />
 	<bean id="visitImportService" class="org.openmrs.module.dataimport.api.impl.VisitImportServiceImpl" />
-	<bean id="workbookImportService" class="org.openmrs.module.dataimport.api.impl.WorkbookImportServiceImpl">
-		<constructor-arg ref="importPlanStorageService" />
-		<constructor-arg ref="idempotencyService" />
+
+	<!-- Import Services -->
+	<bean id="workbookValidationService" class="org.openmrs.module.dataimport.api.impl.WorkbookValidationServiceImpl" />
+	<bean id="patientImportService" class="org.openmrs.module.dataimport.api.impl.PatientImportServiceImpl">
 		<constructor-arg ref="patientSaver" />
+	</bean>
+	<bean id="encounterImportOrchestrator" class="org.openmrs.module.dataimport.api.impl.EncounterImportOrchestratorImpl">
+		<constructor-arg ref="idempotencyService" />
 		<constructor-arg ref="encounterSaver" />
 		<constructor-arg ref="obsSaver" />
 		<constructor-arg ref="visitImportService" />
+	</bean>
+	<bean id="workbookImportService" class="org.openmrs.module.dataimport.api.impl.WorkbookImportServiceImpl">
+		<constructor-arg ref="importPlanStorageService" />
+		<constructor-arg ref="workbookValidationService" />
+		<constructor-arg ref="patientImportService" />
+		<constructor-arg ref="encounterImportOrchestrator" />
 	</bean>
 </beans>

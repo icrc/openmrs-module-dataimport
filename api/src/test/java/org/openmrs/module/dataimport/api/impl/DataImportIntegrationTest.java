@@ -38,14 +38,13 @@ public class DataImportIntegrationTest {
 	@BeforeEach
 	public void setUp() {
 		ImportPlanStorageService importPlanStorage = new ImportPlanStorageService();
-		IdempotencyService idempotencyService = new IdempotencyService();
-		PatientServiceImpl patientService = new PatientServiceImpl();
-		EncounterServiceImpl encounterService = new EncounterServiceImpl();
-		ObservationServiceImpl obsService = new ObservationServiceImpl();
-		VisitImportServiceImpl visitImportService = new VisitImportServiceImpl();
+		WorkbookValidationServiceImpl workbookValidation = new WorkbookValidationServiceImpl();
+		PatientImportServiceImpl patientImportService = new PatientImportServiceImpl(new PatientServiceImpl());
+		EncounterImportOrchestratorImpl encounterOrchestrator = new EncounterImportOrchestratorImpl(new IdempotencyService(),
+		        new EncounterServiceImpl(), new ObservationServiceImpl(), new VisitImportServiceImpl());
 		
-		importService = new WorkbookImportServiceImpl(importPlanStorage, idempotencyService, patientService,
-		        encounterService, obsService, visitImportService);
+		importService = new WorkbookImportServiceImpl(importPlanStorage, workbookValidation, patientImportService,
+		        encounterOrchestrator);
 		exporter = new ExcelTemplateExporter();
 	}
 	
