@@ -57,8 +57,6 @@ public class ExcelTemplateExporter {
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
 	
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
-	
-	private static final int STANDARD_COLUMN_WIDTH = 20 * 256;
 
 	private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -94,7 +92,7 @@ public class ExcelTemplateExporter {
 				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
 				patientRefHeaderCell.setCellValue(DataImportConstants.PATIENT_REF_HEADER);
 				patientRefHeaderCell.setCellStyle(headerStyle);
-				sheet.setColumnWidth(columnIndex, 60 * 256);
+				sheet.setColumnWidth(columnIndex, DataImportConstants.PATIENT_REF_COLUMN_WIDTH);
 				columnIndex++;
 				
 				for (FieldModel field : sheetModel.fields) {
@@ -116,7 +114,7 @@ public class ExcelTemplateExporter {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
 					
-					sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
+					sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
 				sheet.createFreezePane(0, 1);
@@ -160,7 +158,7 @@ public class ExcelTemplateExporter {
 			headerCell.setCellValue(columnHeaders[columnIndex]);
 			headerCell.setCellStyle(headerStyle);
 			if (columnIndex != 8) {
-				sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
+				sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 			}
 		}
 		
@@ -202,7 +200,7 @@ public class ExcelTemplateExporter {
 			patientRefCell.setCellStyle(readonlyStyle);
 		}
 		
-		sheet.setColumnWidth(8, 60 * 256);
+		sheet.setColumnWidth(8, DataImportConstants.PATIENT_REF_COLUMN_WIDTH);
 		sheet.createFreezePane(0, 1);
 		sheet.protectSheet("dataimport");
 	}
@@ -282,7 +280,7 @@ public class ExcelTemplateExporter {
 			candidate = ExcelNameUtils.getUniqueSheetName(baseName, usedNames);
 			counter++;
 
-			if (counter > 1000) {
+			if (counter > DataImportConstants.MAX_SHEET_NAME_ATTEMPTS) {
 				candidate = "Sheet_" + System.currentTimeMillis();
 				break;
 			}
@@ -310,7 +308,7 @@ public class ExcelTemplateExporter {
 			safeName = "field_" + safeName;
 		}
 		
-		if (safeName.length() > 240)
+		if (safeName.length() > DataImportConstants.MAX_EXCEL_NAME_LENGTH)
 			safeName = safeName.substring(0, 240);
 		return safeName;
 	}
@@ -327,8 +325,8 @@ public class ExcelTemplateExporter {
 		usedNames.put(safeName, count);
 		
 		String uniqueName = safeName + "_" + count;
-		if (uniqueName.length() > 240) {
-			int availableSpace = 240 - String.valueOf(count).length() - 1; // -1 for underscore
+		if (uniqueName.length() > DataImportConstants.MAX_EXCEL_NAME_LENGTH) {
+			int availableSpace = DataImportConstants.MAX_EXCEL_NAME_LENGTH - String.valueOf(count).length() - 1; // -1 for underscore
 			uniqueName = safeName.substring(0, Math.max(1, availableSpace)) + "_" + count;
 		}
 		return uniqueName;
