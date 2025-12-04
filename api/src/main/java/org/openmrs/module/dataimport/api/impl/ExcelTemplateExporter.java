@@ -75,11 +75,13 @@ public class ExcelTemplateExporter {
 			CellStyle dateTimeStyle = workbook.createCellStyle();
 			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
 			
+			XSSFSheet listSheet = getOrCreateListSheet(workbook);
+
 			if (includePatient) {
-				createPatientSheet(workbook);
+				String[] genderOptions = { "Male", "Female", "Unknown" };
+				int genderStartRow = addAnswersToListSheet(listSheet, "__GLOBAL__", "patientGender", genderOptions, null);
+				createPatientSheet(workbook, listSheet, genderStartRow);
 			}
-			
-			getOrCreateListSheet(workbook);
 			
 			for (SheetModel sheetModel : form.sheets) {
 				String uniqueSheetName = getUniqueSheetName(workbook, sheetModel.sheetName);
@@ -132,7 +134,9 @@ public class ExcelTemplateExporter {
 					applyPatientRefDropdown(s, 0, DataImportConstants.FIRST_DATA_ROW, DataImportConstants.LAST_DATA_ROW);
 				}
 			}
-			
+
+			finalizeListSheet(workbook);
+
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			workbook.write(outputStream);
 			return outputStream.toByteArray();
@@ -145,11 +149,10 @@ public class ExcelTemplateExporter {
 		}
 	}
 	
-	private static void createPatientSheet(Workbook workbook) {
-		XSSFWorkbook wb = (XSSFWorkbook) workbook;
-		XSSFSheet sheet = wb.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
-		CellStyle headerStyle = createHeaderStyle(wb);
-		DataFormat dataFormat = wb.createDataFormat();
+	private static void createPatientSheet(XSSFWorkbook workbook, XSSFSheet listSheet, int genderStartRow) {
+		XSSFSheet sheet = workbook.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
+		CellStyle headerStyle = createHeaderStyle(workbook);
+		DataFormat dataFormat = workbook.createDataFormat();
 		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
 		        "City/Village", "Country", "Phone", DataImportConstants.PATIENT_REF_HEADER };
 		Row headerRow = sheet.createRow(0);
@@ -161,18 +164,18 @@ public class ExcelTemplateExporter {
 				sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 			}
 		}
-		
-		CellStyle readonlyStyle = wb.createCellStyle();
+
+		CellStyle readonlyStyle = workbook.createCellStyle();
 		readonlyStyle.setLocked(true);
 		readonlyStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
 		readonlyStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-		CellStyle unlockedStyle = wb.createCellStyle();
+		CellStyle unlockedStyle = workbook.createCellStyle();
 		unlockedStyle.setLocked(false);
-		CellStyle textStyle = wb.createCellStyle();
+		CellStyle textStyle = workbook.createCellStyle();
 		textStyle.setLocked(false);
 		textStyle.setDataFormat(dataFormat.getFormat("@"));
-		
-		createGenderDropdown(wb, sheet);
+
+		createGenderDropdown(workbook, sheet, listSheet, genderStartRow);
 		
 		for (int r = DataImportConstants.FIRST_DATA_ROW; r <= DataImportConstants.LAST_DATA_ROW; r++) {
 			Row dataRow = sheet.getRow(r);
@@ -205,38 +208,15 @@ public class ExcelTemplateExporter {
 		sheet.protectSheet("dataimport");
 	}
 	
-	private static void createGenderDropdown(XSSFWorkbook workbook, XSSFSheet sheet) {
-		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
-		if (listSheet == null) {
-			listSheet = workbook.createSheet(DataImportConstants.LIST_SHEET);
-			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
-		}
-		
-		int listColumnIndex = 0;
-		while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(listColumnIndex) != null) {
-			listColumnIndex++;
-		}
-		
+	private static void createGenderDropdown(XSSFWorkbook workbook, XSSFSheet sheet, XSSFSheet listSheet, int startRow) {
 		String[] genderOptions = { "Male", "Female", "Unknown" };
-		for (int i = 0; i < genderOptions.length; i++) {
-			Row row = listSheet.getRow(i + 1);
-			if (row == null) {
-				row = listSheet.createRow(i + 1);
-			}
-			Cell cell = row.getCell(listColumnIndex);
-			if (cell == null) {
-				cell = row.createCell(listColumnIndex);
-			}
-			cell.setCellValue(genderOptions[i]);
-		}
-		
+		int endRow = startRow + genderOptions.length - 1;
+
 		Name namedRange = workbook.createName();
 		namedRange.setNameName("GenderOptions");
-		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
-		String reference = "'" + DataImportConstants.LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
-		        + (genderOptions.length + 1);
+		String reference = String.format("'%s'!$C$%d:$C$%d", DataImportConstants.LIST_SHEET, startRow, endRow);
 		namedRange.setRefersToFormula(reference);
-		
+
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint("GenderOptions");
 		CellRangeAddressList region = new CellRangeAddressList(DataImportConstants.FIRST_DATA_ROW,
@@ -267,10 +247,63 @@ public class ExcelTemplateExporter {
 		if (listSheet == null) {
 			listSheet = workbook.createSheet(DataImportConstants.LIST_SHEET);
 			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
+			initializeListSheetHeaders(workbook, listSheet);
 		}
 		return listSheet;
 	}
-	
+
+	private void initializeListSheetHeaders(XSSFWorkbook workbook, XSSFSheet listSheet) {
+		CellStyle headerStyle = createHeaderStyle(workbook);
+		Row headerRow = listSheet.createRow(0);
+		String[] headers = { "fieldId", "sheetName", "answerLabel", "answerConceptUuid", "sortOrder" };
+		for (int i = 0; i < headers.length; i++) {
+			Cell cell = headerRow.createCell(i);
+			cell.setCellValue(headers[i]);
+			cell.setCellStyle(headerStyle);
+		}
+		listSheet.createFreezePane(0, 1);
+	}
+
+	private int addAnswersToListSheet(XSSFSheet listSheet, String sheetName, String fieldId, String[] answerLabels,
+	        List<AnswerModel> answers) {
+		int currentRow = listSheet.getLastRowNum() + 1;
+		int startRow = currentRow;
+
+		if (answerLabels != null) {
+			for (int i = 0; i < answerLabels.length; i++) {
+				Row row = listSheet.createRow(currentRow++);
+				row.createCell(0).setCellValue(fieldId);
+				row.createCell(1).setCellValue(sheetName);
+				row.createCell(2).setCellValue(answerLabels[i]);
+				row.createCell(3).setCellValue("");
+				row.createCell(4).setCellValue(i + 1);
+			}
+		} else if (answers != null) {
+			for (int i = 0; i < answers.size(); i++) {
+				AnswerModel answer = answers.get(i);
+				String displayValue = answer.label != null ? answer.label
+				        : (answer.conceptUuid != null ? answer.conceptUuid : (answer.value != null ? answer.value : ""));
+				Row row = listSheet.createRow(currentRow++);
+				row.createCell(0).setCellValue(fieldId);
+				row.createCell(1).setCellValue(sheetName);
+				row.createCell(2).setCellValue(displayValue);
+				row.createCell(3).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
+				row.createCell(4).setCellValue(i + 1);
+			}
+		}
+
+		return startRow + 1;
+	}
+
+	private void finalizeListSheet(XSSFWorkbook workbook) {
+		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
+		if (listSheet != null && listSheet.getLastRowNum() > 0) {
+			for (int i = 0; i < 5; i++) {
+				listSheet.autoSizeColumn(i);
+			}
+		}
+	}
+
 	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
 		String candidate = ExcelNameUtils.sanitizeSheetName(baseName);
 		int counter = 1;
@@ -343,44 +376,26 @@ public class ExcelTemplateExporter {
 		if (field.answers.isEmpty()) {
 			return;
 		}
-		
+
 		String fieldName = makeUniqueExcelName(field.label != null ? field.label : field.id);
-		
+
 		XSSFSheet listSheet = getOrCreateListSheet(workbook);
-		
-		int listColumnIndex = 0;
-		while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(listColumnIndex) != null) {
-			listColumnIndex++;
-		}
-		
-		for (int i = 0; i < field.answers.size(); i++) {
-			Row row = listSheet.getRow(i + 1);
-			if (row == null) {
-				row = listSheet.createRow(i + 1);
-			}
-			Cell cell = row.getCell(listColumnIndex);
-			if (cell == null) {
-				cell = row.createCell(listColumnIndex);
-			}
-			AnswerModel answer = field.answers.get(i);
-			String displayValue = answer.label != null ? answer.label
-			        : (answer.conceptUuid != null ? answer.conceptUuid : (answer.value != null ? answer.value : ""));
-			cell.setCellValue(displayValue);
-		}
-		
+
+		String sheetName = sheet.getSheetName();
+		int startRow = addAnswersToListSheet(listSheet, sheetName, field.id, null, field.answers);
+		int endRow = startRow + field.answers.size() - 1;
+
 		Name namedRange = workbook.createName();
 		namedRange.setNameName(fieldName);
-		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
-		String reference = "'" + DataImportConstants.LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
-		        + (field.answers.size() + 1);
+		String reference = String.format("'%s'!$C$%d:$C$%d", DataImportConstants.LIST_SHEET, startRow, endRow);
 		namedRange.setRefersToFormula(reference);
-		
+
 		DataValidationHelper helper = sheet.getDataValidationHelper();
 		DataValidationConstraint constraint = helper.createFormulaListConstraint(fieldName);
 		CellRangeAddressList region = new CellRangeAddressList(DataImportConstants.FIRST_DATA_ROW,
 		        DataImportConstants.LAST_DATA_ROW, columnIndex, columnIndex);
 		DataValidation validation = helper.createValidation(constraint, region);
-		
+
 		sheet.addValidationData(validation);
 	}
 	
