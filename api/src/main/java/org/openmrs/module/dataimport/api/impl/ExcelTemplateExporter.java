@@ -590,7 +590,9 @@ public class ExcelTemplateExporter {
 									qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
 								}
 							}
-							catch (APIException e) {}
+							catch (APIException e) {
+						log.debug("Could not load concept details: {}", e.getMessage());
+					}
 						}
 						r.createCell(4).setCellValue(qDatatype);
 						r.createCell(5).setCellValue(qClass);
@@ -607,7 +609,9 @@ public class ExcelTemplateExporter {
 									aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
 								}
 							}
-							catch (APIException e) {}
+							catch (APIException e) {
+						log.debug("Could not load concept details: {}", e.getMessage());
+					}
 						}
 						r.createCell(9).setCellValue(aDatatype);
 						r.createCell(10).setCellValue(aClass);
@@ -628,7 +632,9 @@ public class ExcelTemplateExporter {
 								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
 							}
 						}
-						catch (APIException e) {}
+						catch (APIException e) {
+						log.debug("Could not load concept details: {}", e.getMessage());
+					}
 					}
 					r.createCell(4).setCellValue(qDatatype);
 					r.createCell(5).setCellValue(qClass);
