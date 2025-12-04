@@ -22,6 +22,7 @@ import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -75,11 +76,13 @@ public class ExcelTemplateExporter {
 			CellStyle dateTimeStyle = workbook.createCellStyle();
 			dateTimeStyle.setDataFormat(dataFormat.getFormat("yyyy-mm-dd hh:mm"));
 			
-			if (includePatient) {
-				createPatientSheet(workbook);
-			}
+			XSSFSheet listSheet = getOrCreateListSheet(workbook);
 			
-			getOrCreateListSheet(workbook);
+			if (includePatient) {
+				String[] genderOptions = { "Male", "Female", "Unknown" };
+				int genderStartRow = addAnswersToListSheet(listSheet, "__GLOBAL__", "patientGender", genderOptions, null);
+				createPatientSheet(workbook, listSheet, genderStartRow);
+			}
 			
 			for (SheetModel sheetModel : form.sheets) {
 				String uniqueSheetName = getUniqueSheetName(workbook, sheetModel.sheetName);
@@ -133,6 +136,8 @@ public class ExcelTemplateExporter {
 				}
 			}
 			
+			finalizeListSheet(workbook);
+			
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			workbook.write(outputStream);
 			return outputStream.toByteArray();
@@ -145,11 +150,10 @@ public class ExcelTemplateExporter {
 		}
 	}
 	
-	private static void createPatientSheet(Workbook workbook) {
-		XSSFWorkbook wb = (XSSFWorkbook) workbook;
-		XSSFSheet sheet = wb.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
-		CellStyle headerStyle = createHeaderStyle(wb);
-		DataFormat dataFormat = wb.createDataFormat();
+	private static void createPatientSheet(XSSFWorkbook workbook, XSSFSheet listSheet, int genderStartRow) {
+		XSSFSheet sheet = workbook.createSheet(DataImportConstants.PATIENT_SHEET_NAME);
+		CellStyle headerStyle = createHeaderStyle(workbook);
+		DataFormat dataFormat = workbook.createDataFormat();
 		String[] columnHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
 		        "City/Village", "Country", "Phone", DataImportConstants.PATIENT_REF_HEADER };
 		Row headerRow = sheet.createRow(0);
@@ -162,17 +166,17 @@ public class ExcelTemplateExporter {
 			}
 		}
 		
-		CellStyle readonlyStyle = wb.createCellStyle();
+		CellStyle readonlyStyle = workbook.createCellStyle();
 		readonlyStyle.setLocked(true);
 		readonlyStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
 		readonlyStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-		CellStyle unlockedStyle = wb.createCellStyle();
+		CellStyle unlockedStyle = workbook.createCellStyle();
 		unlockedStyle.setLocked(false);
-		CellStyle textStyle = wb.createCellStyle();
+		CellStyle textStyle = workbook.createCellStyle();
 		textStyle.setLocked(false);
 		textStyle.setDataFormat(dataFormat.getFormat("@"));
 		
-		createGenderDropdown(wb, sheet);
+		createGenderDropdown(workbook, sheet, listSheet, genderStartRow);
 		
 		for (int r = DataImportConstants.FIRST_DATA_ROW; r <= DataImportConstants.LAST_DATA_ROW; r++) {
 			Row dataRow = sheet.getRow(r);
@@ -205,36 +209,13 @@ public class ExcelTemplateExporter {
 		sheet.protectSheet("dataimport");
 	}
 	
-	private static void createGenderDropdown(XSSFWorkbook workbook, XSSFSheet sheet) {
-		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
-		if (listSheet == null) {
-			listSheet = workbook.createSheet(DataImportConstants.LIST_SHEET);
-			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
-		}
-		
-		int listColumnIndex = 0;
-		while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(listColumnIndex) != null) {
-			listColumnIndex++;
-		}
-		
+	private static void createGenderDropdown(XSSFWorkbook workbook, XSSFSheet sheet, XSSFSheet listSheet, int startRow) {
 		String[] genderOptions = { "Male", "Female", "Unknown" };
-		for (int i = 0; i < genderOptions.length; i++) {
-			Row row = listSheet.getRow(i + 1);
-			if (row == null) {
-				row = listSheet.createRow(i + 1);
-			}
-			Cell cell = row.getCell(listColumnIndex);
-			if (cell == null) {
-				cell = row.createCell(listColumnIndex);
-			}
-			cell.setCellValue(genderOptions[i]);
-		}
+		int endRow = startRow + genderOptions.length - 1;
 		
 		Name namedRange = workbook.createName();
 		namedRange.setNameName("GenderOptions");
-		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
-		String reference = "'" + DataImportConstants.LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
-		        + (genderOptions.length + 1);
+		String reference = String.format("'%s'!$C$%d:$C$%d", DataImportConstants.LIST_SHEET, startRow, endRow);
 		namedRange.setRefersToFormula(reference);
 		
 		DataValidationHelper helper = sheet.getDataValidationHelper();
@@ -267,8 +248,61 @@ public class ExcelTemplateExporter {
 		if (listSheet == null) {
 			listSheet = workbook.createSheet(DataImportConstants.LIST_SHEET);
 			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
+			initializeListSheetHeaders(workbook, listSheet);
 		}
 		return listSheet;
+	}
+	
+	private void initializeListSheetHeaders(XSSFWorkbook workbook, XSSFSheet listSheet) {
+		CellStyle headerStyle = createHeaderStyle(workbook);
+		Row headerRow = listSheet.createRow(0);
+		String[] headers = { "fieldId", "sheetName", "answerLabel", "answerConceptUuid", "sortOrder" };
+		for (int i = 0; i < headers.length; i++) {
+			Cell cell = headerRow.createCell(i);
+			cell.setCellValue(headers[i]);
+			cell.setCellStyle(headerStyle);
+		}
+		listSheet.createFreezePane(0, 1);
+	}
+	
+	private int addAnswersToListSheet(XSSFSheet listSheet, String sheetName, String fieldId, String[] answerLabels,
+	        List<AnswerModel> answers) {
+		int currentRow = listSheet.getLastRowNum() + 1;
+		int startRow = currentRow;
+		
+		if (answerLabels != null) {
+			for (int i = 0; i < answerLabels.length; i++) {
+				Row row = listSheet.createRow(currentRow++);
+				row.createCell(0).setCellValue(fieldId);
+				row.createCell(1).setCellValue(sheetName);
+				row.createCell(2).setCellValue(answerLabels[i]);
+				row.createCell(3).setCellValue("");
+				row.createCell(4).setCellValue(i + 1);
+			}
+		} else if (answers != null) {
+			for (int i = 0; i < answers.size(); i++) {
+				AnswerModel answer = answers.get(i);
+				String displayValue = answer.label != null ? answer.label
+				        : (answer.conceptUuid != null ? answer.conceptUuid : (answer.value != null ? answer.value : ""));
+				Row row = listSheet.createRow(currentRow++);
+				row.createCell(0).setCellValue(fieldId);
+				row.createCell(1).setCellValue(sheetName);
+				row.createCell(2).setCellValue(displayValue);
+				row.createCell(3).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
+				row.createCell(4).setCellValue(i + 1);
+			}
+		}
+		
+		return startRow + 1;
+	}
+	
+	private void finalizeListSheet(XSSFWorkbook workbook) {
+		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
+		if (listSheet != null && listSheet.getLastRowNum() > 0) {
+			for (int i = 0; i < 5; i++) {
+				listSheet.autoSizeColumn(i);
+			}
+		}
 	}
 	
 	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
@@ -348,31 +382,13 @@ public class ExcelTemplateExporter {
 		
 		XSSFSheet listSheet = getOrCreateListSheet(workbook);
 		
-		int listColumnIndex = 0;
-		while (listSheet.getRow(1) != null && listSheet.getRow(1).getCell(listColumnIndex) != null) {
-			listColumnIndex++;
-		}
-		
-		for (int i = 0; i < field.answers.size(); i++) {
-			Row row = listSheet.getRow(i + 1);
-			if (row == null) {
-				row = listSheet.createRow(i + 1);
-			}
-			Cell cell = row.getCell(listColumnIndex);
-			if (cell == null) {
-				cell = row.createCell(listColumnIndex);
-			}
-			AnswerModel answer = field.answers.get(i);
-			String displayValue = answer.label != null ? answer.label
-			        : (answer.conceptUuid != null ? answer.conceptUuid : (answer.value != null ? answer.value : ""));
-			cell.setCellValue(displayValue);
-		}
+		String sheetName = sheet.getSheetName();
+		int startRow = addAnswersToListSheet(listSheet, sheetName, field.id, null, field.answers);
+		int endRow = startRow + field.answers.size() - 1;
 		
 		Name namedRange = workbook.createName();
 		namedRange.setNameName(fieldName);
-		String columnLetter = CellReference.convertNumToColString(listColumnIndex);
-		String reference = "'" + DataImportConstants.LIST_SHEET + "'!$" + columnLetter + "$2:$" + columnLetter + "$"
-		        + (field.answers.size() + 1);
+		String reference = String.format("'%s'!$C$%d:$C$%d", DataImportConstants.LIST_SHEET, startRow, endRow);
 		namedRange.setRefersToFormula(reference);
 		
 		DataValidationHelper helper = sheet.getDataValidationHelper();
@@ -415,14 +431,34 @@ public class ExcelTemplateExporter {
 		return style;
 	}
 	
+	private static CellStyle createSectionHeaderStyle(XSSFWorkbook workbook) {
+		CellStyle style = workbook.createCellStyle();
+		Font font = workbook.createFont();
+		font.setBold(true);
+		font.setFontHeightInPoints((short) 12);
+		style.setFont(font);
+		style.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
+		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+		return style;
+	}
+	
 	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid,
 	        LongStringRegistry longStrings) {
 		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
 		
 		CellStyle headerStyle = createHeaderStyle(workbook);
+		CellStyle sectionHeaderStyle = createSectionHeaderStyle(workbook);
 		
-		Row headerRow = metaSheet.createRow(0);
+		int rowIndex = 0;
+		
+		Row sectionRow = metaSheet.createRow(rowIndex++);
+		Cell sectionCell = sectionRow.createCell(0);
+		sectionCell.setCellValue("TEMPLATE INFORMATION");
+		sectionCell.setCellStyle(sectionHeaderStyle);
+		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 1));
+		
+		Row headerRow = metaSheet.createRow(rowIndex++);
 		Cell keyHeader = headerRow.createCell(0);
 		keyHeader.setCellValue("key");
 		keyHeader.setCellStyle(headerStyle);
@@ -430,7 +466,6 @@ public class ExcelTemplateExporter {
 		valueHeader.setCellValue("value");
 		valueHeader.setCellStyle(headerStyle);
 		
-		int rowIndex = 1;
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateVersion");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(1);
 		
@@ -450,6 +485,12 @@ public class ExcelTemplateExporter {
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
 		
 		rowIndex += 2;
+		
+		sectionRow = metaSheet.createRow(rowIndex++);
+		sectionCell = sectionRow.createCell(0);
+		sectionCell.setCellValue("FORM DEFINITIONS");
+		sectionCell.setCellStyle(sectionHeaderStyle);
+		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 5));
 		
 		Row formHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] formHeaders = { "formUuid", "formName", "formVersion", "formType", "encounterTypeUuid", "sheetName" };
@@ -475,9 +516,16 @@ public class ExcelTemplateExporter {
 		}
 		
 		rowIndex += 2;
+		
+		sectionRow = metaSheet.createRow(rowIndex++);
+		sectionCell = sectionRow.createCell(0);
+		sectionCell.setCellValue("FIELD MAPPINGS");
+		sectionCell.setCellStyle(sectionHeaderStyle);
+		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 8));
+		
 		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] columnHeaders = { "sheetName", "colIndex", "fieldId", "label", "conceptUuid", "datatype", "isRepeat",
-		        "isMulti", "answersJson" };
+		        "isMulti", "answerCount" };
 		for (int i = 0; i < columnHeaders.length; i++) {
 			Cell cell = columnHeaderRow.createCell(i);
 			cell.setCellValue(columnHeaders[i]);
@@ -497,7 +545,7 @@ public class ExcelTemplateExporter {
 				row.createCell(5).setCellValue("TEXT");
 				row.createCell(6).setCellValue(false);
 				row.createCell(7).setCellValue(false);
-				row.createCell(8).setCellValue("{}");
+				row.createCell(8).setCellValue(colIndex == 2 ? 3 : 0);
 			}
 		}
 		
@@ -513,7 +561,7 @@ public class ExcelTemplateExporter {
 			row.createCell(5).setCellValue("TEXT");
 			row.createCell(6).setCellValue(false);
 			row.createCell(7).setCellValue(false);
-			row.createCell(8).setCellValue("{}");
+			row.createCell(8).setCellValue(0);
 			
 			for (FieldModel field : sheetModel.fields) {
 				row = metaSheet.createRow(rowIndex++);
@@ -526,17 +574,9 @@ public class ExcelTemplateExporter {
 				row.createCell(6).setCellValue(field.isRepeat);
 				row.createCell(7).setCellValue(field.isMulti);
 				
-				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
-					Map<String, String> answersMap = new HashMap<>();
-					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
-						if (answer.label != null && answer.conceptUuid != null) {
-							answersMap.put(DataImportConstants.normalizeLabel(answer.label), answer.conceptUuid);
-						}
-					}
-					setString(row.createCell(8), mapToJson(answersMap), longStrings);
-				} else {
-					setString(row.createCell(8), "{}", longStrings);
-				}
+				int answerCount = (field.datatype == FieldDatatype.CODED && field.answers != null) ? field.answers.size()
+				        : 0;
+				row.createCell(8).setCellValue(answerCount);
 			}
 		}
 		
@@ -550,8 +590,7 @@ public class ExcelTemplateExporter {
 		workbook.setSheetHidden(workbook.getSheetIndex(conceptsSheet), true);
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		Row header = conceptsSheet.createRow(0);
-		String[] headers = { "sheetName", "fieldId", "questionLabel", "questionConceptUuid", "questionDatatype",
-		        "questionClass", "isMulti", "answerLabel", "answerConceptUuid", "answerDatatype", "answerClass" };
+		String[] headers = { "level", "sheetName", "fieldId", "label", "conceptUuid", "datatype", "class", "isMulti" };
 		for (int i = 0; i < headers.length; i++) {
 			Cell cell = header.createCell(i);
 			cell.setCellValue(headers[i]);
@@ -559,66 +598,55 @@ public class ExcelTemplateExporter {
 		}
 		int rowIndex = 1;
 		
-		// Batch load all concepts upfront for better performance
 		Map<String, Concept> conceptCache = loadConceptsForForm(form);
 		
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
+				Row questionRow = conceptsSheet.createRow(rowIndex++);
+				questionRow.createCell(0).setCellValue("QUESTION");
+				questionRow.createCell(1).setCellValue(sheetModel.sheetName);
+				questionRow.createCell(2).setCellValue(field.id != null ? field.id : "");
+				questionRow.createCell(3).setCellValue(field.label != null ? field.label : "");
+				questionRow.createCell(4).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
+				
+				String datatype = "";
+				String conceptClass = "";
+				if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+					Concept concept = conceptCache.get(field.conceptUuid);
+					if (concept != null) {
+						datatype = concept.getDatatype() != null ? concept.getDatatype().getName() : "";
+						conceptClass = concept.getConceptClass() != null ? concept.getConceptClass().getName() : "";
+					}
+				}
+				questionRow.createCell(5).setCellValue(datatype);
+				questionRow.createCell(6).setCellValue(conceptClass);
+				questionRow.createCell(7).setCellValue(field.isMulti);
+				
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
 					for (org.openmrs.module.dataimport.model.AnswerModel answer : field.answers) {
-						Row r = conceptsSheet.createRow(rowIndex++);
-						r.createCell(0).setCellValue(sheetModel.sheetName);
-						r.createCell(1).setCellValue(field.id != null ? field.id : "");
-						r.createCell(2).setCellValue(field.label != null ? field.label : "");
-						r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
-						String qDatatype = "";
-						String qClass = "";
-						if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-							Concept qc = conceptCache.get(field.conceptUuid);
-							if (qc != null) {
-								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-							}
-						}
-						r.createCell(4).setCellValue(qDatatype);
-						r.createCell(5).setCellValue(qClass);
-						r.createCell(6).setCellValue(field.isMulti);
-						r.createCell(7).setCellValue(answer.label != null ? answer.label : "");
-						r.createCell(8).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
-						String aDatatype = "";
-						String aClass = "";
+						Row answerRow = conceptsSheet.createRow(rowIndex++);
+						answerRow.createCell(0).setCellValue("ANSWER");
+						answerRow.createCell(1).setCellValue(sheetModel.sheetName);
+						answerRow.createCell(2).setCellValue(field.id != null ? field.id : "");
+						answerRow.createCell(3).setCellValue(answer.label != null ? answer.label : "");
+						answerRow.createCell(4).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
+						
+						String answerDatatype = "";
+						String answerClass = "";
 						if (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
-							Concept ac = conceptCache.get(answer.conceptUuid);
-							if (ac != null) {
-								aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
-								aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
+							Concept answerConcept = conceptCache.get(answer.conceptUuid);
+							if (answerConcept != null) {
+								answerDatatype = answerConcept.getDatatype() != null ? answerConcept.getDatatype().getName()
+								        : "";
+								answerClass = answerConcept.getConceptClass() != null
+								        ? answerConcept.getConceptClass().getName()
+								        : "";
 							}
 						}
-						r.createCell(9).setCellValue(aDatatype);
-						r.createCell(10).setCellValue(aClass);
+						answerRow.createCell(5).setCellValue(answerDatatype);
+						answerRow.createCell(6).setCellValue(answerClass);
+						answerRow.createCell(7).setCellValue(false);
 					}
-				} else {
-					Row r = conceptsSheet.createRow(rowIndex++);
-					r.createCell(0).setCellValue(sheetModel.sheetName);
-					r.createCell(1).setCellValue(field.id != null ? field.id : "");
-					r.createCell(2).setCellValue(field.label != null ? field.label : "");
-					r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
-					String qDatatype = "";
-					String qClass = "";
-					if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						Concept qc = conceptCache.get(field.conceptUuid);
-						if (qc != null) {
-							qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-							qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-						}
-					}
-					r.createCell(4).setCellValue(qDatatype);
-					r.createCell(5).setCellValue(qClass);
-					r.createCell(6).setCellValue(field.isMulti);
-					r.createCell(7).setCellValue("");
-					r.createCell(8).setCellValue("");
-					r.createCell(9).setCellValue("");
-					r.createCell(10).setCellValue("");
 				}
 			}
 		}
