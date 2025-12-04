@@ -34,6 +34,19 @@ public final class DataImportConstants {
 	
 	public static final int LAST_DATA_ROW = 1000;
 	
+	// Excel column width constants (Excel uses units of 1/256 of a character width)
+	public static final int EXCEL_WIDTH_UNIT = 256;
+	
+	public static final int STANDARD_COLUMN_WIDTH = 20 * EXCEL_WIDTH_UNIT;
+	
+	public static final int PATIENT_REF_COLUMN_WIDTH = 60 * EXCEL_WIDTH_UNIT;
+	
+	// Excel named range max length
+	public static final int MAX_EXCEL_NAME_LENGTH = 240;
+	
+	// Maximum number of unique sheet name attempts before using timestamp
+	public static final int MAX_SHEET_NAME_ATTEMPTS = 1000;
+	
 	public static final String DATA_IMPORT_VISIT_TYPE_UUID = "0f631b77-4f1a-4c51-9e31-3d8b8f39ccbd";
 	
 	public static final String DATA_IMPORT_VISIT_TYPE_NAME = "Data Import Visit";

@@ -10,6 +10,7 @@
 package org.openmrs.module.dataimport.api.impl;
 
 import org.openmrs.module.dataimport.api.service.ConceptAnswersService;
+import org.openmrs.module.dataimport.api.util.ExcelNameUtils;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
@@ -52,7 +53,8 @@ public class O3FormParser {
 			}
 			
 			SheetModel primary = new SheetModel();
-			primary.sheetName = sanitizeSheetName(form.name != null && !form.name.trim().isEmpty() ? form.name : "Form");
+			primary.sheetName = ExcelNameUtils
+			        .sanitizeSheetName(form.name != null && !form.name.trim().isEmpty() ? form.name : "Form");
 			form.sheets.add(primary);
 			
 			ArrayNode pages = getArrayOrNull(root, "pages");
@@ -281,10 +283,6 @@ public class O3FormParser {
 		return (node != null && node.has(key) && node.get(key).isArray()) ? (ArrayNode) node.get(key) : null;
 	}
 	
-	private static String sanitizeSheetName(String name) {
-		return name.replaceAll("[\\\\/*?\\[\\]:]", "_").substring(0, Math.min(28, name.length()));
-	}
-	
 	private static Double parseDoubleOrNull(JsonNode node) {
 		if (node == null)
 			return null;
@@ -321,11 +319,7 @@ public class O3FormParser {
 		String candidate = null;
 		
 		if (label != null && !label.trim().isEmpty()) {
-			String sanitized = label.trim().toLowerCase().replaceAll("[^a-z0-9_]", "_").replaceAll("_+", "_")
-			        .replaceAll("^_|_$", "");
-			if (!sanitized.isEmpty()) {
-				candidate = sanitized;
-			}
+			candidate = ExcelNameUtils.generateFallbackId(label);
 		}
 		if (candidate == null && path != null && !path.trim().isEmpty()) {
 			String sanitized = path.trim().replaceAll("[^a-zA-Z0-9_/]", "_").replaceAll("_+", "_").replaceAll("^/|/$", "");
@@ -337,18 +331,10 @@ public class O3FormParser {
 			candidate = "field_" + fieldIndex;
 		}
 		
-		if (isExcelCellReference(candidate)) {
+		if (ExcelNameUtils.isExcelCellReference(candidate)) {
 			candidate = "field_" + candidate;
 		}
 		
 		return candidate;
-	}
-	
-	private static boolean isExcelCellReference(String str) {
-		if (str == null || str.isEmpty()) {
-			return false;
-		}
-		String lower = str.toLowerCase();
-		return lower.matches("^[a-z]+\\d+$");
 	}
 }

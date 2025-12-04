@@ -31,6 +31,7 @@ import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.util.DataImportConstants;
+import org.openmrs.module.dataimport.api.util.ExcelNameUtils;
 import org.openmrs.module.dataimport.model.AnswerModel;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
@@ -38,12 +39,18 @@ import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.SheetModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ExcelTemplateExporter {
 	
@@ -51,7 +58,7 @@ public class ExcelTemplateExporter {
 	
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
 	
-	private static final int STANDARD_COLUMN_WIDTH = 20 * 256;
+	private static final ObjectMapper objectMapper = new ObjectMapper();
 	
 	private final Map<String, Integer> usedNames = new HashMap<>();
 	
@@ -85,7 +92,7 @@ public class ExcelTemplateExporter {
 				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
 				patientRefHeaderCell.setCellValue(DataImportConstants.PATIENT_REF_HEADER);
 				patientRefHeaderCell.setCellStyle(headerStyle);
-				sheet.setColumnWidth(columnIndex, 60 * 256);
+				sheet.setColumnWidth(columnIndex, DataImportConstants.PATIENT_REF_COLUMN_WIDTH);
 				columnIndex++;
 				
 				for (FieldModel field : sheetModel.fields) {
@@ -107,7 +114,7 @@ public class ExcelTemplateExporter {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
 					
-					sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
+					sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
 				sheet.createFreezePane(0, 1);
@@ -151,7 +158,7 @@ public class ExcelTemplateExporter {
 			headerCell.setCellValue(columnHeaders[columnIndex]);
 			headerCell.setCellStyle(headerStyle);
 			if (columnIndex != 8) {
-				sheet.setColumnWidth(columnIndex, STANDARD_COLUMN_WIDTH);
+				sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 			}
 		}
 		
@@ -193,7 +200,7 @@ public class ExcelTemplateExporter {
 			patientRefCell.setCellStyle(readonlyStyle);
 		}
 		
-		sheet.setColumnWidth(8, 60 * 256);
+		sheet.setColumnWidth(8, DataImportConstants.PATIENT_REF_COLUMN_WIDTH);
 		sheet.createFreezePane(0, 1);
 		sheet.protectSheet("dataimport");
 	}
@@ -265,42 +272,21 @@ public class ExcelTemplateExporter {
 	}
 	
 	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
-		if (baseName == null || baseName.trim().isEmpty()) {
-			baseName = "Sheet";
-		}
-		
-		final int MAX_SHEET_NAME_LENGTH = 31;
-		String sanitized = baseName.replaceAll("[\\\\/*?\\[\\]:]", "_");
-		
-		if (sanitized.length() > MAX_SHEET_NAME_LENGTH) {
-			sanitized = sanitized.substring(0, MAX_SHEET_NAME_LENGTH);
-		}
-		
-		String candidate = sanitized;
+		String candidate = ExcelNameUtils.sanitizeSheetName(baseName);
 		int counter = 1;
 		
 		while (workbook.getSheet(candidate) != null) {
-			String suffix = "_" + counter;
-			int maxBaseLength = MAX_SHEET_NAME_LENGTH - suffix.length();
-			
-			String base = sanitized;
-			if (base.length() > maxBaseLength) {
-				base = sanitized.substring(0, maxBaseLength);
-			}
-			
-			candidate = base + suffix;
+			usedNames.put(baseName, counter);
+			candidate = ExcelNameUtils.getUniqueSheetName(baseName, usedNames);
 			counter++;
 			
-			if (counter > 1000) {
-				candidate = base + "_" + System.currentTimeMillis();
-				if (candidate.length() > MAX_SHEET_NAME_LENGTH) {
-					candidate = candidate.substring(0, MAX_SHEET_NAME_LENGTH);
-				}
+			if (counter > DataImportConstants.MAX_SHEET_NAME_ATTEMPTS) {
+				candidate = "Sheet_" + System.currentTimeMillis();
 				break;
 			}
 		}
 		
-		if (!candidate.equals(sanitized)) {
+		if (counter > 1) {
 			log.debug("Sheet name '{}' already exists, using unique name '{}'", baseName, candidate);
 		}
 		
@@ -318,20 +304,13 @@ public class ExcelTemplateExporter {
 		// Excel doesn't allow named ranges to have names that are valid cell references (e.g., "q1", "A1")
 		// A valid cell reference is: one or more letters followed by one or more digits (nothing else)
 		// Use regex to check if it matches this exact pattern
-		if (isExcelCellReference(safeName)) {
+		if (ExcelNameUtils.isExcelCellReference(safeName)) {
 			safeName = "field_" + safeName;
 		}
 		
-		if (safeName.length() > 240)
+		if (safeName.length() > DataImportConstants.MAX_EXCEL_NAME_LENGTH)
 			safeName = safeName.substring(0, 240);
 		return safeName;
-	}
-	
-	private boolean isExcelCellReference(String str) {
-		if (str == null || str.isEmpty()) {
-			return false;
-		}
-		return str.matches("^[A-Za-z]+\\d+$");
 	}
 	
 	private String makeUniqueExcelName(String baseName) {
@@ -345,8 +324,8 @@ public class ExcelTemplateExporter {
 		usedNames.put(safeName, count);
 		
 		String uniqueName = safeName + "_" + count;
-		if (uniqueName.length() > 240) {
-			int availableSpace = 240 - String.valueOf(count).length() - 1; // -1 for underscore
+		if (uniqueName.length() > DataImportConstants.MAX_EXCEL_NAME_LENGTH) {
+			int availableSpace = DataImportConstants.MAX_EXCEL_NAME_LENGTH - String.valueOf(count).length() - 1; // -1 for underscore
 			uniqueName = safeName.substring(0, Math.max(1, availableSpace)) + "_" + count;
 		}
 		return uniqueName;
@@ -579,20 +558,10 @@ public class ExcelTemplateExporter {
 			cell.setCellStyle(headerStyle);
 		}
 		int rowIndex = 1;
-		ConceptService conceptService = null;
-		try {
-			if (Context.isSessionOpen()) {
-				try {
-					conceptService = Context.getConceptService();
-				}
-				catch (APIException e) {
-					log.debug("ConceptService not available (Context not initialized): {}", e.getMessage());
-				}
-			}
-		}
-		catch (Exception e) {
-			log.debug("Context not available: {}", e.getMessage());
-		}
+		
+		// Batch load all concepts upfront for better performance
+		Map<String, Concept> conceptCache = loadConceptsForForm(form);
+		
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
@@ -604,15 +573,12 @@ public class ExcelTemplateExporter {
 						r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
 						String qDatatype = "";
 						String qClass = "";
-						if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-							try {
-								Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
-								if (qc != null) {
-									qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-									qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-								}
+						if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+							Concept qc = conceptCache.get(field.conceptUuid);
+							if (qc != null) {
+								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
 							}
-							catch (APIException e) {}
 						}
 						r.createCell(4).setCellValue(qDatatype);
 						r.createCell(5).setCellValue(qClass);
@@ -621,15 +587,12 @@ public class ExcelTemplateExporter {
 						r.createCell(8).setCellValue(answer.conceptUuid != null ? answer.conceptUuid : "");
 						String aDatatype = "";
 						String aClass = "";
-						if (conceptService != null && answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
-							try {
-								Concept ac = conceptService.getConceptByUuid(answer.conceptUuid);
-								if (ac != null) {
-									aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
-									aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
-								}
+						if (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
+							Concept ac = conceptCache.get(answer.conceptUuid);
+							if (ac != null) {
+								aDatatype = ac.getDatatype() != null ? ac.getDatatype().getName() : "";
+								aClass = ac.getConceptClass() != null ? ac.getConceptClass().getName() : "";
 							}
-							catch (APIException e) {}
 						}
 						r.createCell(9).setCellValue(aDatatype);
 						r.createCell(10).setCellValue(aClass);
@@ -642,15 +605,12 @@ public class ExcelTemplateExporter {
 					r.createCell(3).setCellValue(field.conceptUuid != null ? field.conceptUuid : "");
 					String qDatatype = "";
 					String qClass = "";
-					if (conceptService != null && field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
-						try {
-							Concept qc = conceptService.getConceptByUuid(field.conceptUuid);
-							if (qc != null) {
-								qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
-								qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
-							}
+					if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+						Concept qc = conceptCache.get(field.conceptUuid);
+						if (qc != null) {
+							qDatatype = qc.getDatatype() != null ? qc.getDatatype().getName() : "";
+							qClass = qc.getConceptClass() != null ? qc.getConceptClass().getName() : "";
 						}
-						catch (APIException e) {}
 					}
 					r.createCell(4).setCellValue(qDatatype);
 					r.createCell(5).setCellValue(qClass);
@@ -668,20 +628,13 @@ public class ExcelTemplateExporter {
 	}
 	
 	private String mapToJson(Map<String, String> map) {
-		if (map.isEmpty())
-			return "{}";
-		
-		StringBuilder json = new StringBuilder("{");
-		boolean first = true;
-		for (Map.Entry<String, String> entry : map.entrySet()) {
-			if (!first)
-				json.append(",");
-			json.append("\"").append(entry.getKey().replace("\"", "\\\"")).append("\":\"").append(entry.getValue())
-			        .append("\"");
-			first = false;
+		try {
+			return objectMapper.writeValueAsString(map);
 		}
-		json.append("}");
-		return json.toString();
+		catch (JsonProcessingException e) {
+			log.error("Failed to serialize answers map to JSON", e);
+			return "{}";
+		}
 	}
 	
 	private void setString(Cell cell, String value, LongStringRegistry longStrings) {
@@ -691,6 +644,65 @@ public class ExcelTemplateExporter {
 		}
 		String registered = longStrings.register(value);
 		cell.setCellValue(registered != null ? registered : "");
+	}
+	
+	private Map<String, Concept> loadConceptsForForm(FormModel form) {
+		Map<String, Concept> conceptCache = new HashMap<>();
+		
+		// Check if ConceptService is available
+		ConceptService conceptService = getConceptServiceIfAvailable();
+		if (conceptService == null) {
+			return conceptCache;
+		}
+		
+		// Collect all unique concept UUIDs
+		Set<String> conceptUuids = new HashSet<>();
+		for (SheetModel sheet : form.sheets) {
+			for (FieldModel field : sheet.fields) {
+				if (field.conceptUuid != null && !field.conceptUuid.trim().isEmpty()) {
+					conceptUuids.add(field.conceptUuid.trim());
+				}
+				if (field.datatype == FieldDatatype.CODED) {
+					for (AnswerModel answer : field.answers) {
+						if (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty()) {
+							conceptUuids.add(answer.conceptUuid.trim());
+						}
+					}
+				}
+			}
+		}
+		
+		// Load all concepts (with caching)
+		for (String uuid : conceptUuids) {
+			try {
+				Concept concept = conceptService.getConceptByUuid(uuid);
+				if (concept != null) {
+					conceptCache.put(uuid, concept);
+				}
+			}
+			catch (APIException e) {
+				log.debug("Failed to load concept {}: {}", uuid, e.getMessage());
+			}
+		}
+		
+		return conceptCache;
+	}
+	
+	private ConceptService getConceptServiceIfAvailable() {
+		try {
+			if (Context.isSessionOpen()) {
+				try {
+					return Context.getConceptService();
+				}
+				catch (APIException e) {
+					log.debug("ConceptService not available (Context not initialized): {}", e.getMessage());
+				}
+			}
+		}
+		catch (Exception e) {
+			log.debug("Context not available: {}", e.getMessage());
+		}
+		return null;
 	}
 	
 }
