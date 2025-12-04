@@ -33,14 +33,14 @@ import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.util.DataImportConstants;
 import org.openmrs.module.dataimport.api.util.ExcelNameUtils;
 import org.openmrs.module.dataimport.model.AnswerModel;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.SheetModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -57,9 +57,9 @@ public class ExcelTemplateExporter {
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
 	
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
-
+	
 	private static final ObjectMapper objectMapper = new ObjectMapper();
-
+	
 	private final Map<String, Integer> usedNames = new HashMap<>();
 	
 	public byte[] export(FormModel form, boolean includePatient) {
@@ -274,22 +274,22 @@ public class ExcelTemplateExporter {
 	private String getUniqueSheetName(XSSFWorkbook workbook, String baseName) {
 		String candidate = ExcelNameUtils.sanitizeSheetName(baseName);
 		int counter = 1;
-
+		
 		while (workbook.getSheet(candidate) != null) {
 			usedNames.put(baseName, counter);
 			candidate = ExcelNameUtils.getUniqueSheetName(baseName, usedNames);
 			counter++;
-
+			
 			if (counter > DataImportConstants.MAX_SHEET_NAME_ATTEMPTS) {
 				candidate = "Sheet_" + System.currentTimeMillis();
 				break;
 			}
 		}
-
+		
 		if (counter > 1) {
 			log.debug("Sheet name '{}' already exists, using unique name '{}'", baseName, candidate);
 		}
-
+		
 		return candidate;
 	}
 	
@@ -312,7 +312,6 @@ public class ExcelTemplateExporter {
 			safeName = safeName.substring(0, 240);
 		return safeName;
 	}
-	
 	
 	private String makeUniqueExcelName(String baseName) {
 		String safeName = makeSafeExcelName(baseName);
@@ -559,10 +558,10 @@ public class ExcelTemplateExporter {
 			cell.setCellStyle(headerStyle);
 		}
 		int rowIndex = 1;
-
+		
 		// Batch load all concepts upfront for better performance
 		Map<String, Concept> conceptCache = loadConceptsForForm(form);
-
+		
 		for (SheetModel sheetModel : form.sheets) {
 			for (FieldModel field : sheetModel.fields) {
 				if (field.datatype == FieldDatatype.CODED && !field.answers.isEmpty()) {
@@ -646,16 +645,16 @@ public class ExcelTemplateExporter {
 		String registered = longStrings.register(value);
 		cell.setCellValue(registered != null ? registered : "");
 	}
-
+	
 	private Map<String, Concept> loadConceptsForForm(FormModel form) {
 		Map<String, Concept> conceptCache = new HashMap<>();
-
+		
 		// Check if ConceptService is available
 		ConceptService conceptService = getConceptServiceIfAvailable();
 		if (conceptService == null) {
 			return conceptCache;
 		}
-
+		
 		// Collect all unique concept UUIDs
 		Set<String> conceptUuids = new HashSet<>();
 		for (SheetModel sheet : form.sheets) {
@@ -672,7 +671,7 @@ public class ExcelTemplateExporter {
 				}
 			}
 		}
-
+		
 		// Load all concepts (with caching)
 		for (String uuid : conceptUuids) {
 			try {
@@ -685,10 +684,10 @@ public class ExcelTemplateExporter {
 				log.debug("Failed to load concept {}: {}", uuid, e.getMessage());
 			}
 		}
-
+		
 		return conceptCache;
 	}
-
+	
 	private ConceptService getConceptServiceIfAvailable() {
 		try {
 			if (Context.isSessionOpen()) {
@@ -705,5 +704,5 @@ public class ExcelTemplateExporter {
 		}
 		return null;
 	}
-
+	
 }

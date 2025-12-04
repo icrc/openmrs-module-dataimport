@@ -822,7 +822,6 @@ public class HfeFormParser {
 		return str.replaceAll("[^a-zA-Z0-9_]", "_").replaceAll("_+", "_").replaceAll("^_|_$", "").toLowerCase();
 	}
 	
-	
 	private String getAttributeOrNull(Element element, String attributeName) {
 		if (element.hasAttribute(attributeName)) {
 			String value = element.getAttribute(attributeName);

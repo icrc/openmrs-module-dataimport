@@ -132,44 +132,44 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 			}
 		}
 	}
-
+	
 	private void enrichCodedField(FieldModel field) {
 		loadAnswersIfNeeded(field);
 		enrichAnswerLabels(field);
 	}
-
+	
 	private void loadAnswersIfNeeded(FieldModel field) {
 		if (!field.answers.isEmpty()) {
 			return;
 		}
-
+		
 		if (hasUiSelectSource(field)) {
 			populateUiSelectExtendedAnswers(field);
 		} else if (hasConceptUuid(field)) {
 			loadAnswersFromConcept(field);
 		}
 	}
-
+	
 	private void enrichAnswerLabels(FieldModel field) {
 		if (field.answers.isEmpty() || field.uiSelectSourceType != null) {
 			return;
 		}
-
+		
 		for (AnswerModel answer : field.answers) {
 			if (needsLabelEnrichment(answer)) {
 				enrichAnswerLabel(answer);
 			}
 		}
 	}
-
+	
 	private boolean hasUiSelectSource(FieldModel field) {
 		return field.uiSelectSourceType != null && !field.uiSelectSourceType.trim().isEmpty();
 	}
-
+	
 	private boolean hasConceptUuid(FieldModel field) {
 		return field.conceptUuid != null && !field.conceptUuid.trim().isEmpty();
 	}
-
+	
 	private void loadAnswersFromConcept(FieldModel field) {
 		List<AnswerModel> loadedAnswers = conceptAnswersService.loadAnswersForConcept(field.conceptUuid);
 		if (loadedAnswers != null && !loadedAnswers.isEmpty()) {
@@ -178,13 +178,13 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 			log.debug("No answers found for coded field '{}' with concept {}", field.label, field.conceptUuid);
 		}
 	}
-
+	
 	private boolean needsLabelEnrichment(AnswerModel answer) {
 		boolean missingLabel = (answer.label == null || answer.label.trim().isEmpty());
 		boolean hasConceptUuid = (answer.conceptUuid != null && !answer.conceptUuid.trim().isEmpty());
 		return missingLabel && hasConceptUuid;
 	}
-
+	
 	private void enrichAnswerLabel(AnswerModel answer) {
 		AnswerModel conceptAnswer = conceptAnswersService.loadSingleConcept(answer.conceptUuid);
 		if (conceptAnswer != null && conceptAnswer.label != null) {

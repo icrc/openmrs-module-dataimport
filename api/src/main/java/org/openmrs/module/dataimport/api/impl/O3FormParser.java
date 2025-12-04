@@ -53,7 +53,8 @@ public class O3FormParser {
 			}
 			
 			SheetModel primary = new SheetModel();
-			primary.sheetName = ExcelNameUtils.sanitizeSheetName(form.name != null && !form.name.trim().isEmpty() ? form.name : "Form");
+			primary.sheetName = ExcelNameUtils
+			        .sanitizeSheetName(form.name != null && !form.name.trim().isEmpty() ? form.name : "Form");
 			form.sheets.add(primary);
 			
 			ArrayNode pages = getArrayOrNull(root, "pages");
@@ -282,7 +283,6 @@ public class O3FormParser {
 		return (node != null && node.has(key) && node.get(key).isArray()) ? (ArrayNode) node.get(key) : null;
 	}
 	
-	
 	private static Double parseDoubleOrNull(JsonNode node) {
 		if (node == null)
 			return null;
@@ -317,7 +317,7 @@ public class O3FormParser {
 	
 	private static String generateFallbackId(String label, String path, int fieldIndex) {
 		String candidate = null;
-
+		
 		if (label != null && !label.trim().isEmpty()) {
 			candidate = ExcelNameUtils.generateFallbackId(label);
 		}
@@ -330,11 +330,11 @@ public class O3FormParser {
 		if (candidate == null) {
 			candidate = "field_" + fieldIndex;
 		}
-
+		
 		if (ExcelNameUtils.isExcelCellReference(candidate)) {
 			candidate = "field_" + candidate;
 		}
-
+		
 		return candidate;
 	}
 }

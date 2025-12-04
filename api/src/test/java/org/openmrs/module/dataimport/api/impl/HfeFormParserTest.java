@@ -177,7 +177,6 @@ public class HfeFormParserTest {
 		assertFalse(result3.equals("A1")); // Should be transformed to avoid collision
 	}
 	
-	
 	private org.openmrs.Form createMockForm() {
 		org.openmrs.Form form = new org.openmrs.Form();
 		form.setUuid("test-form-uuid");

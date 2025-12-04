@@ -16,13 +16,13 @@ import java.util.regex.Pattern;
  * Utilities for Excel naming conventions and validation.
  */
 public class ExcelNameUtils {
-
+	
 	private static final Pattern EXCEL_CELL_REFERENCE_PATTERN = Pattern.compile("^[A-Za-z]+\\d+$");
-
+	
 	private static final Pattern INVALID_SHEET_NAME_CHARS = Pattern.compile("[\\\\/*?\\[\\]:]+");
-
+	
 	private static final int MAX_SHEET_NAME_LENGTH = 31;
-
+	
 	/**
 	 * Checks if a string represents a valid Excel cell reference (e.g., "A1", "AB123").
 	 *
@@ -32,14 +32,12 @@ public class ExcelNameUtils {
 	public static boolean isExcelCellReference(String str) {
 		return str != null && EXCEL_CELL_REFERENCE_PATTERN.matcher(str).matches();
 	}
-
+	
 	/**
 	 * Sanitizes a string to be a valid Excel sheet name.
 	 * <p>
-	 * Excel sheet names must:
-	 * - Not exceed 31 characters
-	 * - Not contain: \ / * ? [ ] :
-	 * - Not be empty or blank
+	 * Excel sheet names must: - Not exceed 31 characters - Not contain: \ / * ? [ ] : - Not be empty or
+	 * blank
 	 *
 	 * @param name the proposed sheet name
 	 * @return sanitized sheet name
@@ -48,16 +46,16 @@ public class ExcelNameUtils {
 		if (name == null || name.trim().isEmpty()) {
 			return "Sheet";
 		}
-
+		
 		String sanitized = INVALID_SHEET_NAME_CHARS.matcher(name).replaceAll("_");
-
+		
 		if (sanitized.length() > MAX_SHEET_NAME_LENGTH) {
 			sanitized = sanitized.substring(0, MAX_SHEET_NAME_LENGTH);
 		}
-
+		
 		return sanitized.trim();
 	}
-
+	
 	/**
 	 * Gets a unique sheet name by appending a number if needed.
 	 *
@@ -67,32 +65,29 @@ public class ExcelNameUtils {
 	 */
 	public static String getUniqueSheetName(String baseName, Map<String, Integer> usedNames) {
 		String sanitized = sanitizeSheetName(baseName);
-
+		
 		if (!usedNames.containsKey(sanitized)) {
 			usedNames.put(sanitized, 1);
 			return sanitized;
 		}
-
+		
 		int count = usedNames.get(sanitized);
 		usedNames.put(sanitized, count + 1);
-
+		
 		String suffix = "_" + count;
 		int maxBaseLength = MAX_SHEET_NAME_LENGTH - suffix.length();
-
+		
 		if (sanitized.length() > maxBaseLength) {
 			sanitized = sanitized.substring(0, maxBaseLength);
 		}
-
+		
 		return sanitized + suffix;
 	}
-
+	
 	/**
 	 * Generates a fallback ID from a label when no explicit ID is provided.
 	 * <p>
-	 * Strategy:
-	 * - Removes special characters
-	 * - Converts to camelCase
-	 * - Limits length to reasonable size
+	 * Strategy: - Removes special characters - Converts to camelCase - Limits length to reasonable size
 	 *
 	 * @param label the label to generate an ID from
 	 * @return generated fallback ID
@@ -101,21 +96,21 @@ public class ExcelNameUtils {
 		if (label == null || label.trim().isEmpty()) {
 			return "field_" + System.currentTimeMillis();
 		}
-
+		
 		String cleaned = label.replaceAll("[^a-zA-Z0-9\\s]", "").trim();
-
+		
 		if (cleaned.isEmpty()) {
 			return "field_" + Math.abs(label.hashCode());
 		}
-
+		
 		String[] words = cleaned.split("\\s+");
 		StringBuilder id = new StringBuilder();
-
+		
 		for (int i = 0; i < words.length; i++) {
 			String word = words[i];
 			if (word.isEmpty())
 				continue;
-
+			
 			if (i == 0) {
 				id.append(word.toLowerCase());
 			} else {
@@ -125,12 +120,12 @@ public class ExcelNameUtils {
 				}
 			}
 		}
-
+		
 		String result = id.toString();
 		if (result.length() > 64) {
 			result = result.substring(0, 64);
 		}
-
+		
 		return result.isEmpty() ? "field_" + Math.abs(label.hashCode()) : result;
 	}
 }
