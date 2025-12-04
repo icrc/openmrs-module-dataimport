@@ -33,6 +33,8 @@ import org.openmrs.api.context.Context;
 import org.openmrs.module.dataimport.api.util.DataImportConstants;
 import org.openmrs.module.dataimport.api.util.ExcelNameUtils;
 import org.openmrs.module.dataimport.model.AnswerModel;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
@@ -53,7 +55,9 @@ public class ExcelTemplateExporter {
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
 	
 	private static final int STANDARD_COLUMN_WIDTH = 20 * 256;
-	
+
+	private static final ObjectMapper objectMapper = new ObjectMapper();
+
 	private final Map<String, Integer> usedNames = new HashMap<>();
 	
 	public byte[] export(FormModel form, boolean includePatient) {
@@ -642,20 +646,13 @@ public class ExcelTemplateExporter {
 	}
 	
 	private String mapToJson(Map<String, String> map) {
-		if (map.isEmpty())
-			return "{}";
-		
-		StringBuilder json = new StringBuilder("{");
-		boolean first = true;
-		for (Map.Entry<String, String> entry : map.entrySet()) {
-			if (!first)
-				json.append(",");
-			json.append("\"").append(entry.getKey().replace("\"", "\\\"")).append("\":\"").append(entry.getValue())
-			        .append("\"");
-			first = false;
+		try {
+			return objectMapper.writeValueAsString(map);
 		}
-		json.append("}");
-		return json.toString();
+		catch (JsonProcessingException e) {
+			log.error("Failed to serialize answers map to JSON", e);
+			return "{}";
+		}
 	}
 	
 	private void setString(Cell cell, String value, LongStringRegistry longStrings) {
