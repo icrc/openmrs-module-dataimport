@@ -37,27 +37,27 @@ import java.util.concurrent.Future;
 
 @Service
 public class WorkbookValidationServiceImpl implements WorkbookValidationService {
-
+	
 	@Override
 	public ValidationResult validate(List<Sheet> sheets, TemplateMeta meta, ExcelReader.PatientIndex patientIndex,
 	        String templateDefaultLocationUuid) {
 		if (sheets == null || sheets.isEmpty()) {
 			return new ValidationResult(new ArrayList<>(), new ArrayList<>(), new HashSet<>());
 		}
-
+		
 		int availableProcessors = Runtime.getRuntime().availableProcessors();
 		int threadCount = Math.min(Math.max(availableProcessors, 1), sheets.size());
 		List<SheetProcessingResult> sheetResults;
-
+		
 		if (threadCount <= 1) {
 			sheetResults = processSheetsSequentially(sheets, meta, patientIndex, templateDefaultLocationUuid);
 		} else {
 			sheetResults = processSheetsInParallel(sheets, meta, patientIndex, templateDefaultLocationUuid, threadCount);
 		}
-
+		
 		return aggregateResults(sheetResults);
 	}
-
+	
 	private List<SheetProcessingResult> processSheetsSequentially(List<Sheet> sheets, TemplateMeta meta,
 	        ExcelReader.PatientIndex patientIndex, String templateDefaultLocationUuid) {
 		List<SheetProcessingResult> results = new ArrayList<>();
@@ -66,7 +66,7 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 		}
 		return results;
 	}
-
+	
 	private List<SheetProcessingResult> processSheetsInParallel(List<Sheet> sheets, TemplateMeta meta,
 	        ExcelReader.PatientIndex patientIndex, String templateDefaultLocationUuid, int threadCount) {
 		ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -75,7 +75,7 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			for (Sheet sheet : sheets) {
 				futures.add(executor.submit(() -> processSheet(sheet, meta, patientIndex, templateDefaultLocationUuid)));
 			}
-
+			
 			List<SheetProcessingResult> results = new ArrayList<>();
 			for (Future<SheetProcessingResult> future : futures) {
 				results.add(future.get());
@@ -93,17 +93,17 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			executor.shutdownNow();
 		}
 	}
-
+	
 	private ValidationResult aggregateResults(List<SheetProcessingResult> sheetResults) {
 		List<RowPlan> okRows = new ArrayList<>();
 		List<QuarantineItem> quarantineItems = new ArrayList<>();
 		Set<String> globalBlocked = new HashSet<>();
-
+		
 		for (SheetProcessingResult sheetResult : sheetResults) {
 			globalBlocked.addAll(sheetResult.blockedPatientRefs);
 			quarantineItems.addAll(sheetResult.quarantineItems);
 		}
-
+		
 		for (SheetProcessingResult sheetResult : sheetResults) {
 			for (RowPlan rowPlan : sheetResult.okRows) {
 				String patientRef = rowPlan.getPatientRef();
@@ -115,25 +115,25 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 				}
 			}
 		}
-
+		
 		return new ValidationResult(okRows, quarantineItems, globalBlocked);
 	}
-
+	
 	private SheetProcessingResult processSheet(Sheet sheet, TemplateMeta meta, ExcelReader.PatientIndex patientIndex,
 	        String templateDefaultLocationUuid) {
 		SheetProcessingResult result = new SheetProcessingResult();
 		String sheetName = sheet.getSheetName();
 		SheetMeta sheetMeta = meta.getSheetMeta(sheetName);
-
+		
 		if (sheetMeta == null) {
 			return result;
 		}
-
+		
 		int lastRow = WorkbookUtil.lastDataRow(sheet);
 		if (lastRow < 1) {
 			return result;
 		}
-
+		
 		for (int rowIndex = 1; rowIndex <= lastRow; rowIndex++) {
 			if (WorkbookUtil.isEmptyRow(sheet, rowIndex)) {
 				continue;
@@ -146,21 +146,21 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 				    "Failed to process row: " + e.getMessage()));
 			}
 		}
-
+		
 		return result;
 	}
-
+	
 	private void processRow(Sheet sheet, int rowIndex, SheetMeta sheetMeta, ExcelReader.PatientIndex patientIndex,
 	        SheetProcessingResult result, String templateDefaultLocationUuid) {
 		String sheetName = sheet.getSheetName();
-
+		
 		String patientRef = WorkbookUtil.Cells.getString(sheet, rowIndex, 0);
 		if (patientRef == null || patientRef.trim().isEmpty()) {
 			result.quarantineItems
 			        .add(QuarantineItem.error(sheetName, rowIndex, 0, "MISSING_PATIENT_REF", "Patient Ref is required"));
 			return;
 		}
-
+		
 		ExcelReader.PatientResolution patientResolution = patientIndex.resolve(patientRef);
 		if (!patientResolution.isResolved()) {
 			result.blockedPatientRefs.add(patientRef);
@@ -168,12 +168,12 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			    QuarantineItem.error(sheetName, rowIndex, 0, "UNKNOWN_PATIENT_REF", patientResolution.getErrorMessage()));
 			return;
 		}
-
+		
 		int issuesBefore = result.quarantineItems.size();
-
+		
 		EncounterBlueprint encounter = ExcelReader.buildEncounter(sheetMeta, templateDefaultLocationUuid);
 		ObsBuildOutcome obsOutcome = ExcelReader.buildObsDetailed(sheet, rowIndex, sheetMeta);
-
+		
 		for (ObsBuildIssue issue : obsOutcome.getIssues()) {
 			ColumnMeta column = issue.getColumn();
 			int colIndex = column != null ? column.colIndex : 0;
@@ -185,33 +185,33 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			}
 			result.quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, colIndex, "OBS_PARSE_ERROR", message));
 		}
-
+		
 		List<ObsBlueprint> obs = obsOutcome.getObs();
 		Validation.checkRow(obs, sheetMeta, result.quarantineItems, sheetName, rowIndex);
-
+		
 		boolean rowHasIssues = result.quarantineItems.size() > issuesBefore;
 		if (rowHasIssues) {
 			result.blockedPatientRefs.add(patientRef);
 			return;
 		}
-
+		
 		String idempotencyKey = Idempotency.key(sheet.getWorkbook(), sheetName, rowIndex, encounter, obs);
 		RowPlan rowPlan = new RowPlan(sheetName, rowIndex, patientRef, patientResolution.getPatientUuid(), encounter, obs,
 		        idempotencyKey);
 		result.okRows.add(rowPlan);
 	}
-
+	
 	private QuarantineItem createPatientBlockedIssue(String sheetName, int rowIndex, String patientRef) {
 		return QuarantineItem.error(sheetName, rowIndex, 0, "PATIENT_BLOCKED",
 		    "Patient '" + patientRef + "' has other rows with issues; skipping row");
 	}
-
+	
 	private static class SheetProcessingResult {
-
+		
 		private final List<RowPlan> okRows = new ArrayList<>();
-
+		
 		private final List<QuarantineItem> quarantineItems = new ArrayList<>();
-
+		
 		private final Set<String> blockedPatientRefs = new HashSet<>();
 	}
 }

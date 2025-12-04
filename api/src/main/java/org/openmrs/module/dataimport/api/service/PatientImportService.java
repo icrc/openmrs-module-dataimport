@@ -19,7 +19,7 @@ import java.util.Set;
  * Service for creating patients from import data.
  */
 public interface PatientImportService {
-
+	
 	/**
 	 * Creates patients from the registration sheet in the import plan.
 	 *
@@ -27,20 +27,20 @@ public interface PatientImportService {
 	 * @return outcome of patient creation including mappings and errors
 	 */
 	PatientCreationOutcome createPatientsFromPlan(ImportPlan plan);
-
+	
 	/**
 	 * Outcome of patient creation process.
 	 */
 	class PatientCreationOutcome {
-
+		
 		public final Map<String, String> refToPatientUuid;
-
+		
 		public final Set<String> failedPatientRefs;
-
+		
 		public final List<String> errors;
-
+		
 		public PatientCreationOutcome(Map<String, String> refToPatientUuid, Set<String> failedPatientRefs,
-		        List<String> errors) {
+		    List<String> errors) {
 			this.refToPatientUuid = refToPatientUuid;
 			this.failedPatientRefs = failedPatientRefs;
 			this.errors = errors;

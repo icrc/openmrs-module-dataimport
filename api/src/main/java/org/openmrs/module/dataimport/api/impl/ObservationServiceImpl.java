@@ -29,11 +29,11 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 	private ConceptService getConceptService() {
 		return Context.getConceptService();
 	}
-
+	
 	private org.openmrs.api.ObsService getObsService() {
 		return Context.getObsService();
 	}
-
+	
 	private Concept validateAndGetConcept(String conceptUuid) {
 		Concept concept = getConceptService().getConceptByUuid(conceptUuid);
 		if (concept == null) {
@@ -41,12 +41,12 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		}
 		return concept;
 	}
-
+	
 	public Obs addTextObs(Encounter enc, String conceptUuid, String value) {
 		if (value == null || value.trim().isEmpty()) {
 			return null;
 		}
-
+		
 		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && (c.getDatatype().isCoded() || c.getDatatype().isNumeric() || c.getDatatype().isDate()
 		        || c.getDatatype().isDateTime() || c.getDatatype().isBoolean())) {
@@ -63,7 +63,7 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (value == null) {
 			return null;
 		}
-
+		
 		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && !c.getDatatype().isNumeric()) {
 			throw new IllegalArgumentException(
@@ -79,13 +79,13 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (answerConceptUuid == null || answerConceptUuid.trim().isEmpty()) {
 			return null;
 		}
-
+		
 		Concept q = validateAndGetConcept(questionConceptUuid);
 		if (q.getDatatype() != null && !q.getDatatype().isCoded()) {
 			throw new IllegalArgumentException(
 			        "Concept '" + q.getName() + "' (" + q.getUuid() + ") is not CODED; update template/datatype");
 		}
-
+		
 		Concept a = validateAndGetConcept(answerConceptUuid);
 		
 		Obs o = base(enc, q);
@@ -97,7 +97,7 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (date == null) {
 			return null;
 		}
-
+		
 		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && !(c.getDatatype().isDate() || c.getDatatype().isDateTime())) {
 			throw new IllegalArgumentException(
@@ -113,7 +113,7 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (dateTime == null) {
 			return null;
 		}
-
+		
 		Concept c = validateAndGetConcept(conceptUuid);
 		if (c.getDatatype() != null && !(c.getDatatype().isDateTime() || c.getDatatype().isDate())) {
 			throw new IllegalArgumentException(
@@ -130,7 +130,7 @@ public class ObservationServiceImpl extends BaseOpenmrsService implements Observ
 		if (value == null) {
 			return null;
 		}
-
+		
 		String answerConceptUuid = value ? trueConceptUuid : falseConceptUuid;
 		Concept q = validateAndGetConcept(conceptUuid);
 		if (q.getDatatype() != null && !(q.getDatatype().isCoded() || q.getDatatype().isBoolean())) {

@@ -40,10 +40,9 @@ public class DataImportIntegrationTest {
 		ImportPlanStorageService importPlanStorage = new ImportPlanStorageService();
 		WorkbookValidationServiceImpl workbookValidation = new WorkbookValidationServiceImpl();
 		PatientImportServiceImpl patientImportService = new PatientImportServiceImpl(new PatientServiceImpl());
-		EncounterImportOrchestratorImpl encounterOrchestrator = new EncounterImportOrchestratorImpl(
-		        new IdempotencyService(), new EncounterServiceImpl(), new ObservationServiceImpl(),
-		        new VisitImportServiceImpl());
-
+		EncounterImportOrchestratorImpl encounterOrchestrator = new EncounterImportOrchestratorImpl(new IdempotencyService(),
+		        new EncounterServiceImpl(), new ObservationServiceImpl(), new VisitImportServiceImpl());
+		
 		importService = new WorkbookImportServiceImpl(importPlanStorage, workbookValidation, patientImportService,
 		        encounterOrchestrator);
 		exporter = new ExcelTemplateExporter();

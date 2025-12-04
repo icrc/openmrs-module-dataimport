@@ -41,19 +41,19 @@ import java.util.UUID;
 public class WorkbookImportServiceImpl implements WorkbookImportService {
 	
 	private static final Logger log = LoggerFactory.getLogger(WorkbookImportServiceImpl.class);
-
+	
 	private final ImportPlanStorageService importPlanStorage;
-
+	
 	private final WorkbookValidationService workbookValidationService;
-
+	
 	private final PatientImportService patientImportService;
-
+	
 	private final EncounterImportOrchestrator encounterImportOrchestrator;
-
+	
 	@Autowired
 	public WorkbookImportServiceImpl(ImportPlanStorageService importPlanStorage,
-	        WorkbookValidationService workbookValidationService, PatientImportService patientImportService,
-	        EncounterImportOrchestrator encounterImportOrchestrator) {
+	    WorkbookValidationService workbookValidationService, PatientImportService patientImportService,
+	    EncounterImportOrchestrator encounterImportOrchestrator) {
 		this.importPlanStorage = importPlanStorage;
 		this.workbookValidationService = workbookValidationService;
 		this.patientImportService = patientImportService;
@@ -70,11 +70,11 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				validateConceptsSheet(meta, concepts);
 			}
 			ExcelReader.PatientIndex patientIndex = ExcelReader.indexPatients(workbook);
-
+			
 			List<Sheet> sheets = WorkbookUtil.nonPatientSheets(workbook, DataImportConstants.PATIENT_SHEET_NAME);
 			WorkbookValidationService.ValidationResult validationResult = workbookValidationService.validate(sheets, meta,
 			    patientIndex, meta.defaultLocationUuid);
-
+			
 			ImportStats stats = ImportStats.of(validationResult.okRows, validationResult.quarantineItems,
 			    validationResult.blockedPatientRefs);
 			ImportPlan plan = ImportPlan.builder().batchId(batchId).rowsOk(validationResult.okRows)
@@ -82,13 +82,12 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			        .blockedPatientRefs(validationResult.blockedPatientRefs).build();
 			importPlanStorage.storePlan(plan);
 			return plan;
-
+			
 		}
 		catch (Exception e) {
 			throw new RuntimeException("Failed to perform dry run: " + e.getMessage(), e);
 		}
 	}
-	
 	
 	@Override
 	public ImportResult commit(UUID batchId) {
@@ -98,28 +97,28 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 				return ImportResult.failure(batchId, "Import plan not found for batch: " + batchId,
 				    Collections.singletonList("Batch ID not found: " + batchId));
 			}
-
+			
 			PatientImportService.PatientCreationOutcome patientCreationOutcome = patientImportService
 			        .createPatientsFromPlan(plan);
-
+			
 			if (patientCreationOutcome.refToPatientUuid.isEmpty()) {
 				log.warn(
 				    "No patients were created from registration sheet; proceeding to process encounters for resolvable patients only");
 			}
-
+			
 			EncounterImportOrchestrator.EncounterProcessingOutcome encounterOutcome = encounterImportOrchestrator
 			        .processEncounters(plan, patientCreationOutcome);
-
+			
 			importPlanStorage.removePlan(batchId);
-
+			
 			ImportStats finalStats = ImportStats.of(plan.getRowsOk(), plan.getIssues(), plan.getBlockedPatientRefs());
 			String summary = buildImportSummary(patientCreationOutcome.refToPatientUuid.size(),
-			    encounterOutcome.createdEncounterUuids.size(), encounterOutcome.failedEncounters,
-			    encounterOutcome.failedObs, encounterOutcome.skippedRows, patientCreationOutcome.errors);
-
+			    encounterOutcome.createdEncounterUuids.size(), encounterOutcome.failedEncounters, encounterOutcome.failedObs,
+			    encounterOutcome.skippedRows, patientCreationOutcome.errors);
+			
 			return new ImportResult(true, summary, batchId, finalStats, encounterOutcome.createdEncounterUuids,
-			    encounterOutcome.errors);
-
+			        encounterOutcome.errors);
+			
 		}
 		catch (Exception e) {
 			return ImportResult.failure(batchId, "Commit failed: " + e.getMessage(),
@@ -134,7 +133,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			if (plan == null) {
 				throw new IllegalArgumentException("Import plan not found for batch: " + batchId);
 			}
-
+			
 			QuarantineReportGenerator generator = new QuarantineReportGenerator();
 			return generator.generateReport(originalWorkbook, plan);
 		}
@@ -190,7 +189,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	private String buildImportSummary(int patientsCreated, int encountersCreated, int failedEncounters, int failedObs,
 	        int skippedRows, List<String> patientErrors) {
 		String summary = String.format("Import completed: %d patients, %d encounters", patientsCreated, encountersCreated);
-
+		
 		if (failedEncounters > 0 || failedObs > 0 || skippedRows > 0 || !patientErrors.isEmpty()) {
 			List<String> issues = new ArrayList<>();
 			if (failedEncounters > 0) {
@@ -205,10 +204,10 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			if (!patientErrors.isEmpty()) {
 				issues.add(String.format("%d patient creation errors", patientErrors.size()));
 			}
-
+			
 			summary = summary + " (" + String.join(", ", issues) + ")";
 		}
-
+		
 		return summary;
 	}
 }

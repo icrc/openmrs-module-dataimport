@@ -17,7 +17,7 @@ import java.util.List;
  * Orchestrates encounter and observation creation during import commit.
  */
 public interface EncounterImportOrchestrator {
-
+	
 	/**
 	 * Processes encounters and observations for all rows in the import plan.
 	 *
@@ -27,24 +27,24 @@ public interface EncounterImportOrchestrator {
 	 */
 	EncounterProcessingOutcome processEncounters(ImportPlan plan,
 	        PatientImportService.PatientCreationOutcome patientCreationOutcome);
-
+	
 	/**
 	 * Outcome of encounter processing.
 	 */
 	class EncounterProcessingOutcome {
-
+		
 		public final List<String> createdEncounterUuids;
-
+		
 		public final List<String> errors;
-
+		
 		public final int failedEncounters;
-
+		
 		public final int failedObs;
-
+		
 		public final int skippedRows;
-
+		
 		public EncounterProcessingOutcome(List<String> createdEncounterUuids, List<String> errors, int failedEncounters,
-		        int failedObs, int skippedRows) {
+		    int failedObs, int skippedRows) {
 			this.createdEncounterUuids = createdEncounterUuids;
 			this.errors = errors;
 			this.failedEncounters = failedEncounters;

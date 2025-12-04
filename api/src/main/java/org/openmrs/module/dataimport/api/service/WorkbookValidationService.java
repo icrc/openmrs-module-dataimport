@@ -22,7 +22,7 @@ import java.util.Set;
  * Service for validating workbook data during dry-run phase.
  */
 public interface WorkbookValidationService {
-
+	
 	/**
 	 * Validates workbook sheets and returns validation results.
 	 *
@@ -34,18 +34,18 @@ public interface WorkbookValidationService {
 	 */
 	ValidationResult validate(List<Sheet> sheets, TemplateMeta meta, ExcelReader.PatientIndex patientIndex,
 	        String templateDefaultLocationUuid);
-
+	
 	/**
 	 * Result of workbook validation.
 	 */
 	class ValidationResult {
-
+		
 		public final List<RowPlan> okRows;
-
+		
 		public final List<QuarantineItem> quarantineItems;
-
+		
 		public final Set<String> blockedPatientRefs;
-
+		
 		public ValidationResult(List<RowPlan> okRows, List<QuarantineItem> quarantineItems, Set<String> blockedPatientRefs) {
 			this.okRows = okRows;
 			this.quarantineItems = quarantineItems;
