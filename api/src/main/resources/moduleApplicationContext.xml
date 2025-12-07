@@ -28,6 +28,9 @@
 		<constructor-arg ref="coreConceptAnswersProvider" />
 	</bean>
 
+	<!-- Form File Storage Service -->
+	<bean id="dataimport.FormFileStorageService" class="org.openmrs.module.dataimport.api.impl.FormFileStorageServiceImpl" />
+
 	<!-- Form Resolvers (pluggable architecture) -->
 	<bean id="o3JsonFormResolver" class="org.openmrs.module.dataimport.api.resolver.O3JsonFormResolver">
 		<constructor-arg ref="o3FormParser" />
@@ -35,11 +38,18 @@
 	<bean id="hfeFormResolver" class="org.openmrs.module.dataimport.api.resolver.HfeFormResolver">
 		<constructor-arg ref="hfeFormParser" />
 	</bean>
+	<bean id="fileBasedFormResolver" class="org.openmrs.module.dataimport.api.resolver.FileBasedFormResolver">
+		<constructor-arg ref="dataimport.FormFileStorageService" />
+		<constructor-arg ref="o3FormParser" />
+		<constructor-arg ref="hfeFormParser" />
+	</bean>
 
 	<!-- Form Resolver Registry (auto-detects form type) -->
+	<!-- Note: FileBasedFormResolver is checked first, then O3JsonFormResolver, then HfeFormResolver -->
 	<bean id="formResolverRegistry" class="org.openmrs.module.dataimport.api.resolver.FormResolverRegistry">
 		<constructor-arg>
 			<list>
+				<ref bean="fileBasedFormResolver" />
 				<ref bean="o3JsonFormResolver" />
 				<ref bean="hfeFormResolver" />
 			</list>

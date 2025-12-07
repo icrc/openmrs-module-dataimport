@@ -77,7 +77,8 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 					        + ". Ensure the form has either a JSON schema (O3) or htmlform resource (HFE).");
 				}
 				
-				log.debug("Using {} resolver for form {}", resolver.getFormType().getCode(), uuid);
+				String resolverType = resolver.getFormType() != null ? resolver.getFormType().getCode() : "MULTI-TYPE";
+				log.debug("Using {} resolver for form {}", resolverType, uuid);
 				
 				FormModel formModel = resolver.resolve(uuid, null);
 				enrichFormWithConceptAnswers(formModel);
