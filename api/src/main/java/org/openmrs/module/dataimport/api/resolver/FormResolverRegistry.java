@@ -30,7 +30,7 @@ public class FormResolverRegistry {
 	public FormResolverRegistry(List<FormResolver> resolvers) {
 		this.resolvers = resolvers;
 		log.info("FormResolverRegistry initialized with {} resolver(s): {}", resolvers.size(),
-		    resolvers.stream().map(r -> r.getFormType().getCode()).toArray());
+		    resolvers.stream().map(r -> r.getFormType() != null ? r.getFormType().getCode() : "MULTI-TYPE").toArray());
 	}
 	
 	/**
@@ -44,13 +44,14 @@ public class FormResolverRegistry {
 		for (FormResolver resolver : resolvers) {
 			try {
 				if (resolver.canResolve(formUuid)) {
-					log.debug("Form {} matched resolver: {}", formUuid, resolver.getFormType().getCode());
+					String resolverType = resolver.getFormType() != null ? resolver.getFormType().getCode() : "MULTI-TYPE";
+					log.debug("Form {} matched resolver: {}", formUuid, resolverType);
 					return resolver;
 				}
 			}
 			catch (Exception e) {
-				log.debug("Resolver {} threw exception checking form {}: {}", resolver.getFormType().getCode(), formUuid,
-				    e.getMessage());
+				String resolverType = resolver.getFormType() != null ? resolver.getFormType().getCode() : "MULTI-TYPE";
+				log.debug("Resolver {} threw exception checking form {}: {}", resolverType, formUuid, e.getMessage());
 			}
 		}
 		
