@@ -525,7 +525,7 @@ public class ExcelTemplateExporter {
 		
 		Row columnHeaderRow = metaSheet.createRow(rowIndex++);
 		String[] columnHeaders = { "sheetName", "colIndex", "fieldId", "label", "conceptUuid", "datatype", "isRepeat",
-		        "isMulti", "answerCount" };
+		        "isMulti", "answersJson" };
 		for (int i = 0; i < columnHeaders.length; i++) {
 			Cell cell = columnHeaderRow.createCell(i);
 			cell.setCellValue(columnHeaders[i]);
@@ -535,6 +535,7 @@ public class ExcelTemplateExporter {
 		if (workbook.getSheet(DataImportConstants.PATIENT_SHEET_NAME) != null) {
 			String[] patientHeaders = { "Given Name", "Family Name", "Gender", "Birthdate (yyyy-mm-dd)", "Address Line 1",
 			        "City/Village", "Country", "Phone", DataImportConstants.PATIENT_REF_HEADER };
+			String genderAnswersJson = "{\"Male\":\"Male\",\"Female\":\"Female\",\"Unknown\":\"Unknown\"}";
 			for (int colIndex = 0; colIndex < patientHeaders.length; colIndex++) {
 				Row row = metaSheet.createRow(rowIndex++);
 				row.createCell(0).setCellValue(DataImportConstants.PATIENT_SHEET_NAME);
@@ -545,7 +546,7 @@ public class ExcelTemplateExporter {
 				row.createCell(5).setCellValue("TEXT");
 				row.createCell(6).setCellValue(false);
 				row.createCell(7).setCellValue(false);
-				row.createCell(8).setCellValue(colIndex == 2 ? 3 : 0);
+				row.createCell(8).setCellValue(colIndex == 2 ? genderAnswersJson : "");
 			}
 		}
 		
@@ -561,7 +562,7 @@ public class ExcelTemplateExporter {
 			row.createCell(5).setCellValue("TEXT");
 			row.createCell(6).setCellValue(false);
 			row.createCell(7).setCellValue(false);
-			row.createCell(8).setCellValue(0);
+			row.createCell(8).setCellValue("");
 			
 			for (FieldModel field : sheetModel.fields) {
 				row = metaSheet.createRow(rowIndex++);
@@ -574,15 +575,42 @@ public class ExcelTemplateExporter {
 				row.createCell(6).setCellValue(field.isRepeat);
 				row.createCell(7).setCellValue(field.isMulti);
 				
-				int answerCount = (field.datatype == FieldDatatype.CODED && field.answers != null) ? field.answers.size()
-				        : 0;
-				row.createCell(8).setCellValue(answerCount);
+				String answersJson = (field.datatype == FieldDatatype.CODED && field.answers != null)
+				        ? buildAnswersJson(field.answers)
+				        : "";
+				row.createCell(8).setCellValue(answersJson);
 			}
 		}
 		
 		for (int i = 0; i < columnHeaders.length; i++) {
 			metaSheet.autoSizeColumn(i);
 		}
+	}
+	
+	private String buildAnswersJson(List<AnswerModel> answers) {
+		if (answers == null || answers.isEmpty()) {
+			return "";
+		}
+		StringBuilder json = new StringBuilder("{");
+		for (int i = 0; i < answers.size(); i++) {
+			AnswerModel answer = answers.get(i);
+			String label = answer.label != null ? answer.label : answer.conceptUuid;
+			String uuid = answer.conceptUuid != null ? answer.conceptUuid : "";
+			if (i > 0) {
+				json.append(",");
+			}
+			json.append(escapeJsonValue(label)).append(":").append(escapeJsonValue(uuid));
+		}
+		json.append("}");
+		return json.toString();
+	}
+	
+	private String escapeJsonValue(String value) {
+		if (value == null) {
+			return "\"\"";
+		}
+		value = value.replace("\"", "'");
+		return "\"" + value + "\"";
 	}
 	
 	private void createConceptsSheet(XSSFWorkbook workbook, FormModel form) {

@@ -1,0 +1,38 @@
+<htmlform>
+  <!-- Test form demonstrating ICRC motor assessment pattern with unresolved concepts -->
+
+  <encounterDate/>
+  <encounterLocation/>
+  <encounterProvider/>
+
+  <h2>Motor Assessment Form - Pattern with answerCodes/answers</h2>
+
+  <!-- Pattern from ICRC: Concept doesn't exist, but we have id, answerCodes, and answers -->
+  <div>
+    <label>Assess Supine to Side Lying</label>
+    <obs conceptId="ICRC:ROLLING_ASSESSMENT"
+         class="radio_option"
+         id="assessSupineToSideLying"
+         answers="1,2,3,4,5,6,0"
+         answerSeparator=""
+         answerCodes="icrcforms.hsp.motorAssessmentForm.suspinetolying.option1Text,icrcforms.hsp.motorAssessmentForm.suspinetolying.option2Text,icrcforms.hsp.motorAssessmentForm.suspinetolying.option3Text,icrcforms.hsp.motorAssessmentForm.suspinetolying.option4Text,icrcforms.hsp.motorAssessmentForm.suspinetolying.option5Text,icrcforms.hsp.motorAssessmentForm.suspinetolying.option6Text,icrcforms.hsp.motorAssessmentForm.HSUNotAssessement"
+         style="radio"/>
+  </div>
+
+  <!-- Another similar pattern without label tag -->
+  <obs conceptId="ICRC:SITTING_BALANCE"
+       class="radio_option"
+       id="assessSittingBalance"
+       answers="0,1,2,3,4"
+       answerSeparator=""
+       answerCodes="icrcforms.hsp.notAssessed,icrcforms.hsp.requiresMaxSupport,icrcforms.hsp.requiresModerateSupport,icrcforms.hsp.requiresMinSupport,icrcforms.hsp.independent"
+       style="radio"/>
+
+  <!-- Pattern with underscores in id -->
+  <obs conceptId="ICRC:TRANSFER_ABILITY"
+       id="bed_to_chair_transfer"
+       answers="Y,N,NA"
+       answerCodes="Yes,No,Not Applicable"
+       style="radio"/>
+
+</htmlform>
