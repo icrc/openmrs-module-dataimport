@@ -14,6 +14,9 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.openmrs.Concept;
 import org.openmrs.api.context.Context;
+import org.openmrs.util.PrivilegeConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,14 +27,41 @@ import java.util.List;
  */
 public class HtmlFormConversionUtil {
 	
+	private static final Logger log = LoggerFactory.getLogger(HtmlFormConversionUtil.class);
+	
 	public static Concept getConceptByUuidOrId(String conceptIdentifier) {
-		Concept concept;
-		if (Context.getConceptService().getConceptByUuid(conceptIdentifier) != null) {
-			concept = Context.getConceptService().getConceptByUuid(conceptIdentifier);
-		} else {
-			concept = Context.getConceptService().getConcept(conceptIdentifier);
+		if (StringUtils.isBlank(conceptIdentifier)) {
+			return null;
 		}
-		return concept;
+		
+		boolean sessionOpened = false;
+		try {
+			if (!Context.isSessionOpen()) {
+				Context.openSession();
+				sessionOpened = true;
+			}
+			
+			Context.addProxyPrivilege(PrivilegeConstants.MANAGE_CONCEPTS);
+			Context.addProxyPrivilege(PrivilegeConstants.GET_CONCEPTS);
+			Concept concept = Context.getConceptService().getConceptByUuid(conceptIdentifier);
+			if (concept != null) {
+				return concept;
+			}
+			
+			concept = Context.getConceptService().getConcept(conceptIdentifier);
+			return concept;
+		}
+		catch (Exception e) {
+			log.warn("Failed to fetch concept by UUID or ID '{}': {}", conceptIdentifier, e.getMessage());
+			return null;
+		}
+		finally {
+			Context.removeProxyPrivilege(PrivilegeConstants.GET_CONCEPTS);
+			Context.removeProxyPrivilege(PrivilegeConstants.MANAGE_CONCEPTS);
+			if (sessionOpened) {
+				Context.closeSession();
+			}
+		}
 	}
 	
 	public static List<Element> filterRelatedTags(Elements similarCheckboxTags) {
