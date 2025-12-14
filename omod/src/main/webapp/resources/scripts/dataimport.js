@@ -6,6 +6,9 @@
     var currentBatchId = null;
     var currentDataFile = null;
     var contextPath = null;
+    var validationErrors = [];
+    var currentErrorPage = 1;
+    var errorsPerPage = 20;
 
     function init() {
         contextPath = getContextPath();
@@ -296,38 +299,93 @@
         var container = document.getElementById('validationResults');
         if (!container) return;
 
-        var html = '<div class="validation-summary">';
+        validationErrors = result.errors || [];
+        currentErrorPage = 1;
 
-        html += '<div class="validation-stat">';
-        html += '<div class="validation-stat-value">' + result.totalRows + '</div>';
-        html += '<div class="validation-stat-label">Total Rows</div>';
-        html += '</div>';
+        var html = '<table cellpadding="3" cellspacing="3" width="100%">';
+        html += '<tr>';
+        html += '<td width="33%" style="text-align: center;"><b>' + result.totalRows + '</b><br/>Total Rows</td>';
+        html += '<td width="33%" style="text-align: center; color: #28a745;"><b>' + result.validRows + '</b><br/>Valid Rows</td>';
+        html += '<td width="33%" style="text-align: center; color: #dc3545;"><b>' + result.invalidRows + '</b><br/>Invalid Rows</td>';
+        html += '</tr>';
+        html += '</table>';
 
-        html += '<div class="validation-stat valid">';
-        html += '<div class="validation-stat-value">' + result.validRows + '</div>';
-        html += '<div class="validation-stat-label">Valid Rows</div>';
-        html += '</div>';
-
-        html += '<div class="validation-stat invalid">';
-        html += '<div class="validation-stat-value">' + result.invalidRows + '</div>';
-        html += '<div class="validation-stat-label">Invalid Rows</div>';
-        html += '</div>';
-
-        html += '</div>';
-
-        if (result.errors && result.errors.length > 0) {
-            html += '<div class="validation-errors">';
-            html += '<h4>Validation Errors:</h4>';
-            html += '<ul class="error-list">';
-            result.errors.forEach(function(error) {
-                html += '<li>' + escapeHtml(error.message) + '</li>';
-            });
-            html += '</ul>';
+        if (validationErrors.length > 0) {
+            html += '<br/>';
+            html += '<div class="boxHeader"><b>Validation Errors (' + validationErrors.length + ' total)</b></div>';
+            html += '<div class="box">';
+            html += '<div id="errorTableContainer"></div>';
             html += '</div>';
         }
 
         container.innerHTML = html;
         container.classList.add('show');
+
+        if (validationErrors.length > 0) {
+            renderErrorTable();
+        }
+    }
+
+    function renderErrorTable() {
+        var container = document.getElementById('errorTableContainer');
+        if (!container) return;
+
+        var totalPages = Math.ceil(validationErrors.length / errorsPerPage);
+        var startIndex = (currentErrorPage - 1) * errorsPerPage;
+        var endIndex = Math.min(startIndex + errorsPerPage, validationErrors.length);
+
+        var html = '<table cellpadding="2" cellspacing="0" width="100%" style="border: 1px solid #ccc;">';
+        html += '<thead>';
+        html += '<tr style="background-color: #f0f0f0;">';
+        html += '<th align="left" style="padding: 5px; border-bottom: 1px solid #ccc;">#</th>';
+        html += '<th align="left" style="padding: 5px; border-bottom: 1px solid #ccc;">Error Message</th>';
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+
+        for (var i = startIndex; i < endIndex; i++) {
+            var rowClass = (i % 2 === 0) ? 'evenRow' : 'oddRow';
+            html += '<tr class="' + rowClass + '">';
+            html += '<td style="padding: 5px;">' + (i + 1) + '</td>';
+            html += '<td style="padding: 5px;">' + escapeHtml(validationErrors[i].message) + '</td>';
+            html += '</tr>';
+        }
+
+        html += '</tbody>';
+        html += '</table>';
+
+        if (totalPages > 1) {
+            html += '<br/>';
+            html += '<div style="text-align: center;">';
+            html += 'Page ' + currentErrorPage + ' of ' + totalPages + ' &nbsp;&nbsp;';
+
+            if (currentErrorPage > 1) {
+                html += '<input type="button" value="&laquo; Previous" onclick="window.dataimport.previousErrorPage()" /> ';
+            }
+
+            if (currentErrorPage < totalPages) {
+                html += '<input type="button" value="Next &raquo;" onclick="window.dataimport.nextErrorPage()" />';
+            }
+
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function nextErrorPage() {
+        var totalPages = Math.ceil(validationErrors.length / errorsPerPage);
+        if (currentErrorPage < totalPages) {
+            currentErrorPage++;
+            renderErrorTable();
+        }
+    }
+
+    function previousErrorPage() {
+        if (currentErrorPage > 1) {
+            currentErrorPage--;
+            renderErrorTable();
+        }
     }
 
     function hideValidationResults() {
@@ -459,5 +517,11 @@
     } else {
         init();
     }
+
+    // Expose functions for onclick handlers
+    window.dataimport = {
+        nextErrorPage: nextErrorPage,
+        previousErrorPage: previousErrorPage
+    };
 
 })();
