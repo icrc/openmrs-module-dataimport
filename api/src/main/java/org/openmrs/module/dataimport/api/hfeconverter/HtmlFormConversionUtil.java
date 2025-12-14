@@ -48,7 +48,6 @@ public class HtmlFormConversionUtil {
 				return concept;
 			}
 			
-			// Try as numeric ID
 			concept = Context.getConceptService().getConcept(conceptIdentifier);
 			return concept;
 		}
