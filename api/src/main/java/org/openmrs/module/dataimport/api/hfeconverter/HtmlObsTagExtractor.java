@@ -230,10 +230,6 @@ public class HtmlObsTagExtractor {
 		return dataPoint;
 	}
 	
-	/**
-	 * Converts an id attribute to a human-readable label. E.g., "patient_weight_kg" -> "Patient Weight
-	 * Kg", "assessSupineToSideLying" -> "Assess Supine To Side Lying"
-	 */
 	private static String convertIdToLabel(String id) {
 		if (StringUtils.isBlank(id)) {
 			return "";
