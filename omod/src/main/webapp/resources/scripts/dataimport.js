@@ -1,0 +1,463 @@
+(function() {
+    'use strict';
+
+    var selectedForms = [];
+    var uploadedFormFileIds = [];
+    var currentBatchId = null;
+    var currentDataFile = null;
+    var contextPath = null;
+
+    function init() {
+        contextPath = getContextPath();
+        setupEventListeners();
+    }
+
+    function getContextPath() {
+        var path = window.location.pathname;
+        var parts = path.split('/');
+        return '/' + parts[1];
+    }
+
+    function setupEventListeners() {
+        var checkboxes = document.querySelectorAll('.form-checkbox');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                toggleFormSelection(this.value, this.checked);
+                updateGenerateButton();
+            });
+        });
+
+        var formFilesInput = document.getElementById('formFilesInput');
+        if (formFilesInput) {
+            formFilesInput.addEventListener('change', function() {
+                var uploadFormsBtn = document.getElementById('uploadFormsBtn');
+                uploadFormsBtn.disabled = this.files.length === 0;
+            });
+        }
+
+        var dataFileInput = document.getElementById('dataFileInput');
+        if (dataFileInput) {
+            dataFileInput.addEventListener('change', function() {
+                currentDataFile = this.files[0];
+                var dryRunBtn = document.getElementById('dryRunBtn');
+                dryRunBtn.disabled = !currentDataFile;
+
+                var commitBtn = document.getElementById('commitImportBtn');
+                commitBtn.disabled = true;
+
+                var quarantineBtn = document.getElementById('downloadQuarantineBtn');
+                quarantineBtn.disabled = true;
+
+                hideValidationResults();
+            });
+        }
+
+        var generateBtn = document.getElementById('generateTemplateBtn');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', generateTemplate);
+        }
+
+        var uploadFormsBtn = document.getElementById('uploadFormsBtn');
+        if (uploadFormsBtn) {
+            uploadFormsBtn.addEventListener('click', uploadFormFiles);
+        }
+
+        var dryRunBtn = document.getElementById('dryRunBtn');
+        if (dryRunBtn) {
+            dryRunBtn.addEventListener('click', performDryRun);
+        }
+
+        var commitBtn = document.getElementById('commitImportBtn');
+        if (commitBtn) {
+            commitBtn.addEventListener('click', commitImport);
+        }
+
+        var quarantineBtn = document.getElementById('downloadQuarantineBtn');
+        if (quarantineBtn) {
+            quarantineBtn.addEventListener('click', downloadQuarantine);
+        }
+    }
+
+    function toggleFormSelection(formUuid, selected) {
+        if (selected) {
+            if (selectedForms.indexOf(formUuid) === -1) {
+                selectedForms.push(formUuid);
+            }
+        } else {
+            var index = selectedForms.indexOf(formUuid);
+            if (index > -1) {
+                selectedForms.splice(index, 1);
+            }
+        }
+    }
+
+    function updateGenerateButton() {
+        var generateBtn = document.getElementById('generateTemplateBtn');
+        generateBtn.disabled = selectedForms.length === 0 && uploadedFormFileIds.length === 0;
+    }
+
+    function generateTemplate() {
+        var includePatient = document.getElementById('includePatientRegistration').checked;
+        var locationUuid = document.getElementById('locationSelect').value;
+
+        var allFormUuids = selectedForms.concat(uploadedFormFileIds);
+
+        if (allFormUuids.length === 0) {
+            showStatus('templateStatus', 'Please select at least one form', 'error');
+            return;
+        }
+
+        var generateBtn = document.getElementById('generateTemplateBtn');
+        generateBtn.disabled = true;
+        showStatus('templateStatus', 'Generating template...', 'info');
+
+        var data = {
+            formUuids: allFormUuids,
+            options: {
+                includePatient: includePatient
+            }
+        };
+
+        if (locationUuid) {
+            data.options.locationUuid = locationUuid;
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', contextPath + '/ws/rest/v1/dataimport/forms/template.xlsx', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.responseType = 'blob';
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var blob = xhr.response;
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = data.options.filename || 'form_template.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showStatus('templateStatus', 'Template downloaded successfully', 'success');
+            } else {
+                showStatus('templateStatus', 'Failed to generate template', 'error');
+            }
+            generateBtn.disabled = false;
+        };
+
+        xhr.onerror = function() {
+            showStatus('templateStatus', 'Failed to generate template', 'error');
+            generateBtn.disabled = false;
+        };
+
+        xhr.send(JSON.stringify(data));
+    }
+
+    function uploadFormFiles() {
+        var fileInput = document.getElementById('formFilesInput');
+        var files = fileInput.files;
+
+        if (files.length === 0) {
+            showStatus('uploadFormsStatus', 'Please select files to upload', 'error');
+            return;
+        }
+
+        var uploadBtn = document.getElementById('uploadFormsBtn');
+        uploadBtn.disabled = true;
+        showStatus('uploadFormsStatus', 'Uploading form files...', 'info');
+
+        var formData = new FormData();
+        for (var i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', contextPath + '/ws/rest/v1/dataimport/forms/upload', true);
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var result = JSON.parse(xhr.responseText);
+                uploadedFormFileIds = uploadedFormFileIds.concat(result.fileIds);
+                displayUploadedFiles(result.files);
+                showStatus('uploadFormsStatus', result.message, 'success');
+
+                updateGenerateButton();
+
+                fileInput.value = '';
+                uploadBtn.disabled = true;
+            } else {
+                showStatus('uploadFormsStatus', 'Upload failed', 'error');
+                uploadBtn.disabled = false;
+            }
+        };
+
+        xhr.onerror = function() {
+            showStatus('uploadFormsStatus', 'Upload failed', 'error');
+            uploadBtn.disabled = false;
+        };
+
+        xhr.send(formData);
+    }
+
+    function displayUploadedFiles(files) {
+        var container = document.getElementById('uploadedFormsList');
+        if (!container) return;
+
+        container.classList.add('show');
+
+        files.forEach(function(file) {
+            var div = document.createElement('div');
+            div.className = 'uploaded-file-item';
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'uploaded-file-name';
+            nameSpan.textContent = file.filename;
+
+            var metaSpan = document.createElement('span');
+            metaSpan.className = 'uploaded-file-meta';
+            metaSpan.textContent = file.detectedType + ' - ' + formatFileSize(parseInt(file.size));
+
+            div.appendChild(nameSpan);
+            div.appendChild(metaSpan);
+            container.appendChild(div);
+        });
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function performDryRun() {
+        if (!currentDataFile) {
+            showStatus('importStatus', 'Please select a file first', 'error');
+            return;
+        }
+
+        var dryRunBtn = document.getElementById('dryRunBtn');
+        dryRunBtn.disabled = true;
+        showStatus('importStatus', 'Validating file...', 'info');
+        hideValidationResults();
+
+        var formData = new FormData();
+        formData.append('file', currentDataFile);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', contextPath + '/ws/rest/v1/dataimport', true);
+
+        xhr.onload = function() {
+            if (xhr.status === 200 || xhr.status === 201) {
+                var result = JSON.parse(xhr.responseText);
+                currentBatchId = result.batchId;
+
+                var stats = result.stats || {};
+                var validationResult = {
+                    success: result.success,
+                    batchId: result.batchId,
+                    totalRows: stats.totalRows || 0,
+                    validRows: stats.okRows || 0,
+                    invalidRows: stats.quarantinedRows || 0,
+                    hasQuarantine: (stats.quarantinedRows || 0) > 0,
+                    errors: result.quarantinedRows || []
+                };
+
+                displayValidationResults(validationResult);
+
+                var commitBtn = document.getElementById('commitImportBtn');
+                commitBtn.disabled = !result.success || validationResult.invalidRows > 0;
+
+                var quarantineBtn = document.getElementById('downloadQuarantineBtn');
+                quarantineBtn.disabled = !validationResult.hasQuarantine;
+
+                if (validationResult.invalidRows === 0) {
+                    showStatus('importStatus', 'Validation successful - ready to import', 'success');
+                } else {
+                    showStatus('importStatus', 'Validation completed with errors', 'warning');
+                }
+
+                dryRunBtn.disabled = false;
+            } else {
+                showStatus('importStatus', 'Validation failed', 'error');
+                dryRunBtn.disabled = false;
+            }
+        };
+
+        xhr.onerror = function() {
+            showStatus('importStatus', 'Validation failed', 'error');
+            dryRunBtn.disabled = false;
+        };
+
+        xhr.send(formData);
+    }
+
+    function displayValidationResults(result) {
+        var container = document.getElementById('validationResults');
+        if (!container) return;
+
+        var html = '<div class="validation-summary">';
+
+        html += '<div class="validation-stat">';
+        html += '<div class="validation-stat-value">' + result.totalRows + '</div>';
+        html += '<div class="validation-stat-label">Total Rows</div>';
+        html += '</div>';
+
+        html += '<div class="validation-stat valid">';
+        html += '<div class="validation-stat-value">' + result.validRows + '</div>';
+        html += '<div class="validation-stat-label">Valid Rows</div>';
+        html += '</div>';
+
+        html += '<div class="validation-stat invalid">';
+        html += '<div class="validation-stat-value">' + result.invalidRows + '</div>';
+        html += '<div class="validation-stat-label">Invalid Rows</div>';
+        html += '</div>';
+
+        html += '</div>';
+
+        if (result.errors && result.errors.length > 0) {
+            html += '<div class="validation-errors">';
+            html += '<h4>Validation Errors:</h4>';
+            html += '<ul class="error-list">';
+            result.errors.forEach(function(error) {
+                html += '<li>' + escapeHtml(error.message) + '</li>';
+            });
+            html += '</ul>';
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+        container.classList.add('show');
+    }
+
+    function hideValidationResults() {
+        var container = document.getElementById('validationResults');
+        if (container) {
+            container.classList.remove('show');
+            container.innerHTML = '';
+        }
+        currentBatchId = null;
+    }
+
+    function commitImport() {
+        if (!currentBatchId) {
+            showStatus('importStatus', 'Please run validation first', 'error');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to import this data? This action cannot be undone.')) {
+            return;
+        }
+
+        var commitBtn = document.getElementById('commitImportBtn');
+        commitBtn.disabled = true;
+        showStatus('importStatus', 'Importing data...', 'info');
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', contextPath + '/ws/rest/v1/dataimport?batchId=' + encodeURIComponent(currentBatchId), true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        xhr.onload = function() {
+            if (xhr.status === 200 || xhr.status === 201) {
+                var result = JSON.parse(xhr.responseText);
+                if (result.success) {
+                    var stats = result.stats || {};
+                    var message = 'Import successful! ' +
+                        'Patients: ' + (stats.patientsToCreate || 0) + ', ' +
+                        'Encounters: ' + (stats.encountersToCreate || 0) + ', ' +
+                        'Observations: ' + (stats.obsToCreate || 0);
+                    showStatus('importStatus', message, 'success');
+
+                    hideValidationResults();
+                    currentBatchId = null;
+
+                    var dataFileInput = document.getElementById('dataFileInput');
+                    if (dataFileInput) dataFileInput.value = '';
+                    currentDataFile = null;
+
+                    var dryRunBtn = document.getElementById('dryRunBtn');
+                    dryRunBtn.disabled = true;
+                } else {
+                    var errorMsg = result.message || 'Import failed';
+                    if (result.errors && result.errors.length > 0) {
+                        errorMsg += ': ' + result.errors.join(', ');
+                    }
+                    showStatus('importStatus', errorMsg, 'error');
+                    commitBtn.disabled = false;
+                }
+            } else {
+                showStatus('importStatus', 'Import failed', 'error');
+                commitBtn.disabled = false;
+            }
+        };
+
+        xhr.onerror = function() {
+            showStatus('importStatus', 'Import failed', 'error');
+            commitBtn.disabled = false;
+        };
+
+        xhr.send(JSON.stringify({}));
+    }
+
+    function downloadQuarantine() {
+        if (!currentBatchId || !currentDataFile) {
+            showStatus('importStatus', 'Batch ID or file not available', 'error');
+            return;
+        }
+
+        showStatus('importStatus', 'Generating quarantine report...', 'info');
+
+        var formData = new FormData();
+        formData.append('file', currentDataFile);
+        formData.append('batchId', currentBatchId);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', contextPath + '/ws/rest/v1/dataimport/quarantine-report.xlsx', true);
+        xhr.responseType = 'blob';
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var blob = xhr.response;
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'quarantine_report_' + currentBatchId + '.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showStatus('importStatus', 'Quarantine report downloaded', 'success');
+            } else {
+                showStatus('importStatus', 'Failed to download quarantine report', 'error');
+            }
+        };
+
+        xhr.onerror = function() {
+            showStatus('importStatus', 'Failed to download quarantine report', 'error');
+        };
+
+        xhr.send(formData);
+    }
+
+    function showStatus(elementId, message, type) {
+        var statusEl = document.getElementById(elementId);
+        if (!statusEl) return;
+
+        statusEl.textContent = message;
+        statusEl.className = 'status-message ' + type;
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+})();

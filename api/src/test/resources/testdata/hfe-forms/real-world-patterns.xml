@@ -1,0 +1,119 @@
+<htmlform>
+  <!-- Test form demonstrating real-world HFE patterns from ICRC distro -->
+
+  <encounterDate/>
+  <encounterLocation/>
+  <encounterProvider/>
+
+  <h2>Testing Radio/Checkbox/Dropdown Detection</h2>
+
+  <!-- Pattern 1: Radio with style="radio" -->
+  <div>
+    <label>Question with style="radio"</label>
+    <obs conceptId="CIEL:1065"
+         answerConceptIds="CIEL:1065,CIEL:1066"
+         style="radio"/>
+  </div>
+
+  <!-- Pattern 2: Checkbox with style="checkbox" -->
+  <div>
+    <label>Question with style="checkbox"</label>
+    <obs conceptId="CIEL:1065"
+         answerConceptIds="CIEL:1065,CIEL:1066,CIEL:1067"
+         style="checkbox"/>
+  </div>
+
+  <!-- Pattern 3: Dropdown with style="dropdown" -->
+  <div>
+    <label>Question with style="dropdown"</label>
+    <obs conceptId="CIEL:1065"
+         answerConceptIds="CIEL:1065,CIEL:1066,CIEL:1067"
+         style="dropdown"/>
+  </div>
+
+  <!-- Pattern 4: Radio with class="common_radio" -->
+  <div>
+    <label>Question with class="common_radio"</label>
+    <obs conceptId="CIEL:1065"
+         class="common_radio disableInEdit"
+         answerConceptIds="CIEL:1065,CIEL:1066"
+         style="radio"/>
+  </div>
+
+  <!-- Pattern 5: Radio with class containing radio_unset -->
+  <div>
+    <label>Question with class="wrapper-class radio_unset"</label>
+    <obs conceptId="CIEL:1065"
+         class="wrapper-class radio_unset disableInEdit"
+         answerConceptIds="CIEL:1065,CIEL:1066"
+         style="radio"/>
+  </div>
+
+  <!-- Pattern 6: Yes/No style -->
+  <div>
+    <label>Question with style="yes_no"</label>
+    <obs conceptId="CIEL:1065"
+         answerConceptIds="CIEL:1065,CIEL:1066"
+         style="yes_no"/>
+  </div>
+
+  <!-- Pattern 7: Autocomplete style -->
+  <div>
+    <label>Question with style="autocomplete"</label>
+    <obs conceptId="CIEL:1065"
+         answerConceptIds="CIEL:1065,CIEL:1066,CIEL:1067"
+         style="autocomplete"/>
+  </div>
+
+  <!-- Pattern 8: Text styles (should be TEXT, not CODED) -->
+  <div>
+    <label>Text field with style="text"</label>
+    <obs conceptId="CIEL:1065" style="text"/>
+  </div>
+
+  <div>
+    <label>Textarea field with style="textarea"</label>
+    <obs conceptId="CIEL:1065" style="textarea"/>
+  </div>
+
+  <div>
+    <label>Textbox field with style="textbox"</label>
+    <obs conceptId="CIEL:1065" style="textbox"/>
+  </div>
+
+  <!-- Pattern 9: Radio in table layout (like PEDS form) -->
+  <table>
+    <tr>
+      <th>Question</th>
+      <th>Almost Never</th>
+      <th>Sometimes</th>
+      <th>Often</th>
+      <th>Very Often</th>
+    </tr>
+    <tr>
+      <td>Acts whiny or clingy</td>
+      <td colspan="4">
+        <obs class="flexcontainer" id="radio-1"
+             conceptId="CIEL:1065"
+             answerConceptIds="CIEL:1065,CIEL:1066,CIEL:1067,CIEL:1068"
+             style="radio"
+             answerSeparator=""
+             answerLabels="1,2,3,4"/>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Pattern 10: Checkbox in repeat (like PEDS form) -->
+  <div>
+    <label>Child accompanied by:</label>
+    <div class="form-inline">
+      <repeat with="['CIEL:971'],['CIEL:970'],['CIEL:974']">
+        <obs class="wrapper-class"
+             conceptId="CIEL:1065"
+             answerConceptId="{0}"
+             style="checkbox"/>
+      </repeat>
+    </div>
+  </div>
+
+</htmlform>

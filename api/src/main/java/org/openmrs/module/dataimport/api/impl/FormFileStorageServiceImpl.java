@@ -46,9 +46,6 @@ public class FormFileStorageServiceImpl implements FormFileStorageService {
 	
 	private Path storageDirectory;
 	
-	/**
-	 * Initializes the storage directory.
-	 */
 	private synchronized void initializeStorageDirectory() throws IOException {
 		if (storageDirectory == null) {
 			String appDataDirPath = OpenmrsUtil.getApplicationDataDirectory();
@@ -163,16 +160,11 @@ public class FormFileStorageServiceImpl implements FormFileStorageService {
 		fileRegistry.clear();
 	}
 	
-	/**
-	 * Sanitizes a filename to prevent path traversal attacks.
-	 */
 	private String sanitizeFilename(String filename) {
 		if (filename == null) {
 			return "unknown";
 		}
-		// Remove path separators and keep only the filename
 		String name = Paths.get(filename).getFileName().toString();
-		// Remove any remaining dangerous characters
 		return name.replaceAll("[^a-zA-Z0-9._-]", "_");
 	}
 }

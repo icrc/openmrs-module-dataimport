@@ -15,7 +15,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.openmrs.EncounterType;
 import org.openmrs.Form;
 import org.openmrs.api.APIException;
-import org.openmrs.module.dataimport.api.impl.HfeFormParser;
+import org.openmrs.module.dataimport.api.hfeconverter.HfeToO3JsonConverter;
 import org.openmrs.module.dataimport.api.impl.O3FormParser;
 import org.openmrs.module.dataimport.api.storage.FormFileStorageService;
 import org.openmrs.module.dataimport.model.FormModel;
@@ -45,15 +45,16 @@ public class FileBasedFormResolver implements FormResolver {
 	
 	private final O3FormParser o3Parser;
 	
-	private final HfeFormParser hfeParser;
+	private final HfeToO3JsonConverter hfeConverter;
 	
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
 	@Autowired
-	public FileBasedFormResolver(FormFileStorageService storageService, O3FormParser o3Parser, HfeFormParser hfeParser) {
+	public FileBasedFormResolver(FormFileStorageService storageService, O3FormParser o3Parser,
+	    HfeToO3JsonConverter hfeConverter) {
 		this.storageService = storageService;
 		this.o3Parser = o3Parser;
-		this.hfeParser = hfeParser;
+		this.hfeConverter = hfeConverter;
 	}
 	
 	@Override
@@ -89,10 +90,12 @@ public class FileBasedFormResolver implements FormResolver {
 			model = o3Parser.parse(contentString, locale);
 			model.formType = FormType.O3_JSON;
 		} else if (detectedType == FormType.HFE_XML) {
-			log.info("Parsing file-based form as HFE XML: {}", formIdentifier);
+			log.info("Parsing file-based form as HFE XML (converting to O3 JSON): {}", formIdentifier);
 			// Create a mock Form object from HFE XML metadata
 			Form mockForm = createMockFormFromHfeXml(contentString, formIdentifier);
-			model = hfeParser.parse(contentString, mockForm, locale);
+			// Convert HFE to O3 JSON, then parse with O3 parser
+			String o3Json = hfeConverter.convert(contentString, mockForm);
+			model = o3Parser.parse(o3Json, locale);
 			model.formType = FormType.HFE_XML;
 		} else {
 			throw new APIException("Unable to detect form type for: " + formIdentifier);

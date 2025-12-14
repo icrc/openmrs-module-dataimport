@@ -16,7 +16,8 @@ import org.openmrs.api.DatatypeService;
 import org.openmrs.api.FormService;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.db.ClobDatatypeStorage;
-import org.openmrs.module.dataimport.api.impl.HfeFormParser;
+import org.openmrs.module.dataimport.api.hfeconverter.HfeToO3JsonConverter;
+import org.openmrs.module.dataimport.api.impl.O3FormParser;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.FormType;
 import org.slf4j.Logger;
@@ -32,11 +33,14 @@ public class HfeFormResolver implements FormResolver {
 	
 	private static final String HFE_RESOURCE_NAME = "htmlform";
 	
-	private final HfeFormParser parser;
+	private final HfeToO3JsonConverter converter;
+	
+	private final O3FormParser o3Parser;
 	
 	@Autowired
-	public HfeFormResolver(HfeFormParser parser) {
-		this.parser = parser;
+	public HfeFormResolver(HfeToO3JsonConverter converter, O3FormParser o3Parser) {
+		this.converter = converter;
+		this.o3Parser = o3Parser;
 	}
 	
 	@Override
@@ -66,8 +70,14 @@ public class HfeFormResolver implements FormResolver {
 			throw new APIException("Form not found for UUID: " + formUuid);
 		}
 		
-		FormModel model = parser.parse(hfeXml, form, locale);
-		model.formType = FormType.HFE_XML;
+		// Convert HFE XML to O3 JSON using hfe-o3-form-schema-converter logic
+		log.debug("Converting HFE XML to O3 JSON for form: {}", form.getName());
+		String o3Json = converter.convert(hfeXml, form);
+		
+		// Parse the O3 JSON using existing O3FormParser
+		log.debug("Parsing O3 JSON to FormModel for form: {}", form.getName());
+		FormModel model = o3Parser.parse(o3Json, locale);
+		model.formType = FormType.HFE_XML; // Keep the original type for tracking
 		return model;
 	}
 	

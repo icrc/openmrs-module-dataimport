@@ -43,8 +43,7 @@ public class AdminList extends AdministrationSectionExt {
 		
 		Map<String, String> map = new HashMap<String, String>();
 		
-		// uncomment to add legacy ui pages
-		//		map.put("module/dataimport/dataimport.form", "dataimport.title");
+		map.put("module/dataimport/dataimport.form", "dataimport.title");
 		
 		return map;
 	}

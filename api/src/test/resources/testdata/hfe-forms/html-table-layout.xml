@@ -1,0 +1,41 @@
+<htmlform>
+  <!-- HFE Form with HTML Table Layout - demonstrating improved label extraction -->
+
+  <encounterDate/>
+  <encounterLocation/>
+  <encounterProvider/>
+
+  <h2>Patient Vitals</h2>
+
+  <table>
+    <tr>
+      <td><label>What is the patient's weight (kg)?</label></td>
+      <td><obs conceptId="CIEL:5089"/></td>
+    </tr>
+    <tr>
+      <td><label>What is the patient's height (cm)?</label></td>
+      <td><obs conceptId="CIEL:5090"/></td>
+    </tr>
+    <tr>
+      <td><b>Systolic Blood Pressure:</b></td>
+      <td><obs conceptId="CIEL:5085"/></td>
+    </tr>
+    <tr>
+      <td><b>Diastolic Blood Pressure:</b></td>
+      <td><obs conceptId="CIEL:5086"/></td>
+    </tr>
+  </table>
+
+  <div style="border: 1px solid #ccc; padding: 10px;">
+    <fieldset>
+      <legend>Temperature Assessment</legend>
+      <label>Body Temperature (Celsius):</label>
+      <obs conceptId="CIEL:5088"/>
+    </fieldset>
+  </div>
+
+  <div>
+    <p><strong>Heart Rate (bpm):</strong></p>
+    <obs conceptId="CIEL:5087"/>
+  </div>
+</htmlform>
