@@ -17,9 +17,11 @@ import java.util.Map;
 public class FieldModel {
 	
 	public String id;
-	
+
 	public String label;
-	
+
+	public String sectionLabel;
+
 	public String conceptUuid;
 	
 	public FieldDatatype datatype = FieldDatatype.TEXT;
@@ -50,6 +52,7 @@ public class FieldModel {
 		FieldModel f = new FieldModel();
 		f.id = id;
 		f.label = label;
+		f.sectionLabel = sectionLabel;
 		f.conceptUuid = conceptUuid;
 		f.datatype = datatype;
 		f.answers.addAll(answers);
@@ -59,5 +62,20 @@ public class FieldModel {
 		f.uiSelectDatasourceName = uiSelectDatasourceName;
 		f.uiSelectDatasourceConfig.putAll(uiSelectDatasourceConfig);
 		return f;
+	}
+
+	public boolean isConditional() {
+		return hideExpr != null || requiredExpr != null;
+	}
+
+	public String getConditionalDescription() {
+		if (hideExpr != null && requiredExpr != null) {
+			return "Conditional: " + hideExpr + " | Required when: " + requiredExpr;
+		} else if (hideExpr != null) {
+			return "Show only when: " + hideExpr;
+		} else if (requiredExpr != null) {
+			return "Required when: " + requiredExpr;
+		}
+		return null;
 	}
 }
