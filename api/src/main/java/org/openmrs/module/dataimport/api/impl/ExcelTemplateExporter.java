@@ -21,6 +21,7 @@ import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.SheetVisibility;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
@@ -247,7 +248,7 @@ public class ExcelTemplateExporter {
 		XSSFSheet listSheet = workbook.getSheet(DataImportConstants.LIST_SHEET);
 		if (listSheet == null) {
 			listSheet = workbook.createSheet(DataImportConstants.LIST_SHEET);
-			workbook.setSheetHidden(workbook.getSheetIndex(listSheet), true);
+			workbook.setSheetVisibility(workbook.getSheetIndex(listSheet), SheetVisibility.VERY_HIDDEN);
 			initializeListSheetHeaders(workbook, listSheet);
 		}
 		return listSheet;
