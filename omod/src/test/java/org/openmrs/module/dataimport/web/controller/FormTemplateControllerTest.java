@@ -15,8 +15,10 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.Before;
@@ -36,6 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -195,7 +198,60 @@ public class FormTemplateControllerTest {
 	public void downloadQuarantineReport_shouldThrowWhenBatchIdInvalid() throws Exception {
 		MultipartFile file = mock(MultipartFile.class);
 		when(file.isEmpty()).thenReturn(false);
-		
+
 		assertThrows(APIException.class, () -> controller.downloadQuarantineReport(file, "invalid-uuid"));
+	}
+
+	/**
+	 * Tests that multi-location options are properly passed to the service.
+	 * @see FormTemplateController#generateTemplateFromPost(FormTemplateController.TemplateRequest)
+	 */
+	@Test
+	public void generateTemplateFromPost_shouldPassMultiLocationOptionsToService() {
+		FormTemplateController.TemplateRequest request = new FormTemplateController.TemplateRequest();
+		request.formUuids = Collections.singletonList("form-uuid");
+		TemplateOptions options = new TemplateOptions();
+		options.locationUuid = "default-loc";
+		options.locationUuids = Arrays.asList("loc-1", "loc-2", "loc-3");
+		options.locationTagFilter = "Visit Location";
+		options.restrictToAllowedLocations = true;
+		request.options = options;
+
+		controller.generateTemplateFromPost(request);
+
+		verify(templateGenerationService).generateFromFormUuids(
+			eq(Collections.singletonList("form-uuid")),
+			argThat(opts ->
+				"default-loc".equals(opts.locationUuid) &&
+				opts.locationUuids.size() == 3 &&
+				opts.locationUuids.contains("loc-1") &&
+				"Visit Location".equals(opts.locationTagFilter) &&
+				opts.restrictToAllowedLocations
+			)
+		);
+	}
+
+	/**
+	 * Tests that empty locationUuids list is properly handled.
+	 * @see FormTemplateController#generateTemplateFromPost(FormTemplateController.TemplateRequest)
+	 */
+	@Test
+	public void generateTemplateFromPost_shouldHandleEmptyLocationUuids() {
+		FormTemplateController.TemplateRequest request = new FormTemplateController.TemplateRequest();
+		request.formUuids = Collections.singletonList("form-uuid");
+		TemplateOptions options = new TemplateOptions();
+		options.locationUuids = Collections.emptyList();
+		options.restrictToAllowedLocations = false;
+		request.options = options;
+
+		controller.generateTemplateFromPost(request);
+
+		verify(templateGenerationService).generateFromFormUuids(
+			eq(Collections.singletonList("form-uuid")),
+			argThat(opts ->
+				opts.locationUuids.isEmpty() &&
+				!opts.restrictToAllowedLocations
+			)
+		);
 	}
 }

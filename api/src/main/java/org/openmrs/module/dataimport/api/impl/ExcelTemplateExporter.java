@@ -50,6 +50,8 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.openmrs.module.dataimport.model.TemplateOptions;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
@@ -61,20 +63,37 @@ import java.util.Map;
 import java.util.Set;
 
 public class ExcelTemplateExporter {
-	
+
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
-	
+
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
-	
+
 	private static final ObjectMapper objectMapper = new ObjectMapper();
-	
+
 	private final Map<String, Integer> usedNames = new HashMap<>();
-	
+
 	public byte[] export(FormModel form, boolean includePatient) {
 		return export(form, includePatient, null);
 	}
-	
+
 	public byte[] export(FormModel form, boolean includePatient, String locationUuid) {
+		TemplateOptions opts = new TemplateOptions();
+		opts.includePatient = includePatient;
+		opts.locationUuid = locationUuid != null ? locationUuid : "";
+		return export(form, opts);
+	}
+
+	/**
+	 * Exports a FormModel to an Excel workbook using the provided TemplateOptions.
+	 * This overload supports multi-location templates with allowedLocationUuids and restrictToAllowedLocations.
+	 *
+	 * @param form the form model to export
+	 * @param opts template options including location settings
+	 * @return Excel workbook as byte array
+	 */
+	public byte[] export(FormModel form, TemplateOptions opts) {
+		boolean includePatient = opts != null ? opts.includePatient : true;
+		String locationUuid = opts != null ? opts.getEffectiveDefaultLocation() : null;
 		try (XSSFWorkbook workbook = new XSSFWorkbook()) {
 			LongStringRegistry longStrings = new LongStringRegistry();
 			DataFormat dataFormat = workbook.createDataFormat();
@@ -165,7 +184,7 @@ public class ExcelTemplateExporter {
 				sheet.createFreezePane(0, 1);
 			}
 			
-			createMetaSheet(workbook, form, locationUuid, longStrings);
+			createMetaSheet(workbook, form, opts, longStrings);
 			createConceptsSheet(workbook, form);
 			if (longStrings.hasEntries()) {
 				longStrings.writeSheet(workbook);
@@ -528,22 +547,27 @@ public class ExcelTemplateExporter {
 		cell.setCellComment(comment);
 	}
 	
-	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, String locationUuid,
+	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, TemplateOptions opts,
 	        LongStringRegistry longStrings) {
 		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
-		
+
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		CellStyle sectionHeaderStyle = createSectionHeaderStyle(workbook);
-		
+
+		// Extract location settings from options
+		String locationUuid = opts != null ? opts.getEffectiveDefaultLocation() : null;
+		List<String> allowedLocationUuids = opts != null ? opts.getAllAllowedLocations() : new ArrayList<>();
+		boolean restrictToAllowedLocations = opts != null && opts.restrictToAllowedLocations;
+
 		int rowIndex = 0;
-		
+
 		Row sectionRow = metaSheet.createRow(rowIndex++);
 		Cell sectionCell = sectionRow.createCell(0);
 		sectionCell.setCellValue("TEMPLATE INFORMATION");
 		sectionCell.setCellStyle(sectionHeaderStyle);
 		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 1));
-		
+
 		Row headerRow = metaSheet.createRow(rowIndex++);
 		Cell keyHeader = headerRow.createCell(0);
 		keyHeader.setCellValue("key");
@@ -551,24 +575,31 @@ public class ExcelTemplateExporter {
 		Cell valueHeader = headerRow.createCell(1);
 		valueHeader.setCellValue("value");
 		valueHeader.setCellStyle(headerStyle);
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateVersion");
-		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(1);
-		
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(2); // Version 2 for multi-location support
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("generatedAt");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(Instant.now().toString());
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("locale");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("en");
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateName");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("Multi-Form Template");
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("defaultLocationUuid");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(locationUuid != null ? locationUuid : "");
-		
+
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formCount");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
+
+		// New multi-location fields (T039-T042)
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("allowedLocationUuids");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(String.join(",", allowedLocationUuids));
+
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("restrictToAllowedLocations");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(String.valueOf(restrictToAllowedLocations));
 		
 		rowIndex += 2;
 		

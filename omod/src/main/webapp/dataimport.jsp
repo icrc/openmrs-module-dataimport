@@ -51,7 +51,7 @@
             </td>
         </tr>
         <tr>
-            <td valign="top"><spring:message code="dataimport.template.location"/>:</td>
+            <td valign="top"><spring:message code="dataimport.template.defaultLocation"/>:</td>
             <td valign="top">
                 <select id="locationSelect">
                     <option value=""><spring:message code="dataimport.template.selectLocation"/></option>
@@ -59,6 +59,33 @@
                         <option value="${location.uuid}"><c:out value="${location.name}"/></option>
                     </c:forEach>
                 </select>
+                <span style="color: #666; font-size: 0.9em;"> (<spring:message code="dataimport.template.defaultLocationHint"/>)</span>
+            </td>
+        </tr>
+        <tr>
+            <td valign="top"><spring:message code="dataimport.template.allowedLocations"/>:</td>
+            <td valign="top">
+                <div style="margin-bottom: 5px;">
+                    <a href="#" id="selectAllLocations"><spring:message code="dataimport.template.selectAll"/></a> |
+                    <a href="#" id="deselectAllLocations"><spring:message code="dataimport.template.deselectAll"/></a>
+                    <span id="locationCharCount" style="margin-left: 15px; color: #666; font-size: 0.9em;"></span>
+                </div>
+                <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 5px;">
+                    <table cellpadding="2" cellspacing="0" width="100%">
+                        <c:forEach items="${locations}" var="location" varStatus="status">
+                            <tr class="${status.index % 2 == 0 ? 'evenRow' : 'oddRow'}">
+                                <td>
+                                    <input type="checkbox" id="loc-${location.uuid}" class="location-checkbox" value="${location.uuid}" data-name="${location.name}"/>
+                                    <label for="loc-${location.uuid}"><c:out value="${location.name}"/></label>
+                                </td>
+                            </tr>
+                        </c:forEach>
+                    </table>
+                </div>
+                <div style="margin-top: 5px;">
+                    <input type="checkbox" id="restrictToAllowedLocations" />
+                    <label for="restrictToAllowedLocations"><spring:message code="dataimport.template.restrictLocations"/></label>
+                </div>
             </td>
         </tr>
         <tr>

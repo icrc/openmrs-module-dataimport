@@ -30,6 +30,32 @@
             });
         });
 
+        // Multi-location selection event listeners
+        var locationCheckboxes = document.querySelectorAll('.location-checkbox');
+        locationCheckboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', updateLocationCharCount);
+        });
+
+        var selectAllLocations = document.getElementById('selectAllLocations');
+        if (selectAllLocations) {
+            selectAllLocations.addEventListener('click', function(e) {
+                e.preventDefault();
+                var checkboxes = document.querySelectorAll('.location-checkbox');
+                checkboxes.forEach(function(cb) { cb.checked = true; });
+                updateLocationCharCount();
+            });
+        }
+
+        var deselectAllLocations = document.getElementById('deselectAllLocations');
+        if (deselectAllLocations) {
+            deselectAllLocations.addEventListener('click', function(e) {
+                e.preventDefault();
+                var checkboxes = document.querySelectorAll('.location-checkbox');
+                checkboxes.forEach(function(cb) { cb.checked = false; });
+                updateLocationCharCount();
+            });
+        }
+
         var formFilesInput = document.getElementById('formFilesInput');
         if (formFilesInput) {
             formFilesInput.addEventListener('change', function() {
@@ -81,6 +107,41 @@
         }
     }
 
+    function getSelectedLocationUuids() {
+        var selected = [];
+        var checkboxes = document.querySelectorAll('.location-checkbox:checked');
+        checkboxes.forEach(function(cb) {
+            selected.push(cb.value);
+        });
+        return selected;
+    }
+
+    function updateLocationCharCount() {
+        var totalChars = 0;
+        var checkboxes = document.querySelectorAll('.location-checkbox:checked');
+        checkboxes.forEach(function(cb) {
+            var name = cb.getAttribute('data-name') || '';
+            totalChars += name.length + 1; // +1 for separator
+        });
+
+        var charCountEl = document.getElementById('locationCharCount');
+        if (charCountEl) {
+            if (checkboxes.length === 0) {
+                charCountEl.textContent = '(all locations will be included)';
+                charCountEl.style.color = '#666';
+            } else if (totalChars > 30000) {
+                charCountEl.textContent = checkboxes.length + ' locations selected (~' + totalChars + ' chars - exceeds Excel limit!)';
+                charCountEl.style.color = '#dc3545';
+            } else if (totalChars > 25000) {
+                charCountEl.textContent = checkboxes.length + ' locations selected (~' + totalChars + ' chars - approaching limit)';
+                charCountEl.style.color = '#ffc107';
+            } else {
+                charCountEl.textContent = checkboxes.length + ' locations selected';
+                charCountEl.style.color = '#666';
+            }
+        }
+    }
+
     function toggleFormSelection(formUuid, selected) {
         if (selected) {
             if (selectedForms.indexOf(formUuid) === -1) {
@@ -102,6 +163,9 @@
     function generateTemplate() {
         var includePatient = document.getElementById('includePatientRegistration').checked;
         var locationUuid = document.getElementById('locationSelect').value;
+        var locationUuids = getSelectedLocationUuids();
+        var restrictToAllowedLocations = document.getElementById('restrictToAllowedLocations');
+        var restrict = restrictToAllowedLocations ? restrictToAllowedLocations.checked : false;
 
         var allFormUuids = selectedForms.concat(uploadedFormFileIds);
 
@@ -124,6 +188,13 @@
         if (locationUuid) {
             data.options.locationUuid = locationUuid;
         }
+
+        // Multi-location options
+        if (locationUuids.length > 0) {
+            data.options.locationUuids = locationUuids;
+        }
+
+        data.options.restrictToAllowedLocations = restrict;
 
         var xhr = new XMLHttpRequest();
         xhr.open('POST', contextPath + '/ws/rest/v1/dataimport/forms/template.xlsx', true);
