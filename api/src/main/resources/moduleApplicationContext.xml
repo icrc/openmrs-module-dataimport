@@ -90,10 +90,22 @@
 		<constructor-arg ref="obsSaver" />
 		<constructor-arg ref="visitImportService" />
 	</bean>
+	<!-- Audit Log DAO and Service -->
+	<bean id="importAuditLogDao" class="org.openmrs.module.dataimport.api.dao.impl.ImportAuditLogDaoImpl">
+		<property name="sessionFactory">
+			<ref bean="sessionFactory" />
+		</property>
+	</bean>
+
+	<bean id="importAuditService" class="org.openmrs.module.dataimport.api.impl.ImportAuditServiceImpl">
+		<property name="dao" ref="importAuditLogDao" />
+	</bean>
+
 	<bean id="workbookImportService" class="org.openmrs.module.dataimport.api.impl.WorkbookImportServiceImpl">
 		<constructor-arg ref="importPlanStorageService" />
 		<constructor-arg ref="workbookValidationService" />
 		<constructor-arg ref="patientImportService" />
 		<constructor-arg ref="encounterImportOrchestrator" />
+		<property name="importAuditService" ref="importAuditService" />
 	</bean>
 </beans>

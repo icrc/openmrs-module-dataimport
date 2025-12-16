@@ -111,7 +111,7 @@ public class O3FormParser {
 			}
 			field.label = label != null ? label : field.id;
 			field.sectionLabel = sectionLabel;
-
+			
 			String conceptIdOrUuid = getTextOrNull(questionOptions, "concept");
 			if (conceptIdOrUuid != null && !conceptIdOrUuid.trim().isEmpty()) {
 				String resolvedUuid = conceptAnswersService.resolveConceptUuid(conceptIdOrUuid);

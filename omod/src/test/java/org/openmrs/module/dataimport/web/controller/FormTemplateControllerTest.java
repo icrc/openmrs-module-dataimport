@@ -198,12 +198,13 @@ public class FormTemplateControllerTest {
 	public void downloadQuarantineReport_shouldThrowWhenBatchIdInvalid() throws Exception {
 		MultipartFile file = mock(MultipartFile.class);
 		when(file.isEmpty()).thenReturn(false);
-
+		
 		assertThrows(APIException.class, () -> controller.downloadQuarantineReport(file, "invalid-uuid"));
 	}
-
+	
 	/**
 	 * Tests that multi-location options are properly passed to the service.
+	 * 
 	 * @see FormTemplateController#generateTemplateFromPost(FormTemplateController.TemplateRequest)
 	 */
 	@Test
@@ -216,23 +217,18 @@ public class FormTemplateControllerTest {
 		options.locationTagFilter = "Visit Location";
 		options.restrictToAllowedLocations = true;
 		request.options = options;
-
+		
 		controller.generateTemplateFromPost(request);
-
-		verify(templateGenerationService).generateFromFormUuids(
-			eq(Collections.singletonList("form-uuid")),
-			argThat(opts ->
-				"default-loc".equals(opts.locationUuid) &&
-				opts.locationUuids.size() == 3 &&
-				opts.locationUuids.contains("loc-1") &&
-				"Visit Location".equals(opts.locationTagFilter) &&
-				opts.restrictToAllowedLocations
-			)
-		);
+		
+		verify(templateGenerationService).generateFromFormUuids(eq(Collections.singletonList("form-uuid")),
+		    argThat(opts -> "default-loc".equals(opts.locationUuid) && opts.locationUuids.size() == 3
+		            && opts.locationUuids.contains("loc-1") && "Visit Location".equals(opts.locationTagFilter)
+		            && opts.restrictToAllowedLocations));
 	}
-
+	
 	/**
 	 * Tests that empty locationUuids list is properly handled.
+	 * 
 	 * @see FormTemplateController#generateTemplateFromPost(FormTemplateController.TemplateRequest)
 	 */
 	@Test
@@ -243,15 +239,10 @@ public class FormTemplateControllerTest {
 		options.locationUuids = Collections.emptyList();
 		options.restrictToAllowedLocations = false;
 		request.options = options;
-
+		
 		controller.generateTemplateFromPost(request);
-
-		verify(templateGenerationService).generateFromFormUuids(
-			eq(Collections.singletonList("form-uuid")),
-			argThat(opts ->
-				opts.locationUuids.isEmpty() &&
-				!opts.restrictToAllowedLocations
-			)
-		);
+		
+		verify(templateGenerationService).generateFromFormUuids(eq(Collections.singletonList("form-uuid")),
+		    argThat(opts -> opts.locationUuids.isEmpty() && !opts.restrictToAllowedLocations));
 	}
 }

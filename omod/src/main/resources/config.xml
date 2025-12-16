@@ -19,6 +19,10 @@
 		<require_module>org.openmrs.module.webservices.rest</require_module>
 	</require_modules>
 
+	<!-- Hibernate mapped classes for audit logging -->
+	<mappedClass>org.openmrs.module.dataimport.api.model.ImportAuditLog</mappedClass>
+	<mappedClass>org.openmrs.module.dataimport.api.model.ImportAuditError</mappedClass>
+
 	<aware_of_modules>
 		<aware_of_module>org.openmrs.module.legacyui</aware_of_module>
 	</aware_of_modules>
@@ -48,6 +52,12 @@
         <property>${project.parent.artifactId}.phoneAttributeTypeUuid</property>
         <defaultValue>14d4f066-15f5-102d-96e4-000c29c2a5d7</defaultValue>
         <description>Default PersonAttributeType for the phone attribute</description>
+    </globalProperty>
+
+    <globalProperty>
+        <property>${project.parent.artifactId}.auditlog.retentionDays</property>
+        <defaultValue>90</defaultValue>
+        <description>Number of days to retain import audit logs before cleanup. Default is 90 days.</description>
     </globalProperty>
 
 </module>

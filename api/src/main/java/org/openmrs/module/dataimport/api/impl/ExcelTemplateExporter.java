@@ -45,12 +45,11 @@ import org.openmrs.module.dataimport.model.FieldDatatype;
 import org.openmrs.module.dataimport.model.FieldModel;
 import org.openmrs.module.dataimport.model.FormModel;
 import org.openmrs.module.dataimport.model.SheetModel;
+import org.openmrs.module.dataimport.model.TemplateOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.openmrs.module.dataimport.model.TemplateOptions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -63,29 +62,29 @@ import java.util.Map;
 import java.util.Set;
 
 public class ExcelTemplateExporter {
-
+	
 	private static final Logger log = LoggerFactory.getLogger(ExcelTemplateExporter.class);
-
+	
 	private static final String PATIENT_REFS_RANGE = "PatientRefs";
-
+	
 	private static final ObjectMapper objectMapper = new ObjectMapper();
-
+	
 	private final Map<String, Integer> usedNames = new HashMap<>();
-
+	
 	public byte[] export(FormModel form, boolean includePatient) {
 		return export(form, includePatient, null);
 	}
-
+	
 	public byte[] export(FormModel form, boolean includePatient, String locationUuid) {
 		TemplateOptions opts = new TemplateOptions();
 		opts.includePatient = includePatient;
 		opts.locationUuid = locationUuid != null ? locationUuid : "";
 		return export(form, opts);
 	}
-
+	
 	/**
-	 * Exports a FormModel to an Excel workbook using the provided TemplateOptions.
-	 * This overload supports multi-location templates with allowedLocationUuids and restrictToAllowedLocations.
+	 * Exports a FormModel to an Excel workbook using the provided TemplateOptions. This overload
+	 * supports multi-location templates with allowedLocationUuids and restrictToAllowedLocations.
 	 *
 	 * @param form the form model to export
 	 * @param opts template options including location settings
@@ -118,21 +117,21 @@ public class ExcelTemplateExporter {
 				CellStyle headerStyle = createHeaderStyle(workbook);
 				CellStyle conditionalHeaderStyle = createConditionalFieldStyle(workbook);
 				int columnIndex = 0;
-
+				
 				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
 				patientRefHeaderCell.setCellValue(DataImportConstants.PATIENT_REF_HEADER);
 				patientRefHeaderCell.setCellStyle(headerStyle);
 				sheet.setColumnWidth(columnIndex, DataImportConstants.PATIENT_REF_COLUMN_WIDTH);
 				columnIndex++;
-
+				
 				for (FieldModel field : sheetModel.fields) {
 					Cell headerCell = headerRow.createCell(columnIndex);
 					headerCell.setCellValue(labelWithMarkers(field));
-
+					
 					// Apply conditional field styling to header if field is conditional
 					if (field.isConditional()) {
 						headerCell.setCellStyle(conditionalHeaderStyle);
-
+						
 						// Add Excel comment explaining the condition
 						String conditionDesc = field.getConditionalDescription();
 						if (conditionDesc != null) {
@@ -141,7 +140,7 @@ public class ExcelTemplateExporter {
 					} else {
 						headerCell.setCellStyle(headerStyle);
 					}
-
+					
 					if (field.datatype == FieldDatatype.DATE) {
 						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
@@ -155,13 +154,13 @@ public class ExcelTemplateExporter {
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
-
+					
 					// Apply subtle gray background to data cells of conditional fields
 					if (field.isConditional()) {
 						CellStyle conditionalDataStyle = workbook.createCellStyle();
 						conditionalDataStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
 						conditionalDataStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
+						
 						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
 							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
 							// Preserve date/datetime formatting if applicable
@@ -177,7 +176,7 @@ public class ExcelTemplateExporter {
 							cell.setCellStyle(conditionalDataStyle);
 						}
 					}
-
+					
 					sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
@@ -299,20 +298,20 @@ public class ExcelTemplateExporter {
 	
 	private static String labelWithMarkers(FieldModel field) {
 		String labelText = field.label != null ? field.label : field.id;
-
+		
 		// Prepend section label if available
 		if (field.sectionLabel != null && !field.sectionLabel.trim().isEmpty()) {
 			labelText = field.sectionLabel + ": " + labelText;
 		}
-
+		
 		if (field.requiredAlways)
 			labelText = labelText + " *";
-
+		
 		// Add indicator for conditional fields
 		if (field.isConditional()) {
 			labelText = labelText + " (?)";
 		}
-
+		
 		return labelText;
 	}
 	
@@ -514,7 +513,7 @@ public class ExcelTemplateExporter {
 		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
 	}
-
+	
 	private static CellStyle createConditionalFieldStyle(XSSFWorkbook workbook) {
 		CellStyle style = workbook.createCellStyle();
 		style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
@@ -525,25 +524,25 @@ public class ExcelTemplateExporter {
 		style.setFont(font);
 		return style;
 	}
-
+	
 	private static void addCommentToCell(XSSFSheet sheet, Cell cell, String commentText) {
 		if (commentText == null || commentText.trim().isEmpty()) {
 			return;
 		}
-
+		
 		CreationHelper factory = sheet.getWorkbook().getCreationHelper();
 		Drawing<?> drawing = sheet.createDrawingPatriarch();
-
+		
 		ClientAnchor anchor = factory.createClientAnchor();
 		anchor.setCol1(cell.getColumnIndex());
 		anchor.setCol2(cell.getColumnIndex() + 3);
 		anchor.setRow1(cell.getRowIndex());
 		anchor.setRow2(cell.getRowIndex() + 3);
-
+		
 		Comment comment = drawing.createCellComment(anchor);
 		comment.setString(factory.createRichTextString(commentText));
 		comment.setAuthor("Data Import Module");
-
+		
 		cell.setCellComment(comment);
 	}
 	
@@ -551,23 +550,23 @@ public class ExcelTemplateExporter {
 	        LongStringRegistry longStrings) {
 		XSSFSheet metaSheet = workbook.createSheet(DataImportConstants.META_SHEET);
 		workbook.setSheetHidden(workbook.getSheetIndex(metaSheet), true);
-
+		
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		CellStyle sectionHeaderStyle = createSectionHeaderStyle(workbook);
-
+		
 		// Extract location settings from options
 		String locationUuid = opts != null ? opts.getEffectiveDefaultLocation() : null;
 		List<String> allowedLocationUuids = opts != null ? opts.getAllAllowedLocations() : new ArrayList<>();
 		boolean restrictToAllowedLocations = opts != null && opts.restrictToAllowedLocations;
-
+		
 		int rowIndex = 0;
-
+		
 		Row sectionRow = metaSheet.createRow(rowIndex++);
 		Cell sectionCell = sectionRow.createCell(0);
 		sectionCell.setCellValue("TEMPLATE INFORMATION");
 		sectionCell.setCellStyle(sectionHeaderStyle);
 		metaSheet.addMergedRegion(new CellRangeAddress(rowIndex - 1, rowIndex - 1, 0, 1));
-
+		
 		Row headerRow = metaSheet.createRow(rowIndex++);
 		Cell keyHeader = headerRow.createCell(0);
 		keyHeader.setCellValue("key");
@@ -575,29 +574,29 @@ public class ExcelTemplateExporter {
 		Cell valueHeader = headerRow.createCell(1);
 		valueHeader.setCellValue("value");
 		valueHeader.setCellStyle(headerStyle);
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateVersion");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(2); // Version 2 for multi-location support
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("generatedAt");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(Instant.now().toString());
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("locale");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("en");
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("templateName");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue("Multi-Form Template");
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("defaultLocationUuid");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(locationUuid != null ? locationUuid : "");
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("formCount");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(form.sheets.size());
-
+		
 		// New multi-location fields (T039-T042)
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("allowedLocationUuids");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(String.join(",", allowedLocationUuids));
-
+		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("restrictToAllowedLocations");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(String.valueOf(restrictToAllowedLocations));
 		

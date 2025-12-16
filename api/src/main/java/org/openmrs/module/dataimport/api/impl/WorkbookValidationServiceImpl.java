@@ -46,38 +46,38 @@ import java.util.concurrent.Future;
 
 @Service
 public class WorkbookValidationServiceImpl implements WorkbookValidationService {
-
+	
 	private static final Logger log = LoggerFactory.getLogger(WorkbookValidationServiceImpl.class);
-
+	
 	@Override
 	public ValidationResult validate(List<Sheet> sheets, TemplateMeta meta, ExcelReader.PatientIndex patientIndex,
 	        String templateDefaultLocationUuid) {
 		if (sheets == null || sheets.isEmpty()) {
 			return new ValidationResult(new ArrayList<>(), new ArrayList<>(), new HashSet<>());
 		}
-
+		
 		// Build location cache for validation (T028)
 		Map<String, Location> locationCache = buildLocationCache();
 		Set<String> allowedLocationUuids = new HashSet<>(meta.allowedLocationUuids);
-
+		
 		int availableProcessors = Runtime.getRuntime().availableProcessors();
 		int threadCount = Math.min(Math.max(availableProcessors, 1), sheets.size());
 		List<SheetProcessingResult> sheetResults;
-
+		
 		if (threadCount <= 1) {
-			sheetResults = processSheetsSequentially(sheets, meta, patientIndex, templateDefaultLocationUuid,
-			        locationCache, allowedLocationUuids);
+			sheetResults = processSheetsSequentially(sheets, meta, patientIndex, templateDefaultLocationUuid, locationCache,
+			    allowedLocationUuids);
 		} else {
 			sheetResults = processSheetsInParallel(sheets, meta, patientIndex, templateDefaultLocationUuid, threadCount,
-			        locationCache, allowedLocationUuids);
+			    locationCache, allowedLocationUuids);
 		}
-
+		
 		return aggregateResults(sheetResults);
 	}
-
+	
 	/**
-	 * Builds a cache of all locations indexed by UUID for efficient validation.
-	 * This avoids per-row database queries during validation.
+	 * Builds a cache of all locations indexed by UUID for efficient validation. This avoids per-row
+	 * database queries during validation.
 	 */
 	protected Map<String, Location> buildLocationCache() {
 		Map<String, Location> cache = new HashMap<>();
@@ -91,22 +91,24 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 					}
 				}
 			}
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			log.warn("Failed to build location cache: {}. Location validation will be skipped.", e.getMessage());
 		}
 		return cache;
 	}
-
+	
 	private List<SheetProcessingResult> processSheetsSequentially(List<Sheet> sheets, TemplateMeta meta,
-	        ExcelReader.PatientIndex patientIndex, String templateDefaultLocationUuid,
-	        Map<String, Location> locationCache, Set<String> allowedLocationUuids) {
+	        ExcelReader.PatientIndex patientIndex, String templateDefaultLocationUuid, Map<String, Location> locationCache,
+	        Set<String> allowedLocationUuids) {
 		List<SheetProcessingResult> results = new ArrayList<>();
 		for (Sheet sheet : sheets) {
-			results.add(processSheet(sheet, meta, patientIndex, templateDefaultLocationUuid, locationCache, allowedLocationUuids));
+			results.add(
+			    processSheet(sheet, meta, patientIndex, templateDefaultLocationUuid, locationCache, allowedLocationUuids));
 		}
 		return results;
 	}
-
+	
 	private List<SheetProcessingResult> processSheetsInParallel(List<Sheet> sheets, TemplateMeta meta,
 	        ExcelReader.PatientIndex patientIndex, String templateDefaultLocationUuid, int threadCount,
 	        Map<String, Location> locationCache, Set<String> allowedLocationUuids) {
@@ -115,9 +117,9 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			List<Future<SheetProcessingResult>> futures = new ArrayList<>();
 			for (Sheet sheet : sheets) {
 				futures.add(executor.submit(() -> processSheet(sheet, meta, patientIndex, templateDefaultLocationUuid,
-				        locationCache, allowedLocationUuids)));
+				    locationCache, allowedLocationUuids)));
 			}
-
+			
 			List<SheetProcessingResult> results = new ArrayList<>();
 			for (Future<SheetProcessingResult> future : futures) {
 				results.add(future.get());
@@ -166,36 +168,36 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 		SheetProcessingResult result = new SheetProcessingResult();
 		String sheetName = sheet.getSheetName();
 		SheetMeta sheetMeta = meta.getSheetMeta(sheetName);
-
+		
 		if (sheetMeta == null) {
 			return result;
 		}
-
+		
 		// Find encounterLocation column index if it exists
 		int locationColumnIndex = findEncounterLocationColumnIndex(sheetMeta);
-
+		
 		int lastRow = WorkbookUtil.lastDataRow(sheet);
 		if (lastRow < 1) {
 			return result;
 		}
-
+		
 		for (int rowIndex = 1; rowIndex <= lastRow; rowIndex++) {
 			if (WorkbookUtil.isEmptyRow(sheet, rowIndex)) {
 				continue;
 			}
 			try {
-				processRow(sheet, rowIndex, sheetMeta, patientIndex, result, templateDefaultLocationUuid,
-				        locationCache, allowedLocationUuids, meta.restrictToAllowedLocations, locationColumnIndex);
+				processRow(sheet, rowIndex, sheetMeta, patientIndex, result, templateDefaultLocationUuid, locationCache,
+				    allowedLocationUuids, meta.restrictToAllowedLocations, locationColumnIndex);
 			}
 			catch (Exception e) {
 				result.quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, 0, "PROCESSING_ERROR",
 				    "Failed to process row: " + e.getMessage()));
 			}
 		}
-
+		
 		return result;
 	}
-
+	
 	/**
 	 * Finds the column index for encounterLocation field in the sheet metadata.
 	 *
@@ -216,20 +218,19 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 		}
 		return -1;
 	}
-
+	
 	private void processRow(Sheet sheet, int rowIndex, SheetMeta sheetMeta, ExcelReader.PatientIndex patientIndex,
-	        SheetProcessingResult result, String templateDefaultLocationUuid,
-	        Map<String, Location> locationCache, Set<String> allowedLocationUuids,
-	        boolean restrictToAllowedLocations, int locationColumnIndex) {
+	        SheetProcessingResult result, String templateDefaultLocationUuid, Map<String, Location> locationCache,
+	        Set<String> allowedLocationUuids, boolean restrictToAllowedLocations, int locationColumnIndex) {
 		String sheetName = sheet.getSheetName();
-
+		
 		String patientRef = WorkbookUtil.Cells.getString(sheet, rowIndex, 0);
 		if (patientRef == null || patientRef.trim().isEmpty()) {
 			result.quarantineItems
 			        .add(QuarantineItem.error(sheetName, rowIndex, 0, "MISSING_PATIENT_REF", "Patient Ref is required"));
 			return;
 		}
-
+		
 		ExcelReader.PatientResolution patientResolution = patientIndex.resolve(patientRef);
 		if (!patientResolution.isResolved()) {
 			result.blockedPatientRefs.add(patientRef);
@@ -237,39 +238,35 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			    QuarantineItem.error(sheetName, rowIndex, 0, "UNKNOWN_PATIENT_REF", patientResolution.getErrorMessage()));
 			return;
 		}
-
+		
 		int issuesBefore = result.quarantineItems.size();
-
+		
 		// Validate location if location cache is available (T024-T027)
 		String rowLocationUuid = null;
 		if (!locationCache.isEmpty() && locationColumnIndex >= 0) {
 			String locationCellValue = WorkbookUtil.Cells.getString(sheet, rowIndex, locationColumnIndex);
-			LocationValidationResult locationResult = LocationValidation.validateLocation(
-			        locationCellValue, locationCache, allowedLocationUuids, restrictToAllowedLocations, templateDefaultLocationUuid);
-
+			LocationValidationResult locationResult = LocationValidation.validateLocation(locationCellValue, locationCache,
+			    allowedLocationUuids, restrictToAllowedLocations, templateDefaultLocationUuid);
+			
 			if (!locationResult.isValid()) {
-				QuarantineItem locationError = LocationValidation.createQuarantineItem(
-				        locationResult, sheetName, rowIndex, locationColumnIndex);
+				QuarantineItem locationError = LocationValidation.createQuarantineItem(locationResult, sheetName, rowIndex,
+				    locationColumnIndex);
 				result.quarantineItems.add(locationError);
 			} else {
 				rowLocationUuid = locationResult.getResolvedLocationUuid();
 			}
 		}
-
+		
 		EncounterBlueprint encounter = ExcelReader.buildEncounter(sheetMeta, templateDefaultLocationUuid);
 		// If we validated a per-row location, use it instead of the template default
 		if (rowLocationUuid != null && !rowLocationUuid.isEmpty()) {
-			encounter = EncounterBlueprint.builder()
-			        .encounterTypeUuid(encounter.getEncounterTypeUuid())
-			        .encounterDatetime(encounter.getEncounterDatetime())
-			        .locationUuid(rowLocationUuid)
-			        .providerUuid(encounter.getProviderUuid())
-			        .formUuid(encounter.getFormUuid())
-			        .build();
+			encounter = EncounterBlueprint.builder().encounterTypeUuid(encounter.getEncounterTypeUuid())
+			        .encounterDatetime(encounter.getEncounterDatetime()).locationUuid(rowLocationUuid)
+			        .providerUuid(encounter.getProviderUuid()).formUuid(encounter.getFormUuid()).build();
 		}
-
+		
 		ObsBuildOutcome obsOutcome = ExcelReader.buildObsDetailed(sheet, rowIndex, sheetMeta);
-
+		
 		for (ObsBuildIssue issue : obsOutcome.getIssues()) {
 			ColumnMeta column = issue.getColumn();
 			int colIndex = column != null ? column.colIndex : 0;
@@ -281,16 +278,16 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			}
 			result.quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, colIndex, "OBS_PARSE_ERROR", message));
 		}
-
+		
 		List<ObsBlueprint> obs = obsOutcome.getObs();
 		Validation.checkRow(obs, sheetMeta, result.quarantineItems, sheetName, rowIndex);
-
+		
 		boolean rowHasIssues = result.quarantineItems.size() > issuesBefore;
 		if (rowHasIssues) {
 			result.blockedPatientRefs.add(patientRef);
 			return;
 		}
-
+		
 		String idempotencyKey = Idempotency.key(sheet.getWorkbook(), sheetName, rowIndex, encounter, obs);
 		RowPlan rowPlan = new RowPlan(sheetName, rowIndex, patientRef, patientResolution.getPatientUuid(), encounter, obs,
 		        idempotencyKey);

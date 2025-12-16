@@ -19,45 +19,44 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Options for Excel template generation.
- * Supports multi-location selection for encounter location dropdowns.
+ * Options for Excel template generation. Supports multi-location selection for encounter location
+ * dropdowns.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class TemplateOptions {
-
+	
 	public boolean includePatient = true;
-
+	
 	/**
 	 * Default location UUID for encounters. Used when encounterLocation cell is empty.
 	 */
 	public String locationUuid = "";
-
+	
 	/**
-	 * List of allowed location UUIDs for the encounterLocation dropdown.
-	 * When empty, all non-retired locations are included.
+	 * List of allowed location UUIDs for the encounterLocation dropdown. When empty, all non-retired
+	 * locations are included.
 	 */
 	public List<String> locationUuids = new ArrayList<>();
-
+	
 	/**
-	 * Filter locations by tag name (e.g., "Visit Location").
-	 * Applied during template generation to limit dropdown options.
+	 * Filter locations by tag name (e.g., "Visit Location"). Applied during template generation to
+	 * limit dropdown options.
 	 */
 	public String locationTagFilter = null;
-
+	
 	/**
-	 * If true, import validation will reject locations not in the allowed list.
-	 * If false, any valid location is accepted (backward compatible behavior).
+	 * If true, import validation will reject locations not in the allowed list. If false, any valid
+	 * location is accepted (backward compatible behavior).
 	 */
 	public boolean restrictToAllowedLocations = false;
-
+	
 	public String filename = "";
-
+	
 	/**
-	 * Get the effective default location UUID.
-	 * Returns locationUuid if set, otherwise returns the first item from locationUuids,
-	 * or null if no locations are configured.
+	 * Get the effective default location UUID. Returns locationUuid if set, otherwise returns the first
+	 * item from locationUuids, or null if no locations are configured.
 	 *
 	 * @return the effective default location UUID, or null if none configured
 	 */
@@ -70,11 +69,11 @@ public class TemplateOptions {
 		}
 		return null;
 	}
-
+	
 	/**
-	 * Get all allowed locations including both locationUuid and locationUuids.
-	 * Uses LinkedHashSet to maintain order while removing duplicates.
-	 * locationUuid is added first to preserve its priority as the default.
+	 * Get all allowed locations including both locationUuid and locationUuids. Uses LinkedHashSet to
+	 * maintain order while removing duplicates. locationUuid is added first to preserve its priority as
+	 * the default.
 	 *
 	 * @return list of all allowed location UUIDs without duplicates
 	 */

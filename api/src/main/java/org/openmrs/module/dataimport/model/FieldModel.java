@@ -17,11 +17,11 @@ import java.util.Map;
 public class FieldModel {
 	
 	public String id;
-
+	
 	public String label;
-
+	
 	public String sectionLabel;
-
+	
 	public String conceptUuid;
 	
 	public FieldDatatype datatype = FieldDatatype.TEXT;
@@ -63,11 +63,11 @@ public class FieldModel {
 		f.uiSelectDatasourceConfig.putAll(uiSelectDatasourceConfig);
 		return f;
 	}
-
+	
 	public boolean isConditional() {
 		return hideExpr != null || requiredExpr != null;
 	}
-
+	
 	public String getConditionalDescription() {
 		if (hideExpr != null && requiredExpr != null) {
 			return "Conditional: " + hideExpr + " | Required when: " + requiredExpr;

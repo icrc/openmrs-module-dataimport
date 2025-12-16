@@ -24,15 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Tests all methods in the {@link ValidationDate}
- */
-/**
- * Tests all methods in the {@link ValidationDate}
- */
-/**
- * Tests all methods in the {@link ValidationDate}
- */
 public class ValidationDateTest {
 	
 	/**
@@ -123,10 +114,11 @@ public class ValidationDateTest {
 	}
 	
 	/**
-	 * @see ValidationDate
+	 * @see ValidationDate Future dates are allowed by design (for scheduled appointments, expected
+	 *      dates, etc.) unless explicitly constrained with a max date.
 	 */
 	@Test
-	public void futureDate_shouldTestValidateDateObs() {
+	public void futureDate_shouldBeAllowedWithoutExplicitMaxConstraint() {
 		LocalDate futureDate = LocalDate.now().plusDays(1);
 		ObsBlueprint obs = ObsBlueprint.date("test-concept-uuid", futureDate);
 		
@@ -144,13 +136,8 @@ public class ValidationDateTest {
 		
 		Validation.checkRow(Collections.singletonList(obs), sheetMeta, quarantineItems, "TestSheet", 1);
 		
-		assertEquals(1, quarantineItems.size());
-		QuarantineItem item = quarantineItems.get(0);
-		assertEquals("TestSheet", item.getSheet());
-		assertEquals(1, item.getRow());
-		assertEquals(1, item.getCol());
-		assertEquals("FUTURE_DATE", item.getCode());
-		assertTrue(item.getMessage().contains("is in the future"));
+		// Future dates should be allowed when no explicit max constraint is set
+		assertTrue(quarantineItems.isEmpty(), "Future dates should be allowed without explicit max constraint");
 	}
 	
 	/**

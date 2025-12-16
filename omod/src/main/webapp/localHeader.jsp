@@ -10,9 +10,14 @@
     <li class="first">
         <a href="${pageContext.request.contextPath}/admin"><openmrs:message code="admin.title.short"/></a>
     </li>
-    <li class="active">
+    <li <c:if test="${param.page != 'auditlog'}">class="active"</c:if>>
         <a href="${pageContext.request.contextPath}/module/dataimport/dataimport.form">
             <spring:message code="dataimport.title"/>
+        </a>
+    </li>
+    <li <c:if test="${param.page == 'auditlog'}">class="active"</c:if>>
+        <a href="${pageContext.request.contextPath}/module/dataimport/auditlog.form">
+            <spring:message code="dataimport.auditlog.title"/>
         </a>
     </li>
 </ul>

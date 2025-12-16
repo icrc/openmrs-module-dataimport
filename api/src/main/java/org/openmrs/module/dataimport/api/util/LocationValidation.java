@@ -16,18 +16,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Utility class for validating location UUIDs during import.
- * Supports the multi-location feature with per-row location validation,
- * allowed location enforcement, and retired location detection.
+ * Utility class for validating location UUIDs during import. Supports the multi-location feature
+ * with per-row location validation, allowed location enforcement, and retired location detection.
  */
 public class LocationValidation {
-
+	
 	/** Error code for invalid or non-existent location */
 	public static final String INVALID_LOCATION = "INVALID_LOCATION";
-
+	
 	/** Error code for location not in the allowed list */
 	public static final String LOCATION_NOT_ALLOWED = "LOCATION_NOT_ALLOWED";
-
+	
 	/**
 	 * Validates a location UUID from an Excel cell.
 	 *
@@ -38,57 +37,51 @@ public class LocationValidation {
 	 * @param defaultLocationUuid fallback location when cell is empty
 	 * @return validation result containing status, resolved UUID, and error details
 	 */
-	public static LocationValidationResult validateLocation(
-			String locationUuid,
-			Map<String, Location> locationCache,
-			Set<String> allowedLocationUuids,
-			boolean restrictToAllowedLocations,
-			String defaultLocationUuid) {
-
+	public static LocationValidationResult validateLocation(String locationUuid, Map<String, Location> locationCache,
+	        Set<String> allowedLocationUuids, boolean restrictToAllowedLocations, String defaultLocationUuid) {
+		
 		// Determine the effective location UUID
 		String effectiveUuid = locationUuid;
 		if (effectiveUuid == null || effectiveUuid.trim().isEmpty()) {
 			effectiveUuid = defaultLocationUuid;
 		}
-
+		
 		// If still empty after default fallback, return valid with null UUID
 		// (let downstream handle missing location requirement)
 		if (effectiveUuid == null || effectiveUuid.trim().isEmpty()) {
 			return LocationValidationResult.valid(null);
 		}
-
+		
 		effectiveUuid = effectiveUuid.trim();
-
+		
 		// Check if location exists in cache
 		Location location = locationCache.get(effectiveUuid);
 		if (location == null) {
 			String message = String.format("Location '%s' does not exist or could not be found", effectiveUuid);
 			return LocationValidationResult.invalid(INVALID_LOCATION, message);
 		}
-
+		
 		// Check if location is retired
 		if (location.getRetired() != null && location.getRetired()) {
 			String locationName = location.getName() != null ? location.getName() : effectiveUuid;
 			String message = String.format("Location '%s' (%s) is retired and cannot be used", locationName, effectiveUuid);
 			return LocationValidationResult.invalid(INVALID_LOCATION, message);
 		}
-
+		
 		// Check allowed locations list (only if restriction is enabled and list is non-empty)
 		if (restrictToAllowedLocations && allowedLocationUuids != null && !allowedLocationUuids.isEmpty()) {
 			if (!allowedLocationUuids.contains(effectiveUuid)) {
 				String locationName = location.getName() != null ? location.getName() : effectiveUuid;
-				String message = String.format(
-					"Location '%s' (%s) is not in the allowed location list for this template",
-					locationName, effectiveUuid
-				);
+				String message = String.format("Location '%s' (%s) is not in the allowed location list for this template",
+				    locationName, effectiveUuid);
 				return LocationValidationResult.invalid(LOCATION_NOT_ALLOWED, message);
 			}
 		}
-
+		
 		// Location is valid
 		return LocationValidationResult.valid(effectiveUuid);
 	}
-
+	
 	/**
 	 * Creates a QuarantineItem from a failed location validation result.
 	 *
@@ -98,22 +91,13 @@ public class LocationValidation {
 	 * @param colIndex the column index of the location field
 	 * @return QuarantineItem for the validation error, or null if result is valid
 	 */
-	public static QuarantineItem createQuarantineItem(
-			LocationValidationResult result,
-			String sheetName,
-			int rowIndex,
-			int colIndex) {
-
+	public static QuarantineItem createQuarantineItem(LocationValidationResult result, String sheetName, int rowIndex,
+	        int colIndex) {
+		
 		if (result.isValid()) {
 			return null;
 		}
-
-		return QuarantineItem.error(
-			sheetName,
-			rowIndex,
-			colIndex,
-			result.getErrorCode(),
-			result.getErrorMessage()
-		);
+		
+		return QuarantineItem.error(sheetName, rowIndex, colIndex, result.getErrorCode(), result.getErrorMessage());
 	}
 }

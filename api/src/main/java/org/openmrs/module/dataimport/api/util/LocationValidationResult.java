@@ -12,24 +12,27 @@ package org.openmrs.module.dataimport.api.util;
 import lombok.Getter;
 
 /**
- * Result of location validation during import.
- * Contains validation status, resolved location UUID, and error details if invalid.
+ * Result of location validation during import. Contains validation status, resolved location UUID,
+ * and error details if invalid.
  */
 @Getter
 public class LocationValidationResult {
-
+	
 	private final boolean valid;
+	
 	private final String resolvedLocationUuid;
+	
 	private final String errorCode;
+	
 	private final String errorMessage;
-
+	
 	private LocationValidationResult(boolean valid, String resolvedLocationUuid, String errorCode, String errorMessage) {
 		this.valid = valid;
 		this.resolvedLocationUuid = resolvedLocationUuid;
 		this.errorCode = errorCode;
 		this.errorMessage = errorMessage;
 	}
-
+	
 	/**
 	 * Creates a valid result with the resolved location UUID.
 	 *
@@ -39,7 +42,7 @@ public class LocationValidationResult {
 	public static LocationValidationResult valid(String resolvedLocationUuid) {
 		return new LocationValidationResult(true, resolvedLocationUuid, null, null);
 	}
-
+	
 	/**
 	 * Creates an invalid result with error details.
 	 *
