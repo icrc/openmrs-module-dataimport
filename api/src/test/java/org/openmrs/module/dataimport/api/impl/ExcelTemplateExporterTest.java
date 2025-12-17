@@ -33,9 +33,6 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Tests all methods in the {@link ExcelTemplateExporter}
- */
 public class ExcelTemplateExporterTest {
 	
 	private ExcelTemplateExporter exporter;
@@ -64,7 +61,10 @@ public class ExcelTemplateExporterTest {
 			assertTrue(wb.getNumberOfSheets() >= 2);
 			Sheet listsSheet = wb.getSheet("__lists");
 			assertNotNull(listsSheet, "Missing __lists sheet");
-			assertTrue(wb.isSheetHidden(wb.getSheetIndex(listsSheet)), "__lists sheet should be hidden");
+			assertTrue(
+			    wb.getSheetVisibility(
+			        wb.getSheetIndex(listsSheet)) == org.apache.poi.ss.usermodel.SheetVisibility.VERY_HIDDEN,
+			    "__lists sheet should be hidden");
 			
 			Sheet formSheet = null;
 			for (int i = 0; i < wb.getNumberOfSheets(); i++) {
@@ -79,19 +79,20 @@ public class ExcelTemplateExporterTest {
 			Row headerRow = formSheet.getRow(0);
 			assertNotNull(headerRow, "Missing header row");
 			
+			// Headers may have section labels prepended (e.g., "Section: Gender")
 			boolean hasGenderHeader = false;
 			boolean hasAnesthesiaHeader = false;
 			for (int i = 0; i < headerRow.getLastCellNum(); i++) {
 				String cellValue = headerRow.getCell(i).getStringCellValue();
-				if ("Gender".equals(cellValue)) {
+				if (cellValue.contains("Gender")) {
 					hasGenderHeader = true;
 				}
-				if ("Anesthesia Type".equals(cellValue)) {
+				if (cellValue.contains("Anesthesia Type")) {
 					hasAnesthesiaHeader = true;
 				}
 			}
-			assertTrue(hasGenderHeader, "Missing 'Gender' header");
-			assertTrue(hasAnesthesiaHeader, "Missing 'Anesthesia Type' header");
+			assertTrue(hasGenderHeader, "Missing header containing 'Gender'");
+			assertTrue(hasAnesthesiaHeader, "Missing header containing 'Anesthesia Type'");
 			
 			// Check that __lists sheet has the dropdown options
 			assertTrue(listsSheet.getLastRowNum() >= 0, "__lists sheet should have data");
@@ -126,17 +127,20 @@ public class ExcelTemplateExporterTest {
 			Row headerRow = formSheet.getRow(0);
 			assertNotNull(headerRow, "Missing header row");
 			
-			String[] expectedHeaders = { "Patient Name", "Age", "Date of Birth", "Last Visit", "Is Active", "Status" };
+			// Headers may have section labels prepended (e.g., "Patient Information: Patient Name")
+			String[] expectedHeaderKeywords = { "Patient Name", "Age", "Date of Birth", "Last Visit", "Is Active",
+			        "Status" };
 			
-			for (String expectedHeader : expectedHeaders) {
+			for (String expectedKeyword : expectedHeaderKeywords) {
 				boolean found = false;
 				for (int i = 0; i < headerRow.getLastCellNum(); i++) {
-					if (expectedHeader.equals(headerRow.getCell(i).getStringCellValue())) {
+					String cellValue = headerRow.getCell(i).getStringCellValue();
+					if (cellValue.contains(expectedKeyword)) {
 						found = true;
 						break;
 					}
 				}
-				assertTrue(found, "Missing header: " + expectedHeader);
+				assertTrue(found, "Missing header containing: " + expectedKeyword);
 			}
 		}
 	}
@@ -196,10 +200,13 @@ public class ExcelTemplateExporterTest {
 			// Should have form sheet and hidden __lists sheet
 			assertTrue(wb.getNumberOfSheets() >= 2);
 			
-			// Check that __lists sheet exists and is hidden
+			// Check that __lists sheet exists and is hidden (VERY_HIDDEN)
 			Sheet listsSheet = wb.getSheet("__lists");
 			assertNotNull(listsSheet, "Missing __lists sheet");
-			assertTrue(wb.isSheetHidden(wb.getSheetIndex(listsSheet)), "__lists sheet should be hidden");
+			assertTrue(
+			    wb.getSheetVisibility(
+			        wb.getSheetIndex(listsSheet)) == org.apache.poi.ss.usermodel.SheetVisibility.VERY_HIDDEN,
+			    "__lists sheet should be hidden");
 			
 			// Find the form sheet
 			Sheet formSheet = null;
@@ -215,17 +222,18 @@ public class ExcelTemplateExporterTest {
 			Row headerRow = formSheet.getRow(0);
 			assertNotNull(headerRow, "Missing header row");
 			
+			// Headers may have section labels prepended (e.g., "Surgical progress: Anesthesia Type")
 			boolean hasAnesthesiaHeader = false;
 			int anesthesiaColumnIndex = -1;
 			for (int i = 0; i < headerRow.getLastCellNum(); i++) {
 				String cellValue = headerRow.getCell(i).getStringCellValue();
-				if ("Anesthesia Type".equals(cellValue)) {
+				if (cellValue.contains("Anesthesia Type")) {
 					hasAnesthesiaHeader = true;
 					anesthesiaColumnIndex = i;
 					break;
 				}
 			}
-			assertTrue(hasAnesthesiaHeader, "Missing 'Anesthesia Type' header");
+			assertTrue(hasAnesthesiaHeader, "Missing header containing 'Anesthesia Type'");
 			assertTrue(listsSheet.getLastRowNum() >= 2, "__lists sheet should have dropdown data");
 			assertTrue(wb.getNumberOfNames() > 0, "Missing named ranges for dropdowns");
 		}
@@ -259,24 +267,25 @@ public class ExcelTemplateExporterTest {
 			Row headerRow = mainSheet.getRow(0);
 			assertNotNull(headerRow, "Missing header row");
 			
+			// Headers may have section labels prepended (e.g., "Patient Information: Patient Name")
 			boolean hasTemperatureHeader = false;
 			boolean hasBloodPressureHeader = false;
 			boolean hasPatientNameHeader = false;
 			for (int i = 0; i < headerRow.getLastCellNum(); i++) {
 				String cellValue = headerRow.getCell(i).getStringCellValue();
-				if ("Temperature".equals(cellValue)) {
+				if (cellValue.contains("Temperature")) {
 					hasTemperatureHeader = true;
 				}
-				if ("Blood Pressure".equals(cellValue)) {
+				if (cellValue.contains("Blood Pressure")) {
 					hasBloodPressureHeader = true;
 				}
-				if ("Patient Name".equals(cellValue)) {
+				if (cellValue.contains("Patient Name")) {
 					hasPatientNameHeader = true;
 				}
 			}
-			assertTrue(hasPatientNameHeader, "Missing 'Patient Name' header in main sheet");
-			assertTrue(hasTemperatureHeader, "Missing 'Temperature' header in main sheet");
-			assertTrue(hasBloodPressureHeader, "Missing 'Blood Pressure' header in main sheet");
+			assertTrue(hasPatientNameHeader, "Missing header containing 'Patient Name' in main sheet");
+			assertTrue(hasTemperatureHeader, "Missing header containing 'Temperature' in main sheet");
+			assertTrue(hasBloodPressureHeader, "Missing header containing 'Blood Pressure' in main sheet");
 		}
 	}
 	
@@ -314,10 +323,13 @@ public class ExcelTemplateExporterTest {
 			
 			assertTrue(sheetNames.contains("Patient Registration"), "Missing Patient Registration sheet");
 			
-			// __lists should exist but be hidden
+			// __lists should exist but be hidden (VERY_HIDDEN)
 			Sheet listsSheet = wb.getSheet("__lists");
 			assertNotNull(listsSheet, "Missing __lists sheet");
-			assertTrue(wb.isSheetHidden(wb.getSheetIndex(listsSheet)), "__lists sheet should be hidden");
+			assertTrue(
+			    wb.getSheetVisibility(
+			        wb.getSheetIndex(listsSheet)) == org.apache.poi.ss.usermodel.SheetVisibility.VERY_HIDDEN,
+			    "__lists sheet should be hidden");
 		}
 	}
 	

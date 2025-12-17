@@ -17,28 +17,13 @@ import java.util.UUID;
 
 public interface WorkbookImportService {
 	
-	/**
-	 * Performs a dry-run validation of the workbook without committing any data.
-	 * 
-	 * @param xlsx InputStream containing the Excel workbook
-	 * @return ImportPlan containing validation results and planned operations
-	 */
 	ImportPlan dryRun(InputStream xlsx);
 	
-	/**
-	 * Commits the validated import plan to the database.
-	 * 
-	 * @param batchId UUID of the batch to commit
-	 * @return ImportResult containing execution results
-	 */
+	ImportPlan dryRun(InputStream xlsx, String filename);
+	
 	ImportResult commit(UUID batchId);
 	
-	/**
-	 * Generates a color-coded Excel report with quarantined rows highlighted.
-	 * 
-	 * @param originalWorkbook The original workbook as an InputStream
-	 * @param batchId UUID of the batch to get the import plan for
-	 * @return Excel file as byte array with error rows highlighted
-	 */
+	ImportResult commit(UUID batchId, String filename);
+	
 	byte[] generateQuarantineReport(InputStream originalWorkbook, UUID batchId);
 }

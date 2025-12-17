@@ -50,4 +50,10 @@
         <description>Default PersonAttributeType for the phone attribute</description>
     </globalProperty>
 
+    <globalProperty>
+        <property>${project.parent.artifactId}.auditlog.retentionDays</property>
+        <defaultValue>90</defaultValue>
+        <description>Number of days to retain import audit logs before cleanup. Default is 90 days.</description>
+    </globalProperty>
+
 </module>

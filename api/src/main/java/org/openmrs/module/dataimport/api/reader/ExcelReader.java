@@ -49,10 +49,11 @@ public class ExcelReader {
 		TemplateMeta meta = new TemplateMeta();
 		
 		Map<String, String> templateData = new HashMap<>();
-		for (int rowIndex = 1; rowIndex <= 10; rowIndex++) {
+		// Read up to 20 rows to accommodate new fields (allowedLocationUuids, restrictToAllowedLocations)
+		for (int rowIndex = 1; rowIndex <= 20; rowIndex++) {
 			Row row = metaSheet.getRow(rowIndex);
 			if (row == null)
-				break;
+				continue;
 			
 			Cell keyCell = row.getCell(0);
 			Cell valueCell = row.getCell(1);
@@ -72,6 +73,21 @@ public class ExcelReader {
 		meta.templateName = templateData.getOrDefault("templateName", "Multi-Form Template");
 		meta.defaultLocationUuid = templateData.getOrDefault("defaultLocationUuid", "");
 		meta.formCount = Integer.parseInt(templateData.getOrDefault("formCount", "0"));
+		
+		// Parse multi-location fields (new in template version 2+)
+		String allowedLocationsStr = templateData.getOrDefault("allowedLocationUuids", "");
+		if (allowedLocationsStr != null && !allowedLocationsStr.trim().isEmpty()) {
+			String[] uuids = allowedLocationsStr.split(",");
+			for (String uuid : uuids) {
+				String trimmed = uuid.trim();
+				if (!trimmed.isEmpty()) {
+					meta.allowedLocationUuids.add(trimmed);
+				}
+			}
+		}
+		
+		String restrictStr = templateData.getOrDefault("restrictToAllowedLocations", "false");
+		meta.restrictToAllowedLocations = "true".equalsIgnoreCase(restrictStr.trim());
 		
 		int columnTableStartRow = findColumnTableStart(metaSheet);
 		if (columnTableStartRow == -1) {

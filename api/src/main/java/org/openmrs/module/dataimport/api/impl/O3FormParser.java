@@ -67,7 +67,8 @@ public class O3FormParser {
 						ArrayNode questions = getArrayOrNull(section, "questions");
 						if (questions == null)
 							continue;
-						walkQuestions(form, primary, questions, "");
+						String sectionLabel = getTextOrNull(section, "label");
+						walkQuestions(form, primary, questions, "", sectionLabel);
 					}
 				}
 			}
@@ -78,7 +79,7 @@ public class O3FormParser {
 		}
 	}
 	
-	private void walkQuestions(FormModel form, SheetModel current, ArrayNode questions, String path) {
+	private void walkQuestions(FormModel form, SheetModel current, ArrayNode questions, String path, String sectionLabel) {
 		for (JsonNode q : questions) {
 			String qid = getTextOrNull(q, "id");
 			String label = getTextOrNull(q, "label");
@@ -97,7 +98,7 @@ public class O3FormParser {
 				if (child != null) {
 					String groupId = (qid != null && !qid.trim().isEmpty()) ? qid
 					        : generateFallbackId(label, path, current.fields.size());
-					walkQuestions(form, current, child, path + "/" + groupId);
+					walkQuestions(form, current, child, path + "/" + groupId, sectionLabel);
 				}
 				continue;
 			}
@@ -109,6 +110,7 @@ public class O3FormParser {
 				field.id = qid;
 			}
 			field.label = label != null ? label : field.id;
+			field.sectionLabel = sectionLabel;
 			
 			String conceptIdOrUuid = getTextOrNull(questionOptions, "concept");
 			if (conceptIdOrUuid != null && !conceptIdOrUuid.trim().isEmpty()) {

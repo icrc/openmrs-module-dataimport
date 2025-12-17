@@ -11,8 +11,10 @@ package org.openmrs.module.dataimport.api.impl;
 
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openmrs.module.dataimport.api.model.ImportAuditLog;
 import org.openmrs.module.dataimport.api.reader.ExcelReader;
 import org.openmrs.module.dataimport.api.service.EncounterImportOrchestrator;
+import org.openmrs.module.dataimport.api.service.ImportAuditService;
 import org.openmrs.module.dataimport.api.service.PatientImportService;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.service.WorkbookValidationService;
@@ -50,6 +52,8 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 	
 	private final EncounterImportOrchestrator encounterImportOrchestrator;
 	
+	private ImportAuditService importAuditService;
+	
 	@Autowired
 	public WorkbookImportServiceImpl(ImportPlanStorageService importPlanStorage,
 	    WorkbookValidationService workbookValidationService, PatientImportService patientImportService,
@@ -60,9 +64,23 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		this.encounterImportOrchestrator = encounterImportOrchestrator;
 	}
 	
+	/**
+	 * Sets the audit service for logging import operations. Optional - if not set, audit logging is
+	 * skipped.
+	 */
+	public void setImportAuditService(ImportAuditService importAuditService) {
+		this.importAuditService = importAuditService;
+	}
+	
 	@Override
 	public ImportPlan dryRun(InputStream xlsx) {
+		return dryRun(xlsx, null);
+	}
+	
+	@Override
+	public ImportPlan dryRun(InputStream xlsx, String filename) {
 		UUID batchId = UUID.randomUUID();
+		long startTime = System.currentTimeMillis();
 		try (XSSFWorkbook workbook = new XSSFWorkbook(xlsx)) {
 			TemplateMeta meta = ExcelReader.read(workbook, false);
 			java.util.List<ExcelReader.RowData> concepts = ExcelReader.readIfPresent(workbook);
@@ -81,21 +99,36 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			        .issues(validationResult.quarantineItems).stats(stats).patientIndex(patientIndex)
 			        .blockedPatientRefs(validationResult.blockedPatientRefs).build();
 			importPlanStorage.storePlan(plan);
+			
+			// Log audit entry for dry-run
+			logAuditDryRun(batchId, filename, plan, System.currentTimeMillis() - startTime);
+			
 			return plan;
 			
 		}
 		catch (Exception e) {
+			// Log failure
+			logAuditFailure(batchId, filename, ImportAuditLog.Action.DRY_RUN, e.getMessage(),
+			    System.currentTimeMillis() - startTime);
 			throw new RuntimeException("Failed to perform dry run: " + e.getMessage(), e);
 		}
 	}
 	
 	@Override
 	public ImportResult commit(UUID batchId) {
+		return commit(batchId, null);
+	}
+	
+	@Override
+	public ImportResult commit(UUID batchId, String filename) {
+		long startTime = System.currentTimeMillis();
 		try {
 			ImportPlan plan = importPlanStorage.loadPlan(batchId);
 			if (plan == null) {
-				return ImportResult.failure(batchId, "Import plan not found for batch: " + batchId,
+				ImportResult result = ImportResult.failure(batchId, "Import plan not found for batch: " + batchId,
 				    Collections.singletonList("Batch ID not found: " + batchId));
+				logAuditCommit(batchId, filename, result, System.currentTimeMillis() - startTime);
+				return result;
 			}
 			
 			PatientImportService.PatientCreationOutcome patientCreationOutcome = patientImportService
@@ -116,13 +149,20 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			    encounterOutcome.createdEncounterUuids.size(), encounterOutcome.failedEncounters, encounterOutcome.failedObs,
 			    encounterOutcome.skippedRows, patientCreationOutcome.errors);
 			
-			return new ImportResult(true, summary, batchId, finalStats, encounterOutcome.createdEncounterUuids,
-			        encounterOutcome.errors);
+			ImportResult result = new ImportResult(true, summary, batchId, finalStats,
+			        encounterOutcome.createdEncounterUuids, encounterOutcome.errors);
+			
+			// Log audit entry for commit
+			logAuditCommit(batchId, filename, result, System.currentTimeMillis() - startTime);
+			
+			return result;
 			
 		}
 		catch (Exception e) {
-			return ImportResult.failure(batchId, "Commit failed: " + e.getMessage(),
+			ImportResult result = ImportResult.failure(batchId, "Commit failed: " + e.getMessage(),
 			    Collections.singletonList(e.getMessage()));
+			logAuditCommit(batchId, filename, result, System.currentTimeMillis() - startTime);
+			return result;
 		}
 	}
 	
@@ -209,5 +249,54 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 		}
 		
 		return summary;
+	}
+	
+	/**
+	 * Logs audit entry for dry-run operations.
+	 */
+	private void logAuditDryRun(UUID batchId, String filename, ImportPlan plan, long durationMs) {
+		if (importAuditService == null) {
+			log.debug("Audit service not configured, skipping dry-run audit log");
+			return;
+		}
+		try {
+			importAuditService.logDryRun(batchId, filename, plan, durationMs);
+		}
+		catch (Exception e) {
+			log.warn("Failed to log audit entry for dry-run: {}", e.getMessage());
+		}
+	}
+	
+	/**
+	 * Logs audit entry for commit operations.
+	 */
+	private void logAuditCommit(UUID batchId, String filename, ImportResult result, long durationMs) {
+		if (importAuditService == null) {
+			log.debug("Audit service not configured, skipping commit audit log");
+			return;
+		}
+		try {
+			importAuditService.logCommit(batchId, filename, result, durationMs);
+		}
+		catch (Exception e) {
+			log.warn("Failed to log audit entry for commit: {}", e.getMessage());
+		}
+	}
+	
+	/**
+	 * Logs audit entry for failed operations.
+	 */
+	private void logAuditFailure(UUID batchId, String filename, ImportAuditLog.Action action, String errorMessage,
+	        long durationMs) {
+		if (importAuditService == null) {
+			log.debug("Audit service not configured, skipping failure audit log");
+			return;
+		}
+		try {
+			importAuditService.logFailure(batchId, filename, action, errorMessage, durationMs);
+		}
+		catch (Exception e) {
+			log.warn("Failed to log audit entry for failure: {}", e.getMessage());
+		}
 	}
 }

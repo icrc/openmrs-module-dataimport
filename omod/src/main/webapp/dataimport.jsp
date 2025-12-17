@@ -3,6 +3,12 @@
 <openmrs:require privilege="Manage Forms" otherwise="/login.htm" redirect="/module/dataimport/dataimport.form" />
 
 <%@ include file="/WEB-INF/template/header.jsp"%>
+
+<c:set var="currentPage" value="${param.page}" />
+<c:if test="${empty currentPage}">
+    <c:set var="currentPage" value="template" />
+</c:if>
+
 <%@ include file="localHeader.jsp"%>
 
 <link type="text/css" rel="stylesheet" href="<openmrs:contextPath/>/moduleResources/dataimport/styles/dataimport.css" />
@@ -11,6 +17,7 @@
 
 <br/>
 
+<c:if test="${currentPage == 'template'}">
 <!-- Section 1: Template Generation -->
 <div class="boxHeader">
     <b><spring:message code="dataimport.template.title"/></b>
@@ -51,7 +58,7 @@
             </td>
         </tr>
         <tr>
-            <td valign="top"><spring:message code="dataimport.template.location"/>:</td>
+            <td valign="top"><spring:message code="dataimport.template.defaultLocation"/>:</td>
             <td valign="top">
                 <select id="locationSelect">
                     <option value=""><spring:message code="dataimport.template.selectLocation"/></option>
@@ -59,6 +66,33 @@
                         <option value="${location.uuid}"><c:out value="${location.name}"/></option>
                     </c:forEach>
                 </select>
+                <span style="color: #666; font-size: 0.9em;"> (<spring:message code="dataimport.template.defaultLocationHint"/>)</span>
+            </td>
+        </tr>
+        <tr>
+            <td valign="top"><spring:message code="dataimport.template.allowedLocations"/>:</td>
+            <td valign="top">
+                <div style="margin-bottom: 5px;">
+                    <a href="#" id="selectAllLocations"><spring:message code="dataimport.template.selectAll"/></a> |
+                    <a href="#" id="deselectAllLocations"><spring:message code="dataimport.template.deselectAll"/></a>
+                    <span id="locationCharCount" style="margin-left: 15px; color: #666; font-size: 0.9em;"></span>
+                </div>
+                <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 5px;">
+                    <table cellpadding="2" cellspacing="0" width="100%">
+                        <c:forEach items="${locations}" var="location" varStatus="status">
+                            <tr class="${status.index % 2 == 0 ? 'evenRow' : 'oddRow'}">
+                                <td>
+                                    <input type="checkbox" id="loc-${location.uuid}" class="location-checkbox" value="${location.uuid}" data-name="${location.name}"/>
+                                    <label for="loc-${location.uuid}"><c:out value="${location.name}"/></label>
+                                </td>
+                            </tr>
+                        </c:forEach>
+                    </table>
+                </div>
+                <div style="margin-top: 5px;">
+                    <input type="checkbox" id="restrictToAllowedLocations" />
+                    <label for="restrictToAllowedLocations"><spring:message code="dataimport.template.restrictLocations"/></label>
+                </div>
             </td>
         </tr>
         <tr>
@@ -102,9 +136,9 @@
         </tr>
     </table>
 </div>
+</c:if>
 
-<br/>
-
+<c:if test="${currentPage == 'import'}">
 <!-- Section 3: Data Import -->
 <div class="boxHeader">
     <b><spring:message code="dataimport.import.title"/></b>
@@ -137,6 +171,7 @@
         </tr>
     </table>
 </div>
+</c:if>
 
 <script type="text/javascript" src="<openmrs:contextPath/>/moduleResources/dataimport/scripts/dataimport.js"></script>
 

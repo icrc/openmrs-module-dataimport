@@ -27,6 +27,18 @@ public class TemplateMeta {
 	
 	public String defaultLocationUuid;
 	
+	/**
+	 * List of allowed location UUIDs for this template. When empty, all non-retired locations are
+	 * allowed.
+	 */
+	public List<String> allowedLocationUuids = new ArrayList<>();
+	
+	/**
+	 * If true, import validation will reject locations not in allowedLocationUuids. If false, any valid
+	 * (non-retired) location is accepted.
+	 */
+	public boolean restrictToAllowedLocations = false;
+	
 	public int formCount;
 	
 	public final List<FormInfo> forms = new ArrayList<>();

@@ -33,18 +33,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class TemplateGenerationServiceImpl implements TemplateGenerationService {
 	
 	private static final Logger log = LoggerFactory.getLogger(TemplateGenerationServiceImpl.class);
+	
+	/** Character limit for Excel dropdown validation (approximate) */
+	private static final int EXCEL_DROPDOWN_CHAR_LIMIT = 30000;
 	
 	private final FormResolverRegistry resolverRegistry;
 	
 	private final ExcelTemplateExporter exporter;
 	
 	private final ConceptAnswersService conceptAnswersService;
+	
+	/** Thread-local storage for TemplateOptions during template generation */
+	private ThreadLocal<TemplateOptions> currentOptions = new ThreadLocal<>();
 	
 	@Autowired
 	public TemplateGenerationServiceImpl(FormResolverRegistry resolverRegistry, ExcelTemplateExporter exporter,
@@ -64,63 +72,72 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 			throw new APIException("Template options cannot be null");
 		}
 		
-		FormModel merged = new FormModel();
-		merged.name = "Template";
-		
-		List<String> formVersions = new ArrayList<>();
-		
-		for (String uuid : formUuids) {
-			try {
-				FormResolver resolver = resolverRegistry.findResolver(uuid);
-				if (resolver == null) {
-					throw new APIException("No compatible form resolver found for form " + uuid
-					        + ". Ensure the form has either a JSON schema (O3) or htmlform resource (HFE).");
-				}
-				
-				String resolverType = resolver.getFormType() != null ? resolver.getFormType().getCode() : "MULTI-TYPE";
-				log.debug("Using {} resolver for form {}", resolverType, uuid);
-				
-				FormModel formModel = resolver.resolve(uuid, null);
-				enrichFormWithConceptAnswers(formModel);
-				
-				String formVersion = formModel.version != null ? formModel.version : "1.0";
-				formVersions.add(formVersion);
-				
-				for (SheetModel sheet : formModel.sheets) {
-					sheet.formUuid = formModel.formUuid;
-					sheet.formVersion = formVersion;
-					sheet.encounterTypeUuid = formModel.encounterTypeUuid;
-					sheet.formType = formModel.formType;
-				}
-				
-				if (merged.encounterTypeUuid == null) {
-					merged.encounterTypeUuid = formModel.encounterTypeUuid;
-				}
-				merged.sheets.addAll(formModel.sheets);
-				merged.rules.addAll(formModel.rules);
-				if (merged.formUuid == null) {
-					merged.formUuid = formModel.formUuid;
-				}
-				
-			}
-			catch (APIException e) {
-				log.error(
-				    "Error processing form {}: {}. Tip: verify form resources under Administration → Forms or REST /form/{}?v=full",
-				    uuid, e.getMessage(), uuid);
-				throw e;
-			}
-			catch (Exception e) {
-				throw new APIException("Error processing form " + uuid + ": " + e.getMessage(), e);
-			}
-		}
-		
-		merged.version = createCompositeVersion(formVersions);
+		// Store current options in ThreadLocal for use during form enrichment
+		currentOptions.set(opts);
 		
 		try {
-			return exporter.export(merged, opts.includePatient, opts.locationUuid);
+			FormModel merged = new FormModel();
+			merged.name = "Template";
+			
+			List<String> formVersions = new ArrayList<>();
+			
+			for (String uuid : formUuids) {
+				try {
+					FormResolver resolver = resolverRegistry.findResolver(uuid);
+					if (resolver == null) {
+						throw new APIException("No compatible form resolver found for form " + uuid
+						        + ". Ensure the form has either a JSON schema (O3) or htmlform resource (HFE).");
+					}
+					
+					String resolverType = resolver.getFormType() != null ? resolver.getFormType().getCode() : "MULTI-TYPE";
+					log.debug("Using {} resolver for form {}", resolverType, uuid);
+					
+					FormModel formModel = resolver.resolve(uuid, null);
+					enrichFormWithConceptAnswers(formModel);
+					
+					String formVersion = formModel.version != null ? formModel.version : "1.0";
+					formVersions.add(formVersion);
+					
+					for (SheetModel sheet : formModel.sheets) {
+						sheet.formUuid = formModel.formUuid;
+						sheet.formVersion = formVersion;
+						sheet.encounterTypeUuid = formModel.encounterTypeUuid;
+						sheet.formType = formModel.formType;
+					}
+					
+					if (merged.encounterTypeUuid == null) {
+						merged.encounterTypeUuid = formModel.encounterTypeUuid;
+					}
+					merged.sheets.addAll(formModel.sheets);
+					merged.rules.addAll(formModel.rules);
+					if (merged.formUuid == null) {
+						merged.formUuid = formModel.formUuid;
+					}
+					
+				}
+				catch (APIException e) {
+					log.error(
+					    "Error processing form {}: {}. Tip: verify form resources under Administration → Forms or REST /form/{}?v=full",
+					    uuid, e.getMessage(), uuid);
+					throw e;
+				}
+				catch (Exception e) {
+					throw new APIException("Error processing form " + uuid + ": " + e.getMessage(), e);
+				}
+			}
+			
+			merged.version = createCompositeVersion(formVersions);
+			
+			try {
+				return exporter.export(merged, opts);
+			}
+			catch (RuntimeException e) {
+				throw new APIException("Failed to generate Excel template: " + e.getMessage(), e);
+			}
 		}
-		catch (RuntimeException e) {
-			throw new APIException("Failed to generate Excel template: " + e.getMessage(), e);
+		finally {
+			// Clean up ThreadLocal
+			currentOptions.remove();
 		}
 	}
 	
@@ -313,17 +330,71 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 			return;
 		}
 		
-		final String tagFilter = requiredTagName != null ? requiredTagName.trim() : "";
+		// Get location filtering options from ThreadLocal
+		TemplateOptions opts = currentOptions.get();
+		final Set<String> allowedUuids = new HashSet<>();
+		final String tagFilter;
+		
+		if (opts != null) {
+			// If locationUuids specified, filter to only those locations
+			if (opts.locationUuids != null && !opts.locationUuids.isEmpty()) {
+				allowedUuids.addAll(opts.locationUuids);
+			}
+			// Also include the default locationUuid if set
+			if (opts.locationUuid != null && !opts.locationUuid.isEmpty()) {
+				allowedUuids.add(opts.locationUuid);
+			}
+			// Use locationTagFilter from options if requiredTagName not specified
+			if (requiredTagName != null && !requiredTagName.isEmpty()) {
+				tagFilter = requiredTagName.trim();
+			} else if (opts.locationTagFilter != null && !opts.locationTagFilter.isEmpty()) {
+				tagFilter = opts.locationTagFilter.trim();
+			} else {
+				tagFilter = "";
+			}
+		} else {
+			tagFilter = requiredTagName != null ? requiredTagName.trim() : "";
+		}
 		
 		if (!field.answers.isEmpty()) {
 			field.answers.clear();
 		}
 		
-		locations.stream().filter(location -> tagFilter.isEmpty() || locationHasTag(location, tagFilter))
-		        .sorted(Comparator.comparing(this::locationDisplayName, String.CASE_INSENSITIVE_ORDER)).forEach(location -> {
+		// Track character count for Excel dropdown limit warning
+		int totalCharCount = 0;
+		
+		List<Location> filteredLocations = new ArrayList<>();
+		for (Location location : locations) {
+			// Filter by allowed UUIDs if specified
+			if (!allowedUuids.isEmpty() && !allowedUuids.contains(location.getUuid())) {
+				continue;
+			}
+			// Filter by tag if specified
+			if (!tagFilter.isEmpty() && !locationHasTag(location, tagFilter)) {
+				continue;
+			}
+			filteredLocations.add(location);
+		}
+		
+		// Sort and add to field answers
+		filteredLocations.stream().sorted(Comparator.comparing(this::locationDisplayName, String.CASE_INSENSITIVE_ORDER))
+		        .forEach(location -> {
 			        String label = locationDisplayName(location);
 			        field.answers.add(new AnswerModel(label, location.getUuid(), location.getUuid()));
 		        });
+		
+		// Estimate dropdown character count and warn if approaching limit
+		for (AnswerModel answer : field.answers) {
+			totalCharCount += answer.label != null ? answer.label.length() : 0;
+			totalCharCount += 1; // separator
+		}
+		
+		if (totalCharCount > EXCEL_DROPDOWN_CHAR_LIMIT) {
+			log.warn(
+			    "Location dropdown may exceed Excel character limit ({} chars). Consider reducing location count. "
+			            + "Current count: {} locations, estimated {} chars.",
+			    EXCEL_DROPDOWN_CHAR_LIMIT, field.answers.size(), totalCharCount);
+		}
 	}
 	
 	private String providerDisplayName(Provider provider) {

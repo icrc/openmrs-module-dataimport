@@ -231,11 +231,8 @@ public class Validation {
 			}
 		}
 		
-		LocalDate today = LocalDate.now();
-		if (value.isAfter(today)) {
-			quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, column.colIndex, "FUTURE_DATE",
-			    "Column '" + safeLabel(column) + "' date " + value + " is in the future"));
-		}
+		// Allow future dates - they may be legitimate (scheduled appointments, expected dates, etc.)
+		// Only validate against explicit min/max constraints if configured
 	}
 	
 	private static String safeLabel(ColumnMeta column) {
