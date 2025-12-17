@@ -30,26 +30,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * REST controller for import audit logs. Provides endpoints to query import history and trigger
- * cleanup.
- */
 @Controller
 @RequestMapping(value = "/rest/" + RestConstants.VERSION_1 + "/dataimport/audit")
 public class ImportAuditController extends BaseRestController {
 	
-	/**
-	 * Gets paginated audit logs with optional filters.
-	 *
-	 * @param status optional status filter (SUCCESS, PARTIAL_SUCCESS, FAILED, VALIDATION_ERRORS)
-	 * @param action optional action filter (DRY_RUN, COMMIT)
-	 * @param userId optional creator user ID filter
-	 * @param startDate optional start date filter
-	 * @param endDate optional end date filter
-	 * @param startIndex starting index for pagination (alternative to page)
-	 * @param maxResults maximum results per page (alternative to pageSize)
-	 * @return paginated list of audit logs
-	 */
 	@GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Map<String, Object>> getAuditLogs(@RequestParam(required = false) String status,
 	        @RequestParam(required = false) String action, @RequestParam(required = false) Integer userId,
@@ -58,15 +42,10 @@ public class ImportAuditController extends BaseRestController {
 	        @RequestParam(required = false) Integer startIndex, @RequestParam(required = false) Integer maxResults) {
 		
 		ImportAuditService service = getAuditService();
-		
-		// Default pagination
 		int actualStartIndex = startIndex != null ? startIndex : 0;
 		int actualMaxResults = maxResults != null ? maxResults : 20;
-		
 		ImportAuditLog.Status statusEnum = status != null ? ImportAuditLog.Status.valueOf(status) : null;
 		ImportAuditLog.Action actionEnum = action != null ? ImportAuditLog.Action.valueOf(action) : null;
-		
-		// Convert startIndex to page for service call
 		int page = actualStartIndex / actualMaxResults;
 		
 		List<ImportAuditLog> logs = service.getAuditLogs(statusEnum, actionEnum, userId, startDate, endDate, page,
@@ -83,12 +62,6 @@ public class ImportAuditController extends BaseRestController {
 		return ResponseEntity.ok(response);
 	}
 	
-	/**
-	 * Gets recent audit logs (shortcut for dashboard).
-	 *
-	 * @param limit maximum number of results (default 10)
-	 * @return list of recent audit logs
-	 */
 	@GetMapping(value = "/recent", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<List<Map<String, Object>>> getRecentAuditLogs(@RequestParam(defaultValue = "10") int limit) {
 		
@@ -100,12 +73,6 @@ public class ImportAuditController extends BaseRestController {
 		return ResponseEntity.ok(results);
 	}
 	
-	/**
-	 * Gets a specific audit log by UUID.
-	 *
-	 * @param uuid the UUID of the audit log
-	 * @return the audit log details
-	 */
 	@GetMapping(value = "/{uuid}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Map<String, Object>> getAuditLogByUuid(@PathVariable String uuid) {
 		ImportAuditService service = getAuditService();
@@ -118,12 +85,6 @@ public class ImportAuditController extends BaseRestController {
 		return ResponseEntity.ok(toDetailedDto(log));
 	}
 	
-	/**
-	 * Gets all audit logs for a specific batch ID.
-	 *
-	 * @param batchId the batch ID
-	 * @return list of audit logs for the batch
-	 */
 	@GetMapping(value = "/batch/{batchId}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<List<Map<String, Object>>> getAuditLogsByBatchId(@PathVariable String batchId) {
 		ImportAuditService service = getAuditService();
@@ -134,11 +95,6 @@ public class ImportAuditController extends BaseRestController {
 		return ResponseEntity.ok(results);
 	}
 	
-	/**
-	 * Triggers cleanup of old audit logs. Uses the configured retention period from global property.
-	 *
-	 * @return number of deleted records
-	 */
 	@PostMapping(value = "/cleanup", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Map<String, Object>> cleanupOldLogs() {
 		ImportAuditService service = getAuditService();
@@ -154,11 +110,6 @@ public class ImportAuditController extends BaseRestController {
 		return ResponseEntity.ok(response);
 	}
 	
-	/**
-	 * Gets the current retention configuration.
-	 *
-	 * @return retention configuration
-	 */
 	@GetMapping(value = "/config", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Map<String, Object>> getConfig() {
 		ImportAuditService service = getAuditService();
@@ -203,7 +154,6 @@ public class ImportAuditController extends BaseRestController {
 		dto.put("locationUuid", log.getLocationUuid());
 		dto.put("formUuids", log.getFormUuids());
 		
-		// Include error details
 		if (log.getErrors() != null && !log.getErrors().isEmpty()) {
 			List<Map<String, Object>> errors = log.getErrors().stream().map(error -> {
 				Map<String, Object> errorDto = new HashMap<>();

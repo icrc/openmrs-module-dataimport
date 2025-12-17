@@ -3,7 +3,7 @@
 <openmrs:require privilege="Manage Forms" otherwise="/login.htm" redirect="/module/dataimport/auditlog.form" />
 
 <%@ include file="/WEB-INF/template/header.jsp"%>
-<c:set var="page" value="auditlog" scope="request"/>
+<c:set var="currentPage" value="auditlog" scope="request"/>
 <%@ include file="localHeader.jsp"%>
 
 <link type="text/css" rel="stylesheet" href="<openmrs:contextPath/>/moduleResources/dataimport/styles/dataimport.css" />

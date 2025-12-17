@@ -19,10 +19,6 @@
 		<require_module>org.openmrs.module.webservices.rest</require_module>
 	</require_modules>
 
-	<!-- Hibernate mapped classes for audit logging -->
-	<mappedClass>org.openmrs.module.dataimport.api.model.ImportAuditLog</mappedClass>
-	<mappedClass>org.openmrs.module.dataimport.api.model.ImportAuditError</mappedClass>
-
 	<aware_of_modules>
 		<aware_of_module>org.openmrs.module.legacyui</aware_of_module>
 	</aware_of_modules>

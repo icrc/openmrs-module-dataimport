@@ -3,6 +3,12 @@
 <openmrs:require privilege="Manage Forms" otherwise="/login.htm" redirect="/module/dataimport/dataimport.form" />
 
 <%@ include file="/WEB-INF/template/header.jsp"%>
+
+<c:set var="currentPage" value="${param.page}" />
+<c:if test="${empty currentPage}">
+    <c:set var="currentPage" value="template" />
+</c:if>
+
 <%@ include file="localHeader.jsp"%>
 
 <link type="text/css" rel="stylesheet" href="<openmrs:contextPath/>/moduleResources/dataimport/styles/dataimport.css" />
@@ -11,6 +17,7 @@
 
 <br/>
 
+<c:if test="${currentPage == 'template'}">
 <!-- Section 1: Template Generation -->
 <div class="boxHeader">
     <b><spring:message code="dataimport.template.title"/></b>
@@ -129,9 +136,9 @@
         </tr>
     </table>
 </div>
+</c:if>
 
-<br/>
-
+<c:if test="${currentPage == 'import'}">
 <!-- Section 3: Data Import -->
 <div class="boxHeader">
     <b><spring:message code="dataimport.import.title"/></b>
@@ -164,6 +171,7 @@
         </tr>
     </table>
 </div>
+</c:if>
 
 <script type="text/javascript" src="<openmrs:contextPath/>/moduleResources/dataimport/scripts/dataimport.js"></script>
 
