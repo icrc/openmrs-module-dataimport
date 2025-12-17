@@ -22,10 +22,14 @@
     .action-COMMIT { background-color: #e8f5e9; }
     .filter-bar { margin-bottom: 15px; }
     .filter-bar select, .filter-bar input { margin-right: 10px; padding: 5px; }
-    .pagination { margin-top: 15px; text-align: center; }
-    .pagination a, .pagination span { padding: 5px 10px; margin: 0 2px; border: 1px solid #ddd; text-decoration: none; }
+    .pagination-container { margin-top: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .pagination { display: flex; gap: 5px; align-items: center; }
+    .pagination a, .pagination span { padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; background: white; }
     .pagination a:hover { background-color: #f0f0f0; }
     .pagination .current { background-color: #007bff; color: white; border-color: #007bff; }
+    .page-info { color: #666; font-size: 0.9em; }
+    .page-size-selector { display: flex; align-items: center; gap: 10px; }
+    .page-size-selector select { padding: 5px; }
     .error-details { max-height: 100px; overflow-y: auto; font-size: 0.85em; color: #666; }
     .batch-id { font-family: monospace; font-size: 0.85em; }
     .detail-row { display: none; background-color: #f9f9f9; }
@@ -65,7 +69,19 @@
         <p><spring:message code="dataimport.auditlog.loading"/></p>
     </div>
 
-    <div id="paginationContainer" class="pagination"></div>
+    <div class="pagination-container">
+        <div class="page-size-selector">
+            <label for="pageSizeSelect"><spring:message code="dataimport.auditlog.pageSize"/>:</label>
+            <select id="pageSizeSelect">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+        <div id="pageInfo" class="page-info"></div>
+        <div id="paginationContainer" class="pagination"></div>
+    </div>
 </div>
 
 <script type="text/javascript">
@@ -91,22 +107,25 @@
         var status = document.getElementById('statusFilter').value;
         var action = document.getElementById('actionFilter').value;
 
-        var url = contextPath + '/rest/v1/dataimport/audit?startIndex=' + (page * pageSize) + '&maxResults=' + pageSize;
+        var url = contextPath + '/ws/rest/v1/dataimport/audit?startIndex=' + (page * pageSize) + '&maxResults=' + pageSize;
         if (status) url += '&status=' + status;
         if (action) url += '&action=' + action;
+
+        console.log('Loading from URL:', url);
 
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
+                console.log('Response status:', xhr.status, 'Response:', xhr.responseText);
                 if (xhr.status === 200) {
                     var response = JSON.parse(xhr.responseText);
                     renderAuditLogs(response.results || []);
                     renderPagination(response.totalCount || 0, page);
                 } else {
                     document.getElementById('auditLogContainer').innerHTML =
-                        '<p style="color: red;">Error loading audit logs: ' + xhr.statusText + '</p>';
+                        '<p style="color: red;">Error loading audit logs: ' + xhr.status + ' ' + xhr.statusText + '</p>';
                 }
             }
         };
@@ -171,7 +190,17 @@
 
     function renderPagination(totalCount, currentPage) {
         var container = document.getElementById('paginationContainer');
+        var infoContainer = document.getElementById('pageInfo');
         var totalPages = Math.ceil(totalCount / pageSize);
+
+        // Update page info
+        if (totalCount > 0) {
+            var startRecord = (currentPage * pageSize) + 1;
+            var endRecord = Math.min((currentPage + 1) * pageSize, totalCount);
+            infoContainer.innerHTML = 'Showing ' + startRecord + '-' + endRecord + ' of ' + totalCount + ' records';
+        } else {
+            infoContainer.innerHTML = '';
+        }
 
         if (totalPages <= 1) {
             container.innerHTML = '';
@@ -215,7 +244,7 @@
 
     function runCleanup() {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', contextPath + '/rest/v1/dataimport/audit/config', true);
+        xhr.open('GET', contextPath + '/ws/rest/v1/dataimport/audit/config', true);
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4 && xhr.status === 200) {
@@ -223,7 +252,7 @@
                 var confirmMsg = '<spring:message code="dataimport.auditlog.cleanup.confirm"/>'.replace('{0}', config.retentionDays);
                 if (confirm(confirmMsg)) {
                     var cleanupXhr = new XMLHttpRequest();
-                    cleanupXhr.open('POST', contextPath + '/rest/v1/dataimport/audit/cleanup', true);
+                    cleanupXhr.open('POST', contextPath + '/ws/rest/v1/dataimport/audit/cleanup', true);
                     cleanupXhr.setRequestHeader('Content-Type', 'application/json');
                     cleanupXhr.onreadystatechange = function() {
                         if (cleanupXhr.readyState === 4) {
@@ -257,6 +286,12 @@
     });
 
     document.getElementById('actionFilter').addEventListener('change', function() {
+        currentPage = 0;
+        loadAuditLogs(0);
+    });
+
+    document.getElementById('pageSizeSelect').addEventListener('change', function() {
+        pageSize = parseInt(this.value, 10);
         currentPage = 0;
         loadAuditLogs(0);
     });
