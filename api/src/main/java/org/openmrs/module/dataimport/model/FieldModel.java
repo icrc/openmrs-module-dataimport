@@ -32,8 +32,6 @@ public class FieldModel {
 	
 	public String requiredExpr;
 	
-	public String hideExpr;
-	
 	public Integer minLength, maxLength;
 	
 	public Double min, max;
@@ -65,15 +63,11 @@ public class FieldModel {
 	}
 	
 	public boolean isConditional() {
-		return hideExpr != null || requiredExpr != null;
+		return requiredExpr != null;
 	}
 	
 	public String getConditionalDescription() {
-		if (hideExpr != null && requiredExpr != null) {
-			return "Conditional: " + hideExpr + " | Required when: " + requiredExpr;
-		} else if (hideExpr != null) {
-			return "Show only when: " + hideExpr;
-		} else if (requiredExpr != null) {
+		if (requiredExpr != null) {
 			return "Required when: " + requiredExpr;
 		}
 		return null;

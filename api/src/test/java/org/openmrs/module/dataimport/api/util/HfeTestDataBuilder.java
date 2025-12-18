@@ -117,22 +117,7 @@ public class HfeTestDataBuilder {
 		 * @return this builder
 		 */
 		public HfeFormBuilder withObs(String conceptId, String labelText, String style) {
-			observations.add(new ObsElement(conceptId, labelText, style, null));
-			return this;
-		}
-		
-		/**
-		 * Adds an obs element with a hideWhenExpression for conditional fields.
-		 *
-		 * @param conceptId the concept ID or mapping
-		 * @param labelText the label text for the field
-		 * @param style the widget style
-		 * @param hideWhenExpression the conditional expression
-		 * @return this builder
-		 */
-		public HfeFormBuilder withConditionalObs(String conceptId, String labelText, String style,
-		        String hideWhenExpression) {
-			observations.add(new ObsElement(conceptId, labelText, style, hideWhenExpression));
+			observations.add(new ObsElement(conceptId, labelText, style));
 			return this;
 		}
 		
@@ -199,9 +184,6 @@ public class HfeTestDataBuilder {
 				xml.append(" labelText=\"").append(obs.labelText).append("\"");
 				if (obs.style != null) {
 					xml.append(" style=\"").append(obs.style).append("\"");
-				}
-				if (obs.hideWhenExpression != null) {
-					xml.append(" hideWhenExpression=\"").append(obs.hideWhenExpression).append("\"");
 				}
 				xml.append("/>\n");
 			}
@@ -279,13 +261,10 @@ public class HfeTestDataBuilder {
 		
 		final String style;
 		
-		final String hideWhenExpression;
-		
-		public ObsElement(String conceptId, String labelText, String style, String hideWhenExpression) {
+		public ObsElement(String conceptId, String labelText, String style) {
 			this.conceptId = conceptId;
 			this.labelText = labelText;
 			this.style = style;
-			this.hideWhenExpression = hideWhenExpression;
 		}
 	}
 	

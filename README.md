@@ -43,7 +43,6 @@ The module automatically detects HFE forms by looking for "htmlform" resources. 
 
 **HFE Directives:**
 - `<repeat with="[...]">` - Template expansion with placeholder substitution (`{0}`, `{1}`, `{2}`)
-- Conditional fields (`hideWhenExpression`) - Rendered with gray background in Excel
 
 **Concept Resolution:**
 - UUID: `conceptId="5089AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"`
