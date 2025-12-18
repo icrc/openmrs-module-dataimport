@@ -86,7 +86,6 @@ public class O3FormParser {
 			JsonNode questionOptions = q.path("questionOptions");
 			String rendering = getTextOrNull(questionOptions, "rendering");
 			boolean isGroup = "group".equalsIgnoreCase(getTextOrNull(q, "type")) || q.has("questions");
-			String hideExpr = getTextOrNull(q.path("hide"), "hideWhenExpression");
 			String questionType = getTextOrNull(q, "type");
 			
 			if ("markdown".equals(rendering)) {
@@ -123,8 +122,6 @@ public class O3FormParser {
 				}
 			}
 			
-			field.hideExpr = hideExpr;
-			
 			inferDatatypeAndAnswers(field, questionOptions, questionType);
 			
 			JsonNode req = q.get("required");
@@ -156,14 +153,6 @@ public class O3FormParser {
 				rule.type = "required-if";
 				rule.expr = field.requiredExpr;
 				rule.message = "This field is required by schema";
-				form.rules.add(rule);
-			}
-			if (field.hideExpr != null) {
-				RuleModel rule = new RuleModel();
-				rule.fieldId = field.id;
-				rule.type = "relevance";
-				rule.expr = field.hideExpr;
-				rule.message = "Hidden when expression is true";
 				form.rules.add(rule);
 			}
 			if (field.min != null || field.max != null || field.minLength != null || field.maxLength != null) {

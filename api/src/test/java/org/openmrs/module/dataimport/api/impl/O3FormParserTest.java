@@ -338,14 +338,12 @@ class O3FormParserTest {
 	}
 	
 	@Test
-	public void testParseFormWithRules() throws Exception {
+	public void testParseFormWithRequiredRule() throws Exception {
 		String json = "{\n" + "    \"uuid\": \"rules-form\",\n" + "    \"name\": \"Rules Form\",\n" + "    \"pages\": [\n"
 		        + "        {\n" + "            \"sections\": [\n" + "                {\n"
 		        + "                    \"questions\": [\n" + "                        {\n"
 		        + "                            \"id\": \"showField\",\n"
-		        + "                            \"label\": \"Show Field\",\n" + "                            \"hide\": {\n"
-		        + "                                \"hideWhenExpression\": \"triggerField == 'hide'\"\n"
-		        + "                            },\n"
+		        + "                            \"label\": \"Show Field\",\n"
 		        + "                            \"required\": \"triggerField == 'required'\"\n"
 		        + "                        }\n" + "                    ]\n" + "                }\n" + "            ]\n"
 		        + "        }\n" + "    ]\n" + "}";
@@ -355,10 +353,8 @@ class O3FormParserTest {
 		assertNotNull(result.rules);
 		assertTrue(result.rules.size() > 0);
 		
-		boolean hasRelevanceRule = result.rules.stream().anyMatch(r -> "relevance".equals(r.type));
 		boolean hasRequiredRule = result.rules.stream().anyMatch(r -> "required-if".equals(r.type));
 		
-		assertTrue(hasRelevanceRule);
 		assertTrue(hasRequiredRule);
 	}
 	
