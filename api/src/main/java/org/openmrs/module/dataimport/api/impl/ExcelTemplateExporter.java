@@ -11,14 +11,10 @@ package org.openmrs.module.dataimport.api.impl;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.ClientAnchor;
-import org.apache.poi.ss.usermodel.Comment;
-import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.DataValidation;
 import org.apache.poi.ss.usermodel.DataValidationConstraint;
 import org.apache.poi.ss.usermodel.DataValidationHelper;
-import org.apache.poi.ss.usermodel.Drawing;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
@@ -26,12 +22,8 @@ import org.apache.poi.ss.usermodel.Name;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.SheetVisibility;
-import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
-import org.apache.poi.ss.util.CellReference;
-import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
-import org.apache.poi.xssf.usermodel.XSSFRichTextString;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openmrs.Concept;
@@ -115,7 +107,6 @@ public class ExcelTemplateExporter {
 				XSSFSheet sheet = workbook.createSheet(uniqueSheetName);
 				Row headerRow = sheet.createRow(0);
 				CellStyle headerStyle = createHeaderStyle(workbook);
-				CellStyle conditionalHeaderStyle = createConditionalFieldStyle(workbook);
 				int columnIndex = 0;
 				
 				Cell patientRefHeaderCell = headerRow.createCell(columnIndex);
@@ -128,18 +119,7 @@ public class ExcelTemplateExporter {
 					Cell headerCell = headerRow.createCell(columnIndex);
 					headerCell.setCellValue(labelWithMarkers(field));
 					
-					// Apply conditional field styling to header if field is conditional
-					if (field.isConditional()) {
-						headerCell.setCellStyle(conditionalHeaderStyle);
-						
-						// Add Excel comment explaining the condition
-						String conditionDesc = field.getConditionalDescription();
-						if (conditionDesc != null) {
-							addCommentToCell(sheet, headerCell, conditionDesc);
-						}
-					} else {
-						headerCell.setCellStyle(headerStyle);
-					}
+					headerCell.setCellStyle(headerStyle);
 					
 					if (field.datatype == FieldDatatype.DATE) {
 						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
@@ -154,29 +134,7 @@ public class ExcelTemplateExporter {
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
-					
-					// Apply subtle gray background to data cells of conditional fields
-					if (field.isConditional()) {
-						CellStyle conditionalDataStyle = workbook.createCellStyle();
-						conditionalDataStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-						conditionalDataStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-						
-						for (int rowIndex = DataImportConstants.FIRST_DATA_ROW; rowIndex <= DataImportConstants.LAST_DATA_ROW; rowIndex++) {
-							Cell cell = getOrCreate(sheet, rowIndex, columnIndex);
-							// Preserve date/datetime formatting if applicable
-							if (field.datatype == FieldDatatype.DATE) {
-								conditionalDataStyle.cloneStyleFrom(dateStyle);
-								conditionalDataStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-								conditionalDataStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-							} else if (field.datatype == FieldDatatype.DATETIME) {
-								conditionalDataStyle.cloneStyleFrom(dateTimeStyle);
-								conditionalDataStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-								conditionalDataStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-							}
-							cell.setCellStyle(conditionalDataStyle);
-						}
-					}
-					
+
 					sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
@@ -512,38 +470,6 @@ public class ExcelTemplateExporter {
 		style.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
 		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
-	}
-	
-	private static CellStyle createConditionalFieldStyle(XSSFWorkbook workbook) {
-		CellStyle style = workbook.createCellStyle();
-		style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-		Font font = workbook.createFont();
-		font.setItalic(true);
-		font.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
-		style.setFont(font);
-		return style;
-	}
-	
-	private static void addCommentToCell(XSSFSheet sheet, Cell cell, String commentText) {
-		if (commentText == null || commentText.trim().isEmpty()) {
-			return;
-		}
-		
-		CreationHelper factory = sheet.getWorkbook().getCreationHelper();
-		Drawing<?> drawing = sheet.createDrawingPatriarch();
-		
-		ClientAnchor anchor = factory.createClientAnchor();
-		anchor.setCol1(cell.getColumnIndex());
-		anchor.setCol2(cell.getColumnIndex() + 3);
-		anchor.setRow1(cell.getRowIndex());
-		anchor.setRow2(cell.getRowIndex() + 3);
-		
-		Comment comment = drawing.createCellComment(anchor);
-		comment.setString(factory.createRichTextString(commentText));
-		comment.setAuthor("Data Import Module");
-		
-		cell.setCellComment(comment);
 	}
 	
 	private void createMetaSheet(XSSFWorkbook workbook, FormModel form, TemplateOptions opts,
