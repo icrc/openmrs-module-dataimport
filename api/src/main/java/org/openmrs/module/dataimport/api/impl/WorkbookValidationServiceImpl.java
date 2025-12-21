@@ -276,14 +276,24 @@ public class WorkbookValidationServiceImpl implements WorkbookValidationService 
 			if (rawValue != null && !rawValue.trim().isEmpty()) {
 				message = message + " (value: '" + rawValue + "')";
 			}
-			result.quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, colIndex, "OBS_PARSE_ERROR", message));
+			
+			// Create warning or error based on issue severity
+			if (issue.isWarning()) {
+				result.quarantineItems
+				        .add(QuarantineItem.warning(sheetName, rowIndex, colIndex, "OBS_PARSE_WARNING", message));
+			} else {
+				result.quarantineItems.add(QuarantineItem.error(sheetName, rowIndex, colIndex, "OBS_PARSE_ERROR", message));
+			}
 		}
 		
 		List<ObsBlueprint> obs = obsOutcome.getObs();
 		Validation.checkRow(obs, sheetMeta, result.quarantineItems, sheetName, rowIndex);
 		
-		boolean rowHasIssues = result.quarantineItems.size() > issuesBefore;
-		if (rowHasIssues) {
+		// Only block row if there are ERROR severity issues (warnings don't block)
+		long errorCount = result.quarantineItems.subList(issuesBefore, result.quarantineItems.size()).stream()
+		        .filter(QuarantineItem::isError).count();
+		
+		if (errorCount > 0) {
 			result.blockedPatientRefs.add(patientRef);
 			return;
 		}

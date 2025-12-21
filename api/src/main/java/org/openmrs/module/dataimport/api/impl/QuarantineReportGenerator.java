@@ -43,21 +43,23 @@ public class QuarantineReportGenerator {
 		}
 		
 		try (XSSFWorkbook sourceWb = new XSSFWorkbook(originalWorkbook); XSSFWorkbook reportWb = new XSSFWorkbook()) {
-			Map<String, Map<Integer, QuarantineItem>> errorMap = buildErrorMap(importPlan.getIssues());
+			Map<String, Map<Integer, List<QuarantineItem>>> errorMap = buildErrorMap(importPlan.getIssues());
 			Set<String> blockedPatientRefs = importPlan.getBlockedPatientRefs() != null ? importPlan.getBlockedPatientRefs()
 			        : Collections.emptySet();
 			
 			if (!blockedPatientRefs.isEmpty()) {
 				Sheet patientSheet = sourceWb.getSheet(DataImportConstants.PATIENT_SHEET_NAME);
 				Map<String, Integer> patientRowIndex = indexPatientSheet(patientSheet);
-				Map<Integer, QuarantineItem> patientSheetErrors = errorMap
+				Map<Integer, List<QuarantineItem>> patientSheetErrors = errorMap
 				        .computeIfAbsent(DataImportConstants.PATIENT_SHEET_NAME, k -> new HashMap<>());
 				for (String patientRef : blockedPatientRefs) {
 					Integer rowIndex = patientRowIndex.get(patientRef);
 					if (rowIndex != null && !patientSheetErrors.containsKey(rowIndex)) {
 						String message = "Patient '" + patientRef + "' has quarantined rows";
-						patientSheetErrors.put(rowIndex, QuarantineItem.error(DataImportConstants.PATIENT_SHEET_NAME,
-						    rowIndex, 0, "PATIENT_BLOCKED", message));
+						List<QuarantineItem> rowErrors = new ArrayList<>();
+						rowErrors.add(QuarantineItem.error(DataImportConstants.PATIENT_SHEET_NAME, rowIndex, 0,
+						    "PATIENT_BLOCKED", message));
+						patientSheetErrors.put(rowIndex, rowErrors);
 					}
 				}
 				if (patientSheetErrors.isEmpty()) {
@@ -65,7 +67,7 @@ public class QuarantineReportGenerator {
 				}
 			}
 			
-			Map<Integer, QuarantineItem> patientSheetErrors = errorMap.get(DataImportConstants.PATIENT_SHEET_NAME);
+			Map<Integer, List<QuarantineItem>> patientSheetErrors = errorMap.get(DataImportConstants.PATIENT_SHEET_NAME);
 			if (patientSheetErrors != null && !patientSheetErrors.isEmpty()) {
 				Sheet sourcePatientSheet = sourceWb.getSheet(DataImportConstants.PATIENT_SHEET_NAME);
 				if (sourcePatientSheet != null) {
@@ -74,9 +76,9 @@ public class QuarantineReportGenerator {
 				}
 			}
 			
-			for (Map.Entry<String, Map<Integer, QuarantineItem>> entry : errorMap.entrySet()) {
+			for (Map.Entry<String, Map<Integer, List<QuarantineItem>>> entry : errorMap.entrySet()) {
 				String sheetName = entry.getKey();
-				Map<Integer, QuarantineItem> sheetErrors = entry.getValue();
+				Map<Integer, List<QuarantineItem>> sheetErrors = entry.getValue();
 				
 				if (sheetErrors == null || sheetErrors.isEmpty() || sheetName == null || sheetName.startsWith("__")) {
 					continue;
@@ -127,11 +129,12 @@ public class QuarantineReportGenerator {
 		}
 	}
 	
-	private Map<String, Map<Integer, QuarantineItem>> buildErrorMap(java.util.List<QuarantineItem> issues) {
-		Map<String, Map<Integer, QuarantineItem>> errorMap = new HashMap<>();
+	private Map<String, Map<Integer, List<QuarantineItem>>> buildErrorMap(java.util.List<QuarantineItem> issues) {
+		Map<String, Map<Integer, List<QuarantineItem>>> errorMap = new HashMap<>();
 		
 		for (QuarantineItem issue : issues) {
-			errorMap.computeIfAbsent(issue.getSheet(), k -> new HashMap<>()).put(issue.getRow(), issue);
+			errorMap.computeIfAbsent(issue.getSheet(), k -> new HashMap<>())
+			        .computeIfAbsent(issue.getRow(), k -> new ArrayList<>()).add(issue);
 		}
 		
 		return errorMap;
@@ -178,13 +181,14 @@ public class QuarantineReportGenerator {
 		}
 	}
 	
-	private void copySheetWithHighlighting(Sheet sourceSheet, Sheet targetSheet, Map<Integer, QuarantineItem> errors) {
+	private void copySheetWithHighlighting(Sheet sourceSheet, Sheet targetSheet, Map<Integer, List<QuarantineItem>> errors) {
 		if (errors == null || errors.isEmpty()) {
 			return;
 		}
 		
 		Workbook workbook = targetSheet.getWorkbook();
 		CellStyle errorStyle = createErrorStyle(workbook);
+		CellStyle warningStyle = createWarningStyle(workbook);
 		CellStyle headerStyle = createHeaderStyle(workbook);
 		
 		int targetRowIndex = 0;
@@ -203,7 +207,22 @@ public class QuarantineReportGenerator {
 				continue;
 			}
 			Row targetRow = targetSheet.createRow(targetRowIndex++);
-			copyRow(sourceRow, targetRow, errorStyle);
+			
+			// Copy row normally first (no highlighting)
+			copyRow(sourceRow, targetRow, null);
+			
+			// Then highlight each column that has an error/warning
+			List<QuarantineItem> rowItems = errors.get(rowNum);
+			if (rowItems != null && !rowItems.isEmpty()) {
+				for (QuarantineItem item : rowItems) {
+					int colIndex = item.getCol();
+					Cell targetCell = targetRow.getCell(colIndex);
+					if (targetCell != null) {
+						CellStyle styleToUse = item.isWarning() ? warningStyle : errorStyle;
+						targetCell.setCellStyle(styleToUse);
+					}
+				}
+			}
 		}
 		
 		copyColumnWidths(sourceSheet, targetSheet);
@@ -320,6 +339,13 @@ public class QuarantineReportGenerator {
 	private CellStyle createErrorStyle(Workbook workbook) {
 		CellStyle style = workbook.createCellStyle();
 		style.setFillForegroundColor(IndexedColors.CORAL.getIndex());
+		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+		return style;
+	}
+	
+	private CellStyle createWarningStyle(Workbook workbook) {
+		CellStyle style = workbook.createCellStyle();
+		style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
 		style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 		return style;
 	}

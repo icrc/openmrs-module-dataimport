@@ -96,6 +96,15 @@
             </td>
         </tr>
         <tr>
+            <td valign="top"><spring:message code="dataimport.template.visitOptions"/>:</td>
+            <td valign="top">
+                <input type="checkbox" id="autoCloseVisits" />
+                <label for="autoCloseVisits"><spring:message code="dataimport.template.autoCloseVisits"/></label>
+                <br/>
+                <span style="color: #666; font-size: 0.9em;"><spring:message code="dataimport.template.autoCloseVisitsHint"/></span>
+            </td>
+        </tr>
+        <tr>
             <td></td>
             <td>
                 <input type="button" id="generateTemplateBtn" value="<spring:message code="dataimport.template.generate"/>" disabled />

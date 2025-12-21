@@ -97,7 +97,7 @@ public class WorkbookImportServiceImpl implements WorkbookImportService {
 			    validationResult.blockedPatientRefs);
 			ImportPlan plan = ImportPlan.builder().batchId(batchId).rowsOk(validationResult.okRows)
 			        .issues(validationResult.quarantineItems).stats(stats).patientIndex(patientIndex)
-			        .blockedPatientRefs(validationResult.blockedPatientRefs).build();
+			        .blockedPatientRefs(validationResult.blockedPatientRefs).templateMeta(meta).build();
 			importPlanStorage.storePlan(plan);
 			
 			// Log audit entry for dry-run

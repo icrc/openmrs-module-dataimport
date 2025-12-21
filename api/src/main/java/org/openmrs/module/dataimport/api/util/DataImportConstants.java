@@ -53,6 +53,8 @@ public final class DataImportConstants {
 	
 	public static final String DATA_IMPORT_VISIT_TYPE_DESCRIPTION = "Visit type automatically created by the Data Import module to group imported encounters";
 	
+	public static final String GP_AUTO_CLOSE_VISITS = "dataimport.autoCloseVisits";
+	
 	public static String normalizeLabel(String label) {
 		if (label == null) {
 			return null;

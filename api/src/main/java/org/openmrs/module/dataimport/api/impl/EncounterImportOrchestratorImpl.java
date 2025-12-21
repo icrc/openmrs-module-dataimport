@@ -58,6 +58,7 @@ public class EncounterImportOrchestratorImpl implements EncounterImportOrchestra
 	        PatientImportService.PatientCreationOutcome patientCreationOutcome) {
 		Map<String, String> refToPatientUuid = patientCreationOutcome.refToPatientUuid;
 		Map<String, String> visitCache = new HashMap<>();
+		Map<String, Date> visitLastEncounterDatetime = new HashMap<>();
 		
 		List<String> createdEncounterUuids = new ArrayList<>();
 		List<String> errors = new ArrayList<>(patientCreationOutcome.errors);
@@ -84,9 +85,21 @@ public class EncounterImportOrchestratorImpl implements EncounterImportOrchestra
 				continue;
 			}
 			
+			// Track the last encounter datetime for this visit
+			if (visit != null && enc.getEncounterDatetime() != null) {
+				String visitUuid = visit.getUuid();
+				Date currentLastDatetime = visitLastEncounterDatetime.get(visitUuid);
+				if (currentLastDatetime == null || enc.getEncounterDatetime().after(currentLastDatetime)) {
+					visitLastEncounterDatetime.put(visitUuid, enc.getEncounterDatetime());
+				}
+			}
+			
 			failedObs += processObsForEncounter(enc, rp);
 			idempotencyService.record(rp.getIdempotencyKey(), enc.getUuid());
 		}
+		
+		// Close visits if auto-close is enabled in template options
+		closeVisitsIfEnabled(plan, visitLastEncounterDatetime);
 		
 		return new EncounterProcessingOutcome(createdEncounterUuids, errors, failedEncounters, failedObs, skippedRows);
 	}
@@ -193,5 +206,38 @@ public class EncounterImportOrchestratorImpl implements EncounterImportOrchestra
 			}
 		}
 		return failedObsCount;
+	}
+	
+	private void closeVisitsIfEnabled(ImportPlan plan, Map<String, Date> visitLastEncounterDatetime) {
+		if (visitLastEncounterDatetime.isEmpty()) {
+			return;
+		}
+		
+		// Check autoCloseVisits flag from template metadata
+		boolean autoClose = plan.getTemplateMeta() != null && plan.getTemplateMeta().autoCloseVisits;
+		
+		if (!autoClose) {
+			log.debug("Auto-close visits is disabled in template options. {} visit(s) will remain open.",
+			    visitLastEncounterDatetime.size());
+			return;
+		}
+		
+		log.info("Auto-close visits is enabled in template options. Closing {} visit(s)...",
+		    visitLastEncounterDatetime.size());
+		
+		for (Map.Entry<String, Date> entry : visitLastEncounterDatetime.entrySet()) {
+			String visitUuid = entry.getKey();
+			Date endDatetime = entry.getValue();
+			
+			try {
+				visitImportService.closeVisit(visitUuid, endDatetime);
+				log.debug("Successfully closed visit {} with end datetime {}", visitUuid, endDatetime);
+			}
+			catch (Exception e) {
+				log.error("Failed to close visit {}: {}", visitUuid, e.getMessage(), e);
+			}
+		}
+		
+		log.info("Visit closing completed. Closed {} visit(s).", visitLastEncounterDatetime.size());
 	}
 }

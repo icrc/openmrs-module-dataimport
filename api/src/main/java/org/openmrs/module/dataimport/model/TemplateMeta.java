@@ -39,6 +39,12 @@ public class TemplateMeta {
 	 */
 	public boolean restrictToAllowedLocations = false;
 	
+	/**
+	 * If true, visits created during import will be automatically closed after all encounters are
+	 * imported. The visit end datetime will be set to the datetime of the last encounter in the visit.
+	 */
+	public boolean autoCloseVisits = false;
+	
 	public int formCount;
 	
 	public final List<FormInfo> forms = new ArrayList<>();

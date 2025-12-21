@@ -14,6 +14,11 @@ import lombok.Getter;
 @Getter
 public final class QuarantineItem {
 	
+	public enum Severity {
+		WARNING, // Issue flagged but doesn't block import
+		ERROR // Issue blocks the row from being imported
+	}
+	
 	private final String sheet;
 	
 	private final int row;
@@ -26,20 +31,39 @@ public final class QuarantineItem {
 	
 	private final String[] hints;
 	
-	public QuarantineItem(String sheet, int row, int col, String code, String message, String[] hints) {
+	private final Severity severity;
+	
+	public QuarantineItem(String sheet, int row, int col, String code, String message, String[] hints, Severity severity) {
 		this.sheet = sheet;
 		this.row = row;
 		this.col = col;
 		this.code = code;
 		this.message = message;
 		this.hints = hints;
+		this.severity = severity != null ? severity : Severity.ERROR;
 	}
 	
 	public static QuarantineItem error(String sheet, int row, int col, String code, String message) {
-		return new QuarantineItem(sheet, row, col, code, message, null);
+		return new QuarantineItem(sheet, row, col, code, message, null, Severity.ERROR);
 	}
 	
 	public static QuarantineItem error(String sheet, int row, int col, String code, String message, String[] hints) {
-		return new QuarantineItem(sheet, row, col, code, message, hints);
+		return new QuarantineItem(sheet, row, col, code, message, hints, Severity.ERROR);
+	}
+	
+	public static QuarantineItem warning(String sheet, int row, int col, String code, String message) {
+		return new QuarantineItem(sheet, row, col, code, message, null, Severity.WARNING);
+	}
+	
+	public static QuarantineItem warning(String sheet, int row, int col, String code, String message, String[] hints) {
+		return new QuarantineItem(sheet, row, col, code, message, hints, Severity.WARNING);
+	}
+	
+	public boolean isError() {
+		return severity == Severity.ERROR;
+	}
+	
+	public boolean isWarning() {
+		return severity == Severity.WARNING;
 	}
 }
