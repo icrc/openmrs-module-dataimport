@@ -49,6 +49,10 @@ public final class ImportStats {
 	
 	public static ImportStats of(List<RowPlan> okRows, List<QuarantineItem> issues,
 	        java.util.Set<String> blockedPatientRefs) {
+		// Count only ERROR severity issues as quarantined (warnings don't block rows)
+		long errorCount = issues.stream().filter(QuarantineItem::isError).count();
+		int quarantinedRows = (int) errorCount;
+		
 		int totalRows = okRows.size() + issues.size();
 		int encountersToCreate = okRows.size();
 		int obsToCreate = okRows.stream().mapToInt(r -> r.getObs().size()).sum();
@@ -72,8 +76,11 @@ public final class ImportStats {
 		for (RowPlan row : okRows) {
 			sheetMap.computeIfAbsent(row.getSheetName(), SheetStats.Builder::new).incrementOk();
 		}
+		// Only count ERROR severity issues as quarantined in sheet stats
 		for (QuarantineItem issue : issues) {
-			sheetMap.computeIfAbsent(issue.getSheet(), SheetStats.Builder::new).incrementQuarantined();
+			if (issue.isError()) {
+				sheetMap.computeIfAbsent(issue.getSheet(), SheetStats.Builder::new).incrementQuarantined();
+			}
 		}
 		List<SheetStats> sheetSummaries = sheetMap.values().stream().map(SheetStats.Builder::build)
 		        .sorted(java.util.Comparator.comparing(SheetStats::getSheetName))
@@ -84,7 +91,7 @@ public final class ImportStats {
 		int patientsToCreate = newPatientRefs.size();
 		int existingPatientsReferenced = existingPatientUuids.size();
 		
-		return new ImportStats(totalRows, okRows.size(), issues.size(), patientsToCreate, existingPatientsReferenced,
+		return new ImportStats(totalRows, okRows.size(), quarantinedRows, patientsToCreate, existingPatientsReferenced,
 		        blockedPatients, encountersToCreate, obsToCreate, sheetSummaries);
 	}
 }

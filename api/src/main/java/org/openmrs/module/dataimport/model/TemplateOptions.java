@@ -52,6 +52,13 @@ public class TemplateOptions {
 	 */
 	public boolean restrictToAllowedLocations = false;
 	
+	/**
+	 * If true, visits created during import will be automatically closed after all encounters are
+	 * imported. The visit end datetime will be set to the datetime of the last encounter in the visit.
+	 * Default is false (visits remain open).
+	 */
+	public boolean autoCloseVisits = false;
+	
 	public String filename = "";
 	
 	/**

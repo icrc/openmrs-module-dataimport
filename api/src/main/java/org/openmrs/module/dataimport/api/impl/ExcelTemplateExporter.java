@@ -134,7 +134,7 @@ public class ExcelTemplateExporter {
 					} else if (field.datatype == FieldDatatype.CODED) {
 						handleCodedField(workbook, sheet, field, columnIndex);
 					}
-
+					
 					sheet.setColumnWidth(columnIndex, DataImportConstants.STANDARD_COLUMN_WIDTH);
 					columnIndex++;
 				}
@@ -484,6 +484,7 @@ public class ExcelTemplateExporter {
 		String locationUuid = opts != null ? opts.getEffectiveDefaultLocation() : null;
 		List<String> allowedLocationUuids = opts != null ? opts.getAllAllowedLocations() : new ArrayList<>();
 		boolean restrictToAllowedLocations = opts != null && opts.restrictToAllowedLocations;
+		boolean autoCloseVisits = opts != null && opts.autoCloseVisits;
 		
 		int rowIndex = 0;
 		
@@ -525,6 +526,9 @@ public class ExcelTemplateExporter {
 		
 		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("restrictToAllowedLocations");
 		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(String.valueOf(restrictToAllowedLocations));
+		
+		metaSheet.createRow(rowIndex++).createCell(0).setCellValue("autoCloseVisits");
+		metaSheet.getRow(rowIndex - 1).createCell(1).setCellValue(String.valueOf(autoCloseVisits));
 		
 		rowIndex += 2;
 		

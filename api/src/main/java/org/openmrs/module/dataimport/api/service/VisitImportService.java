@@ -17,4 +17,13 @@ import java.util.Date;
 public interface VisitImportService extends OpenmrsService {
 	
 	Visit createVisit(String patientUuid, String visitTypeUuid, String locationUuid, Date startDatetime);
+	
+	/**
+	 * Closes a visit by setting its end datetime
+	 * 
+	 * @param visitUuid the UUID of the visit to close
+	 * @param endDatetime the end datetime to set for the visit
+	 * @return the updated visit
+	 */
+	Visit closeVisit(String visitUuid, Date endDatetime);
 }

@@ -89,6 +89,9 @@ public class ExcelReader {
 		String restrictStr = templateData.getOrDefault("restrictToAllowedLocations", "false");
 		meta.restrictToAllowedLocations = "true".equalsIgnoreCase(restrictStr.trim());
 		
+		String autoCloseVisitsStr = templateData.getOrDefault("autoCloseVisits", "false");
+		meta.autoCloseVisits = "true".equalsIgnoreCase(autoCloseVisitsStr.trim());
+		
 		int columnTableStartRow = findColumnTableStart(metaSheet);
 		if (columnTableStartRow == -1) {
 			throw new IllegalArgumentException("Could not find column metadata table in __meta sheet");
@@ -390,7 +393,7 @@ public class ExcelReader {
 				if (!unknownValues.isEmpty()) {
 					String message = String.format("Unknown coded values %s for concept %s", unknownValues,
 					    column.conceptUuid);
-					issues.add(new ObsBuildIssue(column, raw, message, null));
+					issues.add(ObsBuildIssue.warning(column, raw, message));
 				}
 				continue;
 			}
@@ -406,7 +409,16 @@ public class ExcelReader {
 				String baseMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
 				String message = String.format("Failed to parse value for column '%s': %s", describeColumn(column),
 				    baseMessage);
-				issues.add(new ObsBuildIssue(column, rawValue, message, e));
+				
+				// Unknown coded values are warnings, not errors
+				boolean isUnknownCodedValue = column.datatype == FieldDatatype.CODED && e instanceof IllegalArgumentException
+				        && baseMessage != null && baseMessage.contains("Unknown coded value");
+				
+				if (isUnknownCodedValue) {
+					issues.add(ObsBuildIssue.warning(column, rawValue, message));
+				} else {
+					issues.add(new ObsBuildIssue(column, rawValue, message, e));
+				}
 			}
 		}
 		
@@ -734,11 +746,22 @@ public class ExcelReader {
 		
 		private final Throwable cause;
 		
+		private final boolean isWarning;
+		
 		public ObsBuildIssue(ColumnMeta column, String rawValue, String message, Throwable cause) {
+			this(column, rawValue, message, cause, false);
+		}
+		
+		public ObsBuildIssue(ColumnMeta column, String rawValue, String message, Throwable cause, boolean isWarning) {
 			this.column = column;
 			this.rawValue = rawValue;
 			this.message = message;
 			this.cause = cause;
+			this.isWarning = isWarning;
+		}
+		
+		public static ObsBuildIssue warning(ColumnMeta column, String rawValue, String message) {
+			return new ObsBuildIssue(column, rawValue, message, null, true);
 		}
 	}
 }

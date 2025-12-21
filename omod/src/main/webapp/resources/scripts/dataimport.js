@@ -166,6 +166,8 @@
         var locationUuids = getSelectedLocationUuids();
         var restrictToAllowedLocations = document.getElementById('restrictToAllowedLocations');
         var restrict = restrictToAllowedLocations ? restrictToAllowedLocations.checked : false;
+        var autoCloseVisitsCheckbox = document.getElementById('autoCloseVisits');
+        var autoCloseVisits = autoCloseVisitsCheckbox ? autoCloseVisitsCheckbox.checked : false;
 
         var allFormUuids = selectedForms.concat(uploadedFormFileIds);
 
@@ -195,6 +197,7 @@
         }
 
         data.options.restrictToAllowedLocations = restrict;
+        data.options.autoCloseVisits = autoCloseVisits;
 
         var xhr = new XMLHttpRequest();
         xhr.open('POST', contextPath + '/ws/rest/v1/dataimport/forms/template.xlsx', true);

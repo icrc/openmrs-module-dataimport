@@ -32,14 +32,17 @@ public final class ImportPlan {
 	
 	private final Set<String> blockedPatientRefs;
 	
+	private final TemplateMeta templateMeta;
+	
 	public ImportPlan(UUID batchId, List<RowPlan> rowsOk, List<QuarantineItem> issues, ImportStats stats,
-	    ExcelReader.PatientIndex patientIndex, Set<String> blockedPatientRefs) {
+	    ExcelReader.PatientIndex patientIndex, Set<String> blockedPatientRefs, TemplateMeta templateMeta) {
 		this.batchId = batchId;
 		this.rowsOk = rowsOk;
 		this.issues = issues;
 		this.stats = stats;
 		this.patientIndex = patientIndex;
 		this.blockedPatientRefs = blockedPatientRefs != null ? blockedPatientRefs : Collections.emptySet();
+		this.templateMeta = templateMeta;
 	}
 	
 	public static Builder builder() {
@@ -59,6 +62,8 @@ public final class ImportPlan {
 		private ExcelReader.PatientIndex patientIndex;
 		
 		private Set<String> blockedPatientRefs;
+		
+		private TemplateMeta templateMeta;
 		
 		public Builder batchId(UUID batchId) {
 			this.batchId = batchId;
@@ -90,8 +95,13 @@ public final class ImportPlan {
 			return this;
 		}
 		
+		public Builder templateMeta(TemplateMeta templateMeta) {
+			this.templateMeta = templateMeta;
+			return this;
+		}
+		
 		public ImportPlan build() {
-			return new ImportPlan(batchId, rowsOk, issues, stats, patientIndex, blockedPatientRefs);
+			return new ImportPlan(batchId, rowsOk, issues, stats, patientIndex, blockedPatientRefs, templateMeta);
 		}
 	}
 }

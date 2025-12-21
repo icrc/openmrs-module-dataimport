@@ -90,6 +90,30 @@ public class VisitImportServiceImpl extends BaseOpenmrsService implements VisitI
 		return visit;
 	}
 	
+	@Override
+	public Visit closeVisit(String visitUuid, Date endDatetime) {
+		VisitService visitService = getVisitService();
+		
+		Visit visit = visitService.getVisitByUuid(visitUuid);
+		if (visit == null) {
+			throw new IllegalArgumentException("Visit not found: " + visitUuid);
+		}
+		
+		if (endDatetime == null) {
+			throw new IllegalArgumentException("End datetime cannot be null");
+		}
+		
+		if (visit.getStopDatetime() == null) {
+			visit.setStopDatetime(endDatetime);
+			visit = visitService.saveVisit(visit);
+			log.debug("Closed visit {} with end datetime {}", visitUuid, endDatetime);
+		} else {
+			log.debug("Visit {} is already closed with end datetime {}", visitUuid, visit.getStopDatetime());
+		}
+		
+		return visit;
+	}
+	
 	public Visit findReusableOpenVisit(String patientUuid, String locationUuid, Date encounterDatetime) {
 		return findReusableOpenVisit(patientUuid, locationUuid, encounterDatetime, DEFAULT_VISIT_REUSE_WINDOW_MS);
 	}
