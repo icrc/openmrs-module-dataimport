@@ -214,7 +214,6 @@ public class FormTemplateControllerTest {
 		TemplateOptions options = new TemplateOptions();
 		options.locationUuid = "default-loc";
 		options.locationUuids = Arrays.asList("loc-1", "loc-2", "loc-3");
-		options.locationTagFilter = "Visit Location";
 		options.restrictToAllowedLocations = true;
 		request.options = options;
 		
@@ -222,8 +221,7 @@ public class FormTemplateControllerTest {
 		
 		verify(templateGenerationService).generateFromFormUuids(eq(Collections.singletonList("form-uuid")),
 		    argThat(opts -> "default-loc".equals(opts.locationUuid) && opts.locationUuids.size() == 3
-		            && opts.locationUuids.contains("loc-1") && "Visit Location".equals(opts.locationTagFilter)
-		            && opts.restrictToAllowedLocations));
+		            && opts.locationUuids.contains("loc-1") && opts.restrictToAllowedLocations));
 	}
 	
 	/**

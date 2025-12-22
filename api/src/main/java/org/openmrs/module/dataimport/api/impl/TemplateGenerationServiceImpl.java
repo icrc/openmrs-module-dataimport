@@ -344,14 +344,8 @@ public class TemplateGenerationServiceImpl implements TemplateGenerationService 
 			if (opts.locationUuid != null && !opts.locationUuid.isEmpty()) {
 				allowedUuids.add(opts.locationUuid);
 			}
-			// Use locationTagFilter from options if requiredTagName not specified
-			if (requiredTagName != null && !requiredTagName.isEmpty()) {
-				tagFilter = requiredTagName.trim();
-			} else if (opts.locationTagFilter != null && !opts.locationTagFilter.isEmpty()) {
-				tagFilter = opts.locationTagFilter.trim();
-			} else {
-				tagFilter = "";
-			}
+			// Use requiredTagName from HFE form configuration if specified
+			tagFilter = requiredTagName != null && !requiredTagName.isEmpty() ? requiredTagName.trim() : "";
 		} else {
 			tagFilter = requiredTagName != null ? requiredTagName.trim() : "";
 		}
