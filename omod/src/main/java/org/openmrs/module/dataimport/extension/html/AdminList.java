@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * This class defines the links that will appear on the administration page under the
- * "dataimport.title" heading. This extension is enabled by defining (uncommenting) it in the
+ * "dataimport.module.name" heading. This extension is enabled by defining (uncommenting) it in the
  * config.xml file.
  */
 public class AdminList extends AdministrationSectionExt {
@@ -33,7 +33,7 @@ public class AdminList extends AdministrationSectionExt {
 	 * @see org.openmrs.module.web.extension.AdministrationSectionExt#getTitle()
 	 */
 	public String getTitle() {
-		return "dataimport.title";
+		return "dataimport.module.name";
 	}
 	
 	/**
@@ -43,7 +43,9 @@ public class AdminList extends AdministrationSectionExt {
 		
 		Map<String, String> map = new HashMap<String, String>();
 		
-		map.put("module/dataimport/dataimport.form", "dataimport.title");
+		map.put("module/dataimport/dataimport.form?page=template", "dataimport.tab.template");
+		map.put("module/dataimport/dataimport.form?page=import", "dataimport.tab.import");
+		map.put("module/dataimport/auditlog.form", "dataimport.tab.history");
 		
 		return map;
 	}

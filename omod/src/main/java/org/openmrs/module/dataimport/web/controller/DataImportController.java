@@ -9,6 +9,8 @@
  */
 package org.openmrs.module.dataimport.web.controller;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.openmrs.Form;
 import org.openmrs.Location;
 import org.openmrs.api.FormService;
@@ -16,7 +18,6 @@ import org.openmrs.api.LocationService;
 import org.openmrs.api.context.Context;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -26,22 +27,24 @@ import java.util.List;
 @RequestMapping(value = "/module/dataimport/dataimport.form")
 public class DataImportController {
 	
+	private static final Log log = LogFactory.getLog(DataImportController.class);
+	
 	private static final String VIEW = "/module/dataimport/dataimport";
 	
 	@RequestMapping(method = RequestMethod.GET)
 	public String showPage(Model model) {
-		return VIEW;
-	}
-	
-	@ModelAttribute("forms")
-	protected List<Form> getForms() {
 		FormService formService = Context.getFormService();
-		return formService.getAllForms(false);
-	}
-	
-	@ModelAttribute("locations")
-	protected List<Location> getLocations() {
 		LocationService locationService = Context.getLocationService();
-		return locationService.getAllLocations(false);
+		
+		List<Form> forms = formService.getAllForms(false);
+		List<Location> locations = locationService.getAllLocations(false);
+		
+		log.info("DataImportController - Fetched " + (forms != null ? forms.size() : 0) + " forms");
+		log.info("DataImportController - Fetched " + (locations != null ? locations.size() : 0) + " locations");
+		
+		model.addAttribute("forms", forms);
+		model.addAttribute("locations", locations);
+		
+		return VIEW;
 	}
 }
