@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * Unit tests for TemplateOptions model class. Tests the multi-location template feature:
- * locationUuids list, tag filtering, and location restriction settings.
+ * locationUuids list and location restriction settings.
  */
 public class TemplateOptionsTest {
 	
@@ -165,13 +165,6 @@ public class TemplateOptionsTest {
 		TemplateOptions options = new TemplateOptions();
 		
 		assertFalse(options.isRestrictToAllowedLocations());
-	}
-	
-	@Test
-	public void locationTagFilter_shouldDefaultToNull() {
-		TemplateOptions options = new TemplateOptions();
-		
-		assertNull(options.getLocationTagFilter());
 	}
 	
 	@Test

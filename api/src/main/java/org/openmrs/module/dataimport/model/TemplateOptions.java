@@ -41,12 +41,6 @@ public class TemplateOptions {
 	public List<String> locationUuids = new ArrayList<>();
 	
 	/**
-	 * Filter locations by tag name (e.g., "Visit Location"). Applied during template generation to
-	 * limit dropdown options.
-	 */
-	public String locationTagFilter = null;
-	
-	/**
 	 * If true, import validation will reject locations not in the allowed list. If false, any valid
 	 * location is accepted (backward compatible behavior).
 	 */
