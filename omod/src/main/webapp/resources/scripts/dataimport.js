@@ -22,37 +22,74 @@
     }
 
     function setupEventListeners() {
-        var checkboxes = document.querySelectorAll('.form-checkbox');
-        checkboxes.forEach(function(checkbox) {
+        // Forms dropdown trigger
+        var formsSelect = document.getElementById('formsSelect');
+        if (formsSelect) {
+            formsSelect.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.toggleDropdown('formsDropdown');
+            });
+        }
+
+        // Locations dropdown trigger
+        var locationsSelect = document.getElementById('locationsSelect');
+        if (locationsSelect) {
+            locationsSelect.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.toggleDropdown('locationsDropdown');
+            });
+        }
+
+        // Forms checkboxes
+        var formCheckboxes = document.querySelectorAll('.form-checkbox');
+        formCheckboxes.forEach(function(checkbox) {
             checkbox.addEventListener('change', function() {
                 toggleFormSelection(this.value, this.checked);
                 updateGenerateButton();
+                window.updateFormsDropdownLabel();
             });
         });
+
+        // Forms select/deselect all
+        var selectAllFormsBtn = document.getElementById('selectAllFormsBtn');
+        if (selectAllFormsBtn) {
+            selectAllFormsBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.selectAllForms();
+            });
+        }
+
+        var deselectAllFormsBtn = document.getElementById('deselectAllFormsBtn');
+        if (deselectAllFormsBtn) {
+            deselectAllFormsBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.deselectAllForms();
+            });
+        }
 
         // Multi-location selection event listeners
         var locationCheckboxes = document.querySelectorAll('.location-checkbox');
         locationCheckboxes.forEach(function(checkbox) {
-            checkbox.addEventListener('change', updateLocationCharCount);
+            checkbox.addEventListener('change', function() {
+                updateLocationCharCount();
+                window.updateLocationsDropdownLabel();
+            });
         });
 
-        var selectAllLocations = document.getElementById('selectAllLocations');
-        if (selectAllLocations) {
-            selectAllLocations.addEventListener('click', function(e) {
+        // Locations select/deselect all
+        var selectAllLocationsBtn = document.getElementById('selectAllLocationsBtn');
+        if (selectAllLocationsBtn) {
+            selectAllLocationsBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                var checkboxes = document.querySelectorAll('.location-checkbox');
-                checkboxes.forEach(function(cb) { cb.checked = true; });
-                updateLocationCharCount();
+                window.selectAllLocations();
             });
         }
 
-        var deselectAllLocations = document.getElementById('deselectAllLocations');
-        if (deselectAllLocations) {
-            deselectAllLocations.addEventListener('click', function(e) {
+        var deselectAllLocationsBtn = document.getElementById('deselectAllLocationsBtn');
+        if (deselectAllLocationsBtn) {
+            deselectAllLocationsBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                var checkboxes = document.querySelectorAll('.location-checkbox');
-                checkboxes.forEach(function(cb) { cb.checked = false; });
-                updateLocationCharCount();
+                window.deselectAllLocations();
             });
         }
 
@@ -599,3 +636,128 @@
     };
 
 })();
+
+// Global dropdown functions (called from JSP inline handlers)
+window.toggleDropdown = function(dropdownId) {
+    var dropdown = document.getElementById(dropdownId);
+    if (dropdown) {
+        var isVisible = dropdown.style.display === 'block';
+
+        // Close all dropdowns first
+        var allDropdowns = document.querySelectorAll('.multiselect-dropdown');
+        allDropdowns.forEach(function(dd) {
+            dd.style.display = 'none';
+        });
+
+        // Toggle the clicked one
+        dropdown.style.display = isVisible ? 'none' : 'block';
+    }
+};
+
+// Close dropdowns when clicking outside
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.custom-multiselect')) {
+            var allDropdowns = document.querySelectorAll('.multiselect-dropdown');
+            allDropdowns.forEach(function(dd) {
+                dd.style.display = 'none';
+            });
+        }
+    });
+});
+
+window.updateFormsDropdownLabel = function() {
+    var checkboxes = document.querySelectorAll('.form-checkbox');
+    var selectedCount = 0;
+    var selectedNames = [];
+
+    checkboxes.forEach(function(cb) {
+        if (cb.checked) {
+            selectedCount++;
+            var label = cb.parentElement.textContent.trim();
+            selectedNames.push(label);
+        }
+    });
+
+    var labelElement = document.getElementById('formsDropdownLabel');
+    if (selectedCount === 0) {
+        labelElement.textContent = 'Select forms...';
+        labelElement.style.color = '#999';
+    } else if (selectedCount === 1) {
+        labelElement.textContent = selectedNames[0].substring(0, 50) + (selectedNames[0].length > 50 ? '...' : '');
+        labelElement.style.color = '#000';
+    } else {
+        labelElement.textContent = selectedCount + ' forms selected';
+        labelElement.style.color = '#000';
+    }
+};
+
+window.selectAllForms = function() {
+    var checkboxes = document.querySelectorAll('.form-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = true;
+    });
+    window.updateFormsDropdownLabel();
+};
+
+window.deselectAllForms = function() {
+    var checkboxes = document.querySelectorAll('.form-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = false;
+    });
+    window.updateFormsDropdownLabel();
+};
+
+window.updateLocationsDropdownLabel = function() {
+    var checkboxes = document.querySelectorAll('.location-checkbox');
+    var selectedCount = 0;
+    var totalCharCount = 0;
+
+    checkboxes.forEach(function(cb) {
+        if (cb.checked) {
+            selectedCount++;
+            var name = cb.getAttribute('data-name') || '';
+            totalCharCount += name.length + 1;
+        }
+    });
+
+    var labelElement = document.getElementById('locationsDropdownLabel');
+    var charCountElement = document.getElementById('locationCharCount');
+
+    if (selectedCount === 0) {
+        labelElement.textContent = 'All locations';
+        labelElement.style.color = '#000';
+        charCountElement.textContent = '';
+    } else {
+        labelElement.textContent = selectedCount + ' location' + (selectedCount === 1 ? '' : 's') + ' selected';
+        labelElement.style.color = '#000';
+
+        // Show character count warning
+        if (totalCharCount > 30000) {
+            charCountElement.textContent = '(~' + totalCharCount + ' chars - exceeds Excel limit!)';
+            charCountElement.style.color = '#da1e28';
+        } else if (totalCharCount > 25000) {
+            charCountElement.textContent = '(~' + totalCharCount + ' chars - approaching limit)';
+            charCountElement.style.color = '#f1c21b';
+        } else {
+            charCountElement.textContent = '(~' + totalCharCount + ' chars)';
+            charCountElement.style.color = '#666';
+        }
+    }
+};
+
+window.selectAllLocations = function() {
+    var checkboxes = document.querySelectorAll('.location-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = true;
+    });
+    window.updateLocationsDropdownLabel();
+};
+
+window.deselectAllLocations = function() {
+    var checkboxes = document.querySelectorAll('.location-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = false;
+    });
+    window.updateLocationsDropdownLabel();
+};
