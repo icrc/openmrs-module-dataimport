@@ -111,10 +111,23 @@ public class HfeFormResolver implements FormResolver {
 		return form.getVersion();
 	}
 	
-	/**
-	 * Fetch HFE XML from form resources.
-	 */
 	private String fetchHfeXml(String formUuid) {
+		Collection<FormResource> resources = getFormResources(formUuid);
+		
+		for (FormResource fr : resources) {
+			if (HFE_RESOURCE_NAME.equalsIgnoreCase(fr.getName())) {
+				String xml = extractHfeXmlFromResource(fr);
+				if (xml != null && !xml.trim().isEmpty()) {
+					return xml;
+				}
+			}
+		}
+		
+		throw new APIException(
+		        "No HFE XML resource found for form " + formUuid + ". Expected resource named '" + HFE_RESOURCE_NAME + "'");
+	}
+	
+	private static Collection<FormResource> getFormResources(String formUuid) {
 		if (formUuid == null || formUuid.trim().isEmpty()) {
 			throw new APIException("Form UUID cannot be null or empty");
 		}
@@ -129,18 +142,7 @@ public class HfeFormResolver implements FormResolver {
 		if (resources == null || resources.isEmpty()) {
 			throw new APIException("No form resources found for form " + formUuid);
 		}
-		
-		for (FormResource fr : resources) {
-			if (HFE_RESOURCE_NAME.equalsIgnoreCase(fr.getName())) {
-				String xml = extractHfeXmlFromResource(fr);
-				if (xml != null && !xml.trim().isEmpty()) {
-					return xml;
-				}
-			}
-		}
-		
-		throw new APIException(
-		        "No HFE XML resource found for form " + formUuid + ". Expected resource named '" + HFE_RESOURCE_NAME + "'");
+		return resources;
 	}
 	
 	/**

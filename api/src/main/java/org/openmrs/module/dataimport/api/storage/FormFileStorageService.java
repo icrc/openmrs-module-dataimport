@@ -9,6 +9,8 @@
  */
 package org.openmrs.module.dataimport.api.storage;
 
+import lombok.Getter;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -88,6 +90,7 @@ public interface FormFileStorageService {
 	/**
 	 * Data class for file upload.
 	 */
+	@Getter
 	class FormFileData {
 		
 		private final String filename;
@@ -102,22 +105,12 @@ public interface FormFileStorageService {
 			this.formType = formType;
 		}
 		
-		public String getFilename() {
-			return filename;
-		}
-		
-		public byte[] getContent() {
-			return content;
-		}
-		
-		public String getFormType() {
-			return formType;
-		}
 	}
 	
 	/**
 	 * Metadata about a stored file.
 	 */
+	@Getter
 	class FormFileMetadata {
 		
 		private final String fileId;
@@ -138,24 +131,5 @@ public interface FormFileStorageService {
 			this.filePath = filePath;
 		}
 		
-		public String getFileId() {
-			return fileId;
-		}
-		
-		public String getOriginalFilename() {
-			return originalFilename;
-		}
-		
-		public String getFormType() {
-			return formType;
-		}
-		
-		public long getTimestamp() {
-			return timestamp;
-		}
-		
-		public Path getFilePath() {
-			return filePath;
-		}
 	}
 }

@@ -12,8 +12,12 @@ package org.openmrs.module.dataimport.web.controller;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.openmrs.Form;
+import org.openmrs.FormResource;
 import org.openmrs.api.APIException;
+import org.openmrs.api.FormService;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.dataimport.api.resolver.O3JsonFormResolver;
 import org.openmrs.module.dataimport.api.service.TemplateGenerationService;
 import org.openmrs.module.dataimport.api.service.WorkbookImportService;
 import org.openmrs.module.dataimport.api.storage.FormFileStorageService;
@@ -27,6 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -57,7 +62,68 @@ public class FormTemplateController extends BaseRestController {
 	@Autowired
 	private FormFileStorageService formFileStorageService;
 	
+	@Autowired
+	private O3JsonFormResolver o3JsonFormResolver;
+	
 	private final ObjectMapper objectMapper = new ObjectMapper();
+	
+	/**
+	 * List all O3 forms available in the system. This endpoint filters forms to only return those with
+	 * O3 JSON schemas, excluding HFE forms.
+	 *
+	 * @return JSON response with list of O3 forms
+	 */
+	@GetMapping(value = "/forms/o3", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Map<String, Object>> listO3Forms() {
+		try {
+			FormService formService = Context.getFormService();
+			List<Form> allForms = formService.getAllForms(false);
+			
+			List<Map<String, String>> o3Forms = new ArrayList<>();
+			int checkedCount = 0;
+			
+			for (Form form : allForms) {
+				checkedCount++;
+				try {
+					if (o3JsonFormResolver.canResolve(form.getUuid())) {
+						Map<String, String> formInfo = new HashMap<>();
+						formInfo.put("uuid", form.getUuid());
+						formInfo.put("name", form.getName());
+						formInfo.put("version", form.getVersion());
+						formInfo.put("description", form.getDescription() != null ? form.getDescription() : "");
+						
+						if (form.getEncounterType() != null) {
+							formInfo.put("encounterTypeUuid", form.getEncounterType().getUuid());
+							formInfo.put("encounterTypeName", form.getEncounterType().getName());
+						}
+						
+						o3Forms.add(formInfo);
+						log.debug("Found O3 form: {} ({})", form.getName(), form.getUuid());
+					}
+				}
+				catch (Exception e) {
+					log.debug("Form {} is not an O3 form: {}", form.getUuid(), e.getMessage());
+				}
+			}
+			
+			Map<String, Object> response = new HashMap<>();
+			response.put("success", true);
+			response.put("totalFormsChecked", checkedCount);
+			response.put("o3FormsCount", o3Forms.size());
+			response.put("forms", o3Forms);
+			
+			log.info("Listed {} O3 forms out of {} total forms", o3Forms.size(), checkedCount);
+			
+			return ResponseEntity.ok(response);
+		}
+		catch (Exception e) {
+			log.error("Failed to list O3 forms", e);
+			Map<String, Object> errorResponse = new HashMap<>();
+			errorResponse.put("success", false);
+			errorResponse.put("error", e.getMessage());
+			return ResponseEntity.status(500).body(errorResponse);
+		}
+	}
 	
 	/**
 	 * Upload form files (JSON for O3, XML for HFE) for template generation. Supports batch upload of
