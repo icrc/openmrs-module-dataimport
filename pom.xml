@@ -319,7 +319,7 @@
     <mockitoInlineVersion>3.12.4</mockitoInlineVersion>
     <powerMockVersion>2.0.9</powerMockVersion>
     <poiVersion>5.4.1</poiVersion>
-    <legacyUiVersion>1.9.0</legacyUiVersion>
+    <legacyUiVersion>1.23.0</legacyUiVersion>
     <idgenVersion>4.9.0</idgenVersion>
     <log4jVersion>2.17.2</log4jVersion>
     <lombokVersion>1.18.38</lombokVersion>
