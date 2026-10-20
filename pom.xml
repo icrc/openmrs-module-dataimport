@@ -10,7 +10,7 @@
 
   <groupId>org.openmrs.module</groupId>
   <artifactId>dataimport</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.2-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Data Import Module</name>
   <description>Enables uploading and validating patient data into OpenMRS from offline sources like Spreadsheets
